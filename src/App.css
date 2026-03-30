@@ -1,0 +1,50 @@
+/* App-level utility overrides — all primary styling via Tailwind utility classes */
+
+/* Smooth scroll for the main app */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar for modern look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-bosch-panel);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-bosch-muted);
+}
+
+/* Theme transition for smooth light/dark switching */
+*, *::before, *::after {
+  transition-property: background-color, border-color, box-shadow;
+  transition-duration: 0.2s;
+  transition-timing-function: ease;
+}
+/* Exclude elements that have their own transition timing */
+[class*="transition-all"],
+[class*="transition-colors"],
+[class*="transition-transform"],
+[class*="transition-opacity"] {
+  transition-property: all;
+}
+
+/* Glassmorphism card utility */
+.glass-card {
+  background: var(--color-bosch-card);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+}
+
+/* Dark mode glass */
+.dark .glass-card {
+  background: var(--color-bosch-card);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(24px) saturate(150%);
+}

@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* ───── Light mode (default) ───── */
+  --color-bosch-bg: #F5F5F7;
+  --color-bosch-card: rgba(255, 255, 255, 0.72);
+  --color-bosch-card-solid: #FFFFFF;
+  --color-bosch-panel: #E8E8ED;
+  --color-bosch-border: rgba(0, 0, 0, 0.08);
+  --color-bosch-text: #1D1D1F;
+  --color-bosch-red: #DC2626;
+  --color-bosch-blue: #005691;
+  --color-bosch-btn: #31343A;
+  --color-bosch-btn-hover: #3d4148;
+  --color-bosch-teal: #18837E;
+  --color-bosch-subtle: #F9FAFB;
+  --color-bosch-hover: rgba(0, 0, 0, 0.04);
+  --color-bosch-muted: #86868B;
+  --color-bosch-outer: #31343A;
+  --color-bosch-sidebar: #31343A;
+  --color-bosch-sidebar-text: #FFFFFF;
+  --color-bosch-sidebar-muted: rgba(255, 255, 255, 0.70);
+  --color-bosch-sidebar-faint: rgba(255, 255, 255, 0.45);
+  --color-bosch-sidebar-accent: #FF4D5E;
+  --color-bosch-sidebar-active: rgba(255, 255, 255, 0.15);
+  --color-bosch-sidebar-border: rgba(255, 255, 255, 0.10);
+  --color-bosch-sidebar-hover: rgba(255, 255, 255, 0.10);
+  --color-bosch-sidebar-dot: #FFFFFF;
+  --font-sans: 'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif;
+  --shadow-card: 0 0 0 1px rgba(0,0,0,0.04), 0 2px 8px -2px rgba(0,0,0,0.06);
+  --shadow-elevated: 0 0 0 1px rgba(0,0,0,0.04), 0 16px 40px -8px rgba(0,0,0,0.12), 0 4px 12px -4px rgba(0,0,0,0.06);
+  --shadow-header: 0 0 0 1px rgba(0,0,0,0.04);
+  --shadow-glass: 0 8px 32px -8px rgba(0,0,0,0.08);
+
+  /* ───── Dark mode overrides ───── */
+  --color-dark-bg: #0A0A0B;
+  --color-dark-card: rgba(30, 30, 32, 0.72);
+  --color-dark-card-solid: #1A1A1C;
+  --color-dark-panel: #2A2A2C;
+  --color-dark-border: rgba(255, 255, 255, 0.08);
+  --color-dark-text: #F5F5F7;
+  --color-dark-subtle: #141416;
+  --color-dark-hover: rgba(255, 255, 255, 0.06);
+  --color-dark-muted: #86868B;
+  --color-dark-sidebar: #111113;
+  --color-dark-sidebar-text: #E5E5EA;
+}
+
+:root {
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--color-bosch-text);
+  background: var(--color-bosch-bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Dark mode root overrides — remap all bosch tokens to dark values */
+.dark {
+  --color-bosch-bg: #111113;
+  --color-bosch-card: rgba(30, 30, 32, 0.72);
+  --color-bosch-card-solid: #1A1A1C;
+  --color-bosch-panel: #2A2A2C;
+  --color-bosch-border: rgba(255, 255, 255, 0.08);
+  --color-bosch-text: #F5F5F7;
+  --color-bosch-blue: #4DA3E0;
+  --color-bosch-btn: #3d4148;
+  --color-bosch-btn-hover: #4a4f56;
+  --color-bosch-teal: #3CB8B2;
+  --color-bosch-subtle: #141416;
+  --color-bosch-hover: rgba(255, 255, 255, 0.06);
+  --color-bosch-muted: #98989D;
+  --color-bosch-outer: #18181B;
+  --color-bosch-sidebar: #18181B;
+  --color-bosch-sidebar-text: #DFE2E4;
+  --color-bosch-sidebar-muted: rgba(255, 255, 255, 0.60);
+  --color-bosch-sidebar-faint: rgba(255, 255, 255, 0.40);
+  --color-bosch-sidebar-accent: #F25C6E;
+  --color-bosch-sidebar-active: rgba(255, 255, 255, 0.12);
+  --color-bosch-sidebar-border: rgba(255, 255, 255, 0.10);
+  --color-bosch-sidebar-hover: rgba(255, 255, 255, 0.08);
+  --color-bosch-sidebar-dot: #FFFFFF;
+  --shadow-card: 0 0 0 1px rgba(255,255,255,0.06), 0 2px 8px -2px rgba(0,0,0,0.4);
+  --shadow-elevated: 0 0 0 1px rgba(255,255,255,0.06), 0 16px 40px -8px rgba(0,0,0,0.5), 0 4px 12px -4px rgba(0,0,0,0.3);
+  --shadow-header: 0 0 0 1px rgba(255,255,255,0.06);
+  --shadow-glass: 0 8px 32px -8px rgba(0,0,0,0.3);
+  color: var(--color-bosch-text);
+  background: var(--color-bosch-bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}

@@ -1,0 +1,499 @@
+{
+  "publisherPrefix": "pth",
+  "solutionName": "PTH_PortfolioManagement",
+  "tables": [
+    {
+      "schemaName": "pth_Project",
+      "logicalName": "pth_projects",
+      "displayName": "Project",
+      "displayCollectionName": "Projects",
+      "description": "Project portfolio root entity",
+      "ownershipType": "UserOwned",
+      "columns": [
+        {
+          "schemaName": "pth_ProjectIdExternal",
+          "logicalName": "pth_projectidexternal",
+          "displayName": "Project ID",
+          "type": "string",
+          "maxLength": 50,
+          "required": true
+        },
+        {
+          "schemaName": "pth_ProjectName",
+          "logicalName": "pth_projectname",
+          "displayName": "Project Name",
+          "type": "string",
+          "maxLength": 200,
+          "required": true
+        },
+        {
+          "schemaName": "pth_Category",
+          "logicalName": "pth_category",
+          "displayName": "Category",
+          "type": "choice",
+          "required": true,
+          "options": [
+            { "value": 100000000, "label": "ECR" },
+            { "value": 100000001, "label": "Path Forward" },
+            { "value": 100000002, "label": "CIP" },
+            { "value": 100000003, "label": "New Programs" }
+          ]
+        },
+        {
+          "schemaName": "pth_SiteLocation",
+          "logicalName": "pth_sitelocation",
+          "displayName": "Site Location",
+          "type": "choice",
+          "required": true,
+          "options": [
+            { "value": 100000000, "label": "TCA" },
+            { "value": 100000001, "label": "SLP" }
+          ]
+        },
+        {
+          "schemaName": "pth_ProjectObjective",
+          "logicalName": "pth_projectobjective",
+          "displayName": "Project Objective",
+          "type": "memo",
+          "maxLength": 2000,
+          "required": true
+        },
+        {
+          "schemaName": "pth_SponsorExecutive",
+          "logicalName": "pth_sponsorexecutive",
+          "displayName": "Sponsor Executive",
+          "type": "string",
+          "maxLength": 150,
+          "required": true
+        },
+        {
+          "schemaName": "pth_ProjectManagerName",
+          "logicalName": "pth_projectmanagername",
+          "displayName": "Project Manager",
+          "type": "string",
+          "maxLength": 150,
+          "required": true
+        },
+        {
+          "schemaName": "pth_TimeStatus",
+          "logicalName": "pth_timestatus",
+          "displayName": "Time Status",
+          "type": "choice",
+          "required": true,
+          "options": [
+            { "value": 100000000, "label": "RED" },
+            { "value": 100000001, "label": "YELLOW" },
+            { "value": 100000002, "label": "GREEN" }
+          ]
+        },
+        {
+          "schemaName": "pth_CriticalPathChangedFlag",
+          "logicalName": "pth_criticalpathchangedflag",
+          "displayName": "Critical Path Changed Flag",
+          "type": "boolean",
+          "required": true,
+          "defaultValue": false
+        },
+        {
+          "schemaName": "pth_BoschCode",
+          "logicalName": "pth_boschcode",
+          "displayName": "Bosch Code",
+          "type": "string",
+          "maxLength": 50,
+          "required": false
+        },
+        {
+          "schemaName": "pth_BudgetAllocated",
+          "logicalName": "pth_budgetallocated",
+          "displayName": "Budget Allocated",
+          "type": "decimal",
+          "precision": 2,
+          "minValue": 0,
+          "maxValue": 999999999,
+          "required": false
+        },
+        {
+          "schemaName": "pth_KpisImpacted",
+          "logicalName": "pth_kpisimpacted",
+          "displayName": "KPIs Impacted",
+          "type": "memo",
+          "maxLength": 1000,
+          "required": false
+        },
+        {
+          "schemaName": "pth_MonitoringCriteria",
+          "logicalName": "pth_monitoringcriteria",
+          "displayName": "Monitoring Criteria",
+          "type": "memo",
+          "maxLength": 500,
+          "required": false
+        },
+        {
+          "schemaName": "pth_PlannedStartDate",
+          "logicalName": "pth_plannedstartdate",
+          "displayName": "Planned Start Date",
+          "type": "datetime",
+          "format": "DateOnly",
+          "required": false
+        },
+        {
+          "schemaName": "pth_PlannedEndDate",
+          "logicalName": "pth_plannedenddate",
+          "displayName": "Planned End Date",
+          "type": "datetime",
+          "format": "DateOnly",
+          "required": false
+        }
+      ]
+    },
+    {
+      "schemaName": "pth_Milestone",
+      "logicalName": "pth_milestones",
+      "displayName": "Milestone",
+      "displayCollectionName": "Milestones",
+      "description": "Project milestones",
+      "ownershipType": "UserOwned",
+      "columns": [
+        {
+          "schemaName": "pth_MilestoneIdExternal",
+          "logicalName": "pth_milestoneidexternal",
+          "displayName": "Milestone ID",
+          "type": "string",
+          "maxLength": 50,
+          "required": true
+        },
+        {
+          "schemaName": "pth_Project",
+          "logicalName": "pth_project",
+          "displayName": "Project",
+          "type": "lookup",
+          "required": true,
+          "targetLogicalName": "pth_projects"
+        },
+        {
+          "schemaName": "pth_Name",
+          "logicalName": "pth_name",
+          "displayName": "Name",
+          "type": "string",
+          "maxLength": 200,
+          "required": true
+        },
+        {
+          "schemaName": "pth_PlannedDate",
+          "logicalName": "pth_planneddate",
+          "displayName": "Planned Date",
+          "type": "date",
+          "required": true
+        },
+        {
+          "schemaName": "pth_Status",
+          "logicalName": "pth_status",
+          "displayName": "Status",
+          "type": "choice",
+          "required": true,
+          "options": [
+            { "value": 100000000, "label": "OPEN" },
+            { "value": 100000001, "label": "IN_PROGRESS" },
+            { "value": 100000002, "label": "CLOSED" },
+            { "value": 100000003, "label": "DELAYED" }
+          ]
+        },
+        {
+          "schemaName": "pth_RYG",
+          "logicalName": "pth_ryg",
+          "displayName": "RYG",
+          "type": "choice",
+          "required": true,
+          "options": [
+            { "value": 100000000, "label": "RED" },
+            { "value": 100000001, "label": "YELLOW" },
+            { "value": 100000002, "label": "GREEN" }
+          ]
+        },
+        {
+          "schemaName": "pth_IsCriticalPath",
+          "logicalName": "pth_iscriticalpath",
+          "displayName": "Is Critical Path",
+          "type": "boolean",
+          "required": true,
+          "defaultValue": false
+        }
+      ]
+    },
+    {
+      "schemaName": "pth_Activity",
+      "logicalName": "pth_activities",
+      "displayName": "Activity",
+      "displayCollectionName": "Activities",
+      "description": "Project activities",
+      "ownershipType": "UserOwned",
+      "columns": [
+        {
+          "schemaName": "pth_ActivityIdExternal",
+          "logicalName": "pth_activityidexternal",
+          "displayName": "Activity ID",
+          "type": "string",
+          "maxLength": 50,
+          "required": true
+        },
+        {
+          "schemaName": "pth_Project",
+          "logicalName": "pth_project",
+          "displayName": "Project",
+          "type": "lookup",
+          "required": true,
+          "targetLogicalName": "pth_projects"
+        },
+        {
+          "schemaName": "pth_Milestone",
+          "logicalName": "pth_milestone",
+          "displayName": "Milestone",
+          "type": "lookup",
+          "required": false,
+          "targetLogicalName": "pth_milestones"
+        },
+        {
+          "schemaName": "pth_Name",
+          "logicalName": "pth_name",
+          "displayName": "Name",
+          "type": "string",
+          "maxLength": 200,
+          "required": true
+        },
+        {
+          "schemaName": "pth_Owner",
+          "logicalName": "pth_owner",
+          "displayName": "Owner",
+          "type": "string",
+          "maxLength": 150,
+          "required": true
+        },
+        {
+          "schemaName": "pth_StartDate",
+          "logicalName": "pth_startdate",
+          "displayName": "Start Date",
+          "type": "date",
+          "required": true
+        },
+        {
+          "schemaName": "pth_EndDate",
+          "logicalName": "pth_enddate",
+          "displayName": "End Date",
+          "type": "date",
+          "required": true
+        },
+        {
+          "schemaName": "pth_PlannedEndDate",
+          "logicalName": "pth_plannedenddate",
+          "displayName": "Planned End Date",
+          "type": "date",
+          "required": true
+        },
+        {
+          "schemaName": "pth_ClosedDate",
+          "logicalName": "pth_closeddate",
+          "displayName": "Closed Date",
+          "type": "date",
+          "required": false
+        },
+        {
+          "schemaName": "pth_Status",
+          "logicalName": "pth_status",
+          "displayName": "Status",
+          "type": "choice",
+          "required": true,
+          "options": [
+            { "value": 100000000, "label": "NOT_STARTED" },
+            { "value": 100000001, "label": "IN_PROGRESS" },
+            { "value": 100000002, "label": "BLOCKED" },
+            { "value": 100000003, "label": "CLOSED" }
+          ]
+        },
+        {
+          "schemaName": "pth_RYG",
+          "logicalName": "pth_ryg",
+          "displayName": "RYG",
+          "type": "choice",
+          "required": true,
+          "options": [
+            { "value": 100000000, "label": "RED" },
+            { "value": 100000001, "label": "YELLOW" },
+            { "value": 100000002, "label": "GREEN" }
+          ]
+        },
+        {
+          "schemaName": "pth_IsCriticalPath",
+          "logicalName": "pth_iscriticalpath",
+          "displayName": "Is Critical Path",
+          "type": "boolean",
+          "required": true,
+          "defaultValue": false
+        }
+      ]
+    },
+    {
+      "schemaName": "pth_Resource",
+      "logicalName": "pth_resources",
+      "displayName": "Resource",
+      "displayCollectionName": "Resources",
+      "description": "People capacity and department data",
+      "ownershipType": "UserOwned",
+      "columns": [
+        {
+          "schemaName": "pth_PersonIdExternal",
+          "logicalName": "pth_personidexternal",
+          "displayName": "Person ID",
+          "type": "string",
+          "maxLength": 50,
+          "required": true
+        },
+        {
+          "schemaName": "pth_Name",
+          "logicalName": "pth_name",
+          "displayName": "Name",
+          "type": "string",
+          "maxLength": 150,
+          "required": true
+        },
+        {
+          "schemaName": "pth_Role",
+          "logicalName": "pth_role",
+          "displayName": "Role",
+          "type": "string",
+          "maxLength": 120,
+          "required": true
+        },
+        {
+          "schemaName": "pth_Department",
+          "logicalName": "pth_department",
+          "displayName": "Department",
+          "type": "string",
+          "maxLength": 120,
+          "required": true
+        },
+        {
+          "schemaName": "pth_WeeklyCapacityHours",
+          "logicalName": "pth_weeklycapacityhours",
+          "displayName": "Weekly Capacity (Hours)",
+          "type": "wholeNumber",
+          "required": true,
+          "min": 0,
+          "max": 168
+        }
+      ]
+    },
+    {
+      "schemaName": "pth_Assignment",
+      "logicalName": "pth_assignments",
+      "displayName": "Assignment",
+      "displayCollectionName": "Assignments",
+      "description": "Resource hours assignments",
+      "ownershipType": "UserOwned",
+      "columns": [
+        {
+          "schemaName": "pth_AssignmentIdExternal",
+          "logicalName": "pth_assignmentidexternal",
+          "displayName": "Assignment ID",
+          "type": "string",
+          "maxLength": 50,
+          "required": true
+        },
+        {
+          "schemaName": "pth_Activity",
+          "logicalName": "pth_activity",
+          "displayName": "Activity",
+          "type": "lookup",
+          "required": true,
+          "targetLogicalName": "pth_activities"
+        },
+        {
+          "schemaName": "pth_Resource",
+          "logicalName": "pth_resource",
+          "displayName": "Resource",
+          "type": "lookup",
+          "required": true,
+          "targetLogicalName": "pth_resources"
+        },
+        {
+          "schemaName": "pth_AssignedHours",
+          "logicalName": "pth_assignedhours",
+          "displayName": "Assigned Hours",
+          "type": "wholeNumber",
+          "required": true,
+          "min": 0,
+          "max": 168
+        },
+        {
+          "schemaName": "pth_WeekStartDate",
+          "logicalName": "pth_weekstartdate",
+          "displayName": "Week Start Date",
+          "type": "date",
+          "required": true
+        }
+      ]
+    },
+    {
+      "schemaName": "pth_PPMSetting",
+      "logicalName": "pth_ppmsettings",
+      "displayName": "PPM Setting",
+      "displayCollectionName": "PPM Settings",
+      "description": "Configurable threshold and reporting settings",
+      "ownershipType": "OrganizationOwned",
+      "columns": [
+        {
+          "schemaName": "pth_Name",
+          "logicalName": "pth_name",
+          "displayName": "Name",
+          "type": "string",
+          "maxLength": 120,
+          "required": true
+        },
+        {
+          "schemaName": "pth_WarningDaysThreshold",
+          "logicalName": "pth_warningdaysthreshold",
+          "displayName": "Warning Days Threshold",
+          "type": "wholeNumber",
+          "required": true,
+          "min": 1,
+          "max": 365
+        },
+        {
+          "schemaName": "pth_ReportWeekWindow",
+          "logicalName": "pth_reportweekwindow",
+          "displayName": "Report Week Window",
+          "type": "wholeNumber",
+          "required": true,
+          "min": 1,
+          "max": 52
+        },
+        {
+          "schemaName": "pth_DefaultWeeklyCapacity",
+          "logicalName": "pth_defaultweeklycapacity",
+          "displayName": "Default Weekly Capacity",
+          "type": "wholeNumber",
+          "required": true,
+          "min": 1,
+          "max": 168
+        },
+        {
+          "schemaName": "pth_UtilizationWarningThreshold",
+          "logicalName": "pth_utilizationwarningthreshold",
+          "displayName": "Utilization Warning Threshold",
+          "type": "wholeNumber",
+          "required": true,
+          "min": 1,
+          "max": 100
+        },
+        {
+          "schemaName": "pth_UtilizationCriticalThreshold",
+          "logicalName": "pth_utilizationcriticalthreshold",
+          "displayName": "Utilization Critical Threshold",
+          "type": "wholeNumber",
+          "required": true,
+          "min": 1,
+          "max": 100
+        }
+      ]
+    }
+  ]
+}

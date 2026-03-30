@@ -1,0 +1,46 @@
+{
+  "name": "vite",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:dv": "DATAVERSE_URL=https://org2d99840c.crm.dynamics.com node scripts/dev-token.mjs && vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "dataverse:dry-run": "node scripts/dataverse/apply-schema.mjs --dry-run",
+    "dataverse:apply": "node scripts/dataverse/apply-schema.mjs",
+    "dataverse:seed": "node scripts/dataverse/seed-data.mjs",
+    "deploy": "npm run build && node scripts/deploy.mjs",
+    "deploy:skip-build": "node scripts/deploy.mjs",
+    "postinstall": "rm -f node_modules/@microsoft/power-apps-cli/node_modules/@ms/power-platform-api/tsconfig.json"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@microsoft/power-apps": "^1.0.4",
+    "@tailwindcss/vite": "^4.2.1",
+    "framer-motion": "^12.34.3",
+    "lucide-react": "^0.575.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-hook-form": "^7.71.2",
+    "tailwindcss": "^4.2.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@microsoft/power-apps-vite": "^1.0.2",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.46.4",
+    "vite": "^7.2.4"
+  }
+}

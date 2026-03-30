@@ -1,0 +1,68 @@
+{
+  "version": "1.0",
+  "appId": "697d0269-e333-4348-a620-fd87cb12f9be",
+  "appDisplayName": "PTH-App",
+  "region": "prod",
+  "environmentId": "94283d50-c20e-e585-aade-876895af0d0d",
+  "description": "",
+  "buildPath": "./dist",
+  "buildEntryPoint": "index.html",
+  "localAppUrl": "http://localhost:3000",
+  "logoPath": "Default",
+  "connectionReferences": {},
+  "databaseReferences": {
+    "default.cds": {
+      "dataSources": {
+        "Project": {
+          "entitySetName": "pth_projects",
+          "logicalName": "pth_project"
+        },
+        "Milestone": {
+          "entitySetName": "pth_milestones",
+          "logicalName": "pth_milestone"
+        },
+        "Activity": {
+          "entitySetName": "pth_activities",
+          "logicalName": "pth_activity"
+        },
+        "Resource": {
+          "entitySetName": "pth_resources",
+          "logicalName": "pth_resource"
+        },
+        "Assignment": {
+          "entitySetName": "pth_assignments",
+          "logicalName": "pth_assignment"
+        },
+        "PPM Setting": {
+          "entitySetName": "pth_ppmsettings",
+          "logicalName": "pth_ppmsetting"
+        },
+        "projects": {
+          "entitySetName": "pth_projects",
+          "logicalName": "pth_project"
+        },
+        "milestones": {
+          "entitySetName": "pth_milestones",
+          "logicalName": "pth_milestone"
+        },
+        "activities": {
+          "entitySetName": "pth_activities",
+          "logicalName": "pth_activity"
+        },
+        "resources": {
+          "entitySetName": "pth_resources",
+          "logicalName": "pth_resource"
+        },
+        "assignments": {
+          "entitySetName": "pth_assignments",
+          "logicalName": "pth_assignment"
+        },
+        "ppmsettings": {
+          "entitySetName": "pth_ppmsettings",
+          "logicalName": "pth_ppmsetting"
+        }
+      },
+      "environmentVariableName": ""
+    }
+  }
+}
