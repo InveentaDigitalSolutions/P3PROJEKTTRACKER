@@ -1057,6 +1057,8 @@ export default function App(): ReactElement {
   const [ttLoc, setTtLoc] = useState<string>('all')
   const [ttProjType, setTtProjType] = useState<string>('all')
   const [ttRisk, setTtRisk] = useState<string>('atrisk')
+  const [ttView, setTtView] = useState<'tasks' | 'area' | 'project'>('tasks')
+  const [ttExpanded, setTtExpanded] = useState<Set<string>>(new Set())
   const [dragPersonId, setDragPersonId] = useState<string | null>(null)
   const [dropTargetId, setDropTargetId] = useState<string | null>(null)
   const [mdDialogOpen, setMdDialogOpen] = useState(false)
@@ -3977,6 +3979,43 @@ export default function App(): ReactElement {
                       const yellowCount = rows.filter((r) => !r.a.doneDate && r.status === 'YELLOW').length
                       const dueSoon = rows.filter((r) => !r.a.doneDate && r.daysToDue !== null && r.daysToDue >= 0 && r.daysToDue <= 14).length
                       const sel = 'h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm outline-none focus:border-pth-blue'
+
+                      // ── Build groups for By-Area / By-Project drill-down ──
+                      type TtRow = typeof filtered[number]
+                      const rollup = (items: TtRow[]): RygStatus => {
+                        const open = items.filter((r) => !r.a.doneDate)
+                        if (open.some((r) => r.status === 'RED')) return 'RED'
+                        if (open.some((r) => r.status === 'YELLOW')) return 'YELLOW'
+                        return 'GREEN'
+                      }
+                      const groupKeys = (r: TtRow): string[] => ttView === 'area'
+                        ? ((r.a.responsible ?? '').split(/[+/,]/).map((t) => t.trim()).filter(Boolean) || ['—'])
+                        : [r.proj?.name ?? '—']
+                      const groupMap = new Map<string, TtRow[]>()
+                      if (ttView !== 'tasks') {
+                        for (const r of filtered) {
+                          for (const k of (groupKeys(r).length ? groupKeys(r) : ['—'])) {
+                            if (!groupMap.has(k)) groupMap.set(k, [])
+                            groupMap.get(k)!.push(r)
+                          }
+                        }
+                      }
+                      const groups = Array.from(groupMap.entries()).map(([key, items]) => ({
+                        key, items,
+                        roll: rollup(items),
+                        red: items.filter((r) => !r.a.doneDate && r.status === 'RED').length,
+                        yellow: items.filter((r) => !r.a.doneDate && r.status === 'YELLOW').length,
+                        green: items.filter((r) => !r.a.doneDate && r.status === 'GREEN').length,
+                        done: items.filter((r) => r.a.doneDate).length,
+                      })).sort((a, b) => {
+                        const rank = (s: RygStatus) => (s === 'RED' ? 0 : s === 'YELLOW' ? 1 : 2)
+                        if (rank(a.roll) !== rank(b.roll)) return rank(a.roll) - rank(b.roll)
+                        return b.red - a.red
+                      })
+                      const toggleGroup = (k: string) => setTtExpanded((prev) => {
+                        const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n
+                      })
+                      const dotClass = (s: RygStatus) => s === 'RED' ? 'bg-pth-red' : s === 'YELLOW' ? 'bg-amber-500' : 'bg-emerald-500'
                       return (
                         <div className="space-y-4">
                           <p className="text-xs text-pth-muted">Preventive view — surfaces tasks at risk of missing their due date (target: finish ≥2 weeks early). Filter by area, location and project type to see what won't be met in time.</p>
@@ -4002,7 +4041,12 @@ export default function App(): ReactElement {
                             {(ttArea !== 'all' || ttLoc !== 'all' || ttProjType !== 'all' || ttRisk !== 'atrisk') && (
                               <button type="button" className="text-xs text-pth-muted hover:text-pth-text" onClick={() => { setTtArea('all'); setTtLoc('all'); setTtProjType('all'); setTtRisk('atrisk') }}>✕ Clear</button>
                             )}
-                            <span className="ml-auto text-xs text-pth-muted">{filtered.length} tasks</span>
+                            <div className="ml-auto flex items-center rounded-lg border border-pth-border/40 bg-pth-subtle p-0.5 text-xs">
+                              {([['tasks', 'Tasks'], ['area', 'By Area'], ['project', 'By Project']] as const).map(([k, lbl]) => (
+                                <button key={k} type="button" onClick={() => setTtView(k)} className={`rounded-md px-2.5 py-1 font-medium transition-colors ${ttView === k ? 'bg-pth-card text-pth-blue shadow-sm' : 'text-pth-muted hover:text-pth-text'}`}>{lbl}</button>
+                              ))}
+                            </div>
+                            <span className="text-xs text-pth-muted">{filtered.length} tasks</span>
                           </div>
                           <div className="grid grid-cols-3 gap-3">
                             <div className="rounded-xl border border-pth-border/15 bg-pth-card p-4 text-center">
@@ -4018,6 +4062,8 @@ export default function App(): ReactElement {
                               <div className="mt-1 text-2xl font-bold text-pth-blue">{dueSoon}</div>
                             </div>
                           </div>
+                          {/* Flat task list */}
+                          {ttView === 'tasks' && (
                           <div className="overflow-x-auto rounded-xl border border-pth-border/15">
                             <table className="w-full text-sm">
                               <thead>
@@ -4035,7 +4081,7 @@ export default function App(): ReactElement {
                               </thead>
                               <tbody className="divide-y divide-pth-border/10">
                                 {filtered.map((r) => {
-                                  const dot = r.status === 'RED' ? 'bg-pth-red' : r.status === 'YELLOW' ? 'bg-amber-500' : 'bg-emerald-500'
+                                  const dot = dotClass(r.status)
                                   const dleft = r.daysToDue
                                   return (
                                     <tr key={r.a.id} className="transition-colors hover:bg-pth-hover/40">
@@ -4057,6 +4103,64 @@ export default function App(): ReactElement {
                               </tbody>
                             </table>
                           </div>
+                          )}
+
+                          {/* Grouped by Area / Project — expandable */}
+                          {ttView !== 'tasks' && (
+                          <div className="space-y-2">
+                            {groups.map((g) => {
+                              const open = ttExpanded.has(g.key)
+                              return (
+                                <div key={g.key} className="overflow-hidden rounded-xl border border-pth-border/15">
+                                  <button type="button" onClick={() => toggleGroup(g.key)} className="flex w-full items-center gap-3 bg-pth-subtle/50 px-4 py-2.5 text-left transition-colors hover:bg-pth-subtle">
+                                    <ChevronDown size={15} className={`shrink-0 text-pth-muted transition-transform ${open ? '' : '-rotate-90'}`} />
+                                    <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${dotClass(g.roll)}`} />
+                                    <span className="font-semibold">{g.key}</span>
+                                    <span className="text-xs text-pth-muted">{g.items.length} task{g.items.length === 1 ? '' : 's'}</span>
+                                    <span className="ml-auto flex items-center gap-2 text-[11px]">
+                                      {g.red > 0 && <span className="rounded-full bg-pth-red/10 px-2 py-0.5 font-semibold text-pth-red">{g.red} will miss</span>}
+                                      {g.yellow > 0 && <span className="rounded-full bg-amber-500/10 px-2 py-0.5 font-semibold text-amber-600">{g.yellow} at risk</span>}
+                                      {g.green > 0 && <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 font-semibold text-emerald-600">{g.green} on track</span>}
+                                      {g.done > 0 && <span className="rounded-full bg-pth-border/20 px-2 py-0.5 font-medium text-pth-muted">{g.done} done</span>}
+                                    </span>
+                                  </button>
+                                  {open && (
+                                    <table className="w-full text-sm">
+                                      <thead>
+                                        <tr className="border-y border-pth-border/15 text-left text-[10px] uppercase tracking-wide text-pth-muted">
+                                          <th className="px-3 py-1.5 pl-10 font-semibold">Task</th>
+                                          <th className="px-3 py-1.5 font-semibold">{ttView === 'area' ? 'Project' : 'Area'}</th>
+                                          <th className="px-3 py-1.5 font-semibold">Owner</th>
+                                          <th className="whitespace-nowrap px-3 py-1.5 font-semibold">Due</th>
+                                          <th className="whitespace-nowrap px-3 py-1.5 font-semibold">Days left</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-pth-border/10">
+                                        {g.items.sort((x, y) => {
+                                          const rank = (s: RygStatus) => (s === 'RED' ? 0 : s === 'YELLOW' ? 1 : 2)
+                                          if (rank(x.status) !== rank(y.status)) return rank(x.status) - rank(y.status)
+                                          return (x.daysToDue ?? 99999) - (y.daysToDue ?? 99999)
+                                        }).map((r) => {
+                                          const dleft = r.daysToDue
+                                          return (
+                                            <tr key={r.a.id} className="transition-colors hover:bg-pth-hover/40">
+                                              <td className="px-3 py-1.5 pl-10"><span className={`mr-2 inline-block h-2 w-2 rounded-full ${dotClass(r.status)}`} />{r.a.name}{r.a.criticalPath && <span className="ml-1.5 rounded bg-pth-red/10 px-1 py-0.5 text-[9px] font-semibold text-pth-red">CP</span>}</td>
+                                              <td className="max-w-[200px] truncate px-3 py-1.5 text-pth-muted" title={ttView === 'area' ? r.proj?.name : r.a.responsible}>{ttView === 'area' ? (r.proj?.name ?? '—') : (r.a.responsible || '—')}</td>
+                                              <td className="px-3 py-1.5 text-pth-muted">{r.ownerName}</td>
+                                              <td className="whitespace-nowrap px-3 py-1.5 text-pth-muted">{r.a.doneDate ? 'Done' : formatShortDate(r.a.endDate)}</td>
+                                              <td className={`whitespace-nowrap px-3 py-1.5 font-medium ${dleft != null && dleft < 0 ? 'text-pth-red' : dleft != null && dleft <= 14 ? 'text-amber-600' : 'text-pth-muted'}`}>{r.a.doneDate ? '—' : dleft != null ? (dleft < 0 ? `${-dleft}d overdue` : `${dleft}d`) : '—'}</td>
+                                            </tr>
+                                          )
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  )}
+                                </div>
+                              )
+                            })}
+                            {groups.length === 0 && <div className="rounded-xl border border-pth-border/15 px-3 py-8 text-center text-pth-muted">No tasks match these filters.</div>}
+                          </div>
+                          )}
                         </div>
                       )
                     })()}
