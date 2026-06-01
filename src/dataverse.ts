@@ -59,6 +59,17 @@ const API_BASE = DV_URL
   ? (isDev ? '/api/data/v9.2' : `${DV_URL.replace(/\/+$/, '')}/api/data/v9.2`)
   : ''
 
+/**
+ * True when we should write straight to the Web API instead of the Power Apps
+ * SDK — i.e. standalone dev mode (token present, not running inside the Power
+ * Apps host). The SDK's getClient() hangs outside the host, so create/update/
+ * delete must bypass it here, mirroring the read path in fetchAllFromDataverse.
+ */
+function preferDirectWrite(): boolean {
+  const insidePowerApps = typeof window !== 'undefined' && !!(window as { __powerAppsContext__?: unknown }).__powerAppsContext__
+  return !!(API_BASE && DV_TOKEN && !insidePowerApps)
+}
+
 async function dvGet<T>(entity: string, query = ''): Promise<T[]> {
   if (!API_BASE || !DV_TOKEN) return []
   const url = `${API_BASE}/${entity}${query ? '?' + query : ''}`
@@ -93,6 +104,17 @@ const SITE_TO_DV: Record<string, number> = {
   site_slp: 100000001,
 }
 
+/* Resource Area choice + Location multi-select maps */
+const RESOURCE_AREA_MAP: Record<number, string> = {
+  100000000: 'PPS', 100000001: 'ENG', 100000002: 'QMM', 100000003: 'LOD',
+  100000004: 'LOP', 100000005: 'LOP4', 100000006: 'LOP5', 100000007: 'MSE',
+  100000008: 'CTG', 100000009: 'PUQ1', 100000010: 'PUQ2',
+}
+const RESOURCE_LOC_MAP: Record<number, string> = {
+  100000000: 'SlpP',
+  100000001: 'TlP',
+}
+
 function mapProject(r: Row) {
   return {
     id: r.pth_projectid as string,
@@ -105,11 +127,12 @@ function mapProject(r: Row) {
     clientIds: [] as string[],
     supplierIds: [] as string[],
     objective: (r.pth_projectobjective ?? '') as string,
-    boschCode: (r.pth_boschcode ?? '') as string,
+    clientCode: (r.pth_boschcode ?? '') as string,
     budgetAllocated: Number(r.pth_budgetallocated ?? 0),
 
     plannedStartDate: ((r.pth_plannedstartdate ?? '') as string).slice(0, 10),
     plannedEndDate: ((r.pth_plannedenddate ?? '') as string).slice(0, 10),
+    projectType: (r.pth_projecttype ?? '') as string,
     _sponsorName: (r.pth_sponsorexecutive ?? '') as string,
     _pmName: (r.pth_projectmanagername ?? '') as string,
     _timeStatus: RYG_MAP[r.pth_timestatus as number] ?? ('GREEN' as RygStatus),
@@ -144,6 +167,8 @@ function mapActivity(r: Row) {
       : undefined,
     state,
     criticalPath: !!r.pth_iscriticalpath,
+    responsible: (r.pth_responsible ?? '') as string,
+    workloadPct: r.pth_workloadpct == null ? null : Number(r.pth_workloadpct),
   }
 }
 
@@ -155,6 +180,10 @@ function mapResource(r: Row) {
     .join('')
     .toUpperCase()
     .slice(0, 2)
+  const locVal = r.pth_location
+  const location = typeof locVal === 'string' && locVal
+    ? locVal.split(',').map((v: string) => RESOURCE_LOC_MAP[Number(v)]).filter(Boolean)
+    : []
   return {
     id: r.pth_resourceid as string,
     extId: (r.pth_personidexternal ?? '') as string,
@@ -163,6 +192,10 @@ function mapResource(r: Row) {
     role: 'RESOURCE' as const,
     department: (r.pth_department ?? '') as string,
     weeklyCapacity: Number(r.pth_weeklycapacityhours ?? 40),
+    area: (RESOURCE_AREA_MAP[r.pth_area as number] ?? '') as string,
+    location: location as string[],
+    managerId: (r._pth_manager_value ?? undefined) as string | undefined,
+    resourceKind: (((r.pth_role ?? '') as string) || 'Associate') as string,
   }
 }
 
@@ -462,7 +495,7 @@ async function dvDelete(entity: string, id: string): Promise<boolean> {
 
 export interface CreateProjectPayload {
   name: string
-  boschCode: string
+  clientCode: string
   category: ProjectCategory
   budgetAllocated: number
   site: string
@@ -472,13 +505,14 @@ export interface CreateProjectPayload {
   plannedStartDate: string
   plannedEndDate: string
   projectIdExternal?: string
+  projectType?: string
 }
 
 /** Build the Dataverse column payload from the app-level create payload. */
 function buildProjectBody(p: CreateProjectPayload): Record<string, unknown> {
-  return {
+  const body: Record<string, unknown> = {
     pth_projectname: p.name,
-    pth_boschcode: p.boschCode,
+    pth_boschcode: p.clientCode,
     pth_category: CATEGORY_TO_DV[p.category],
     pth_budgetallocated: p.budgetAllocated,
     pth_sitelocation: SITE_TO_DV[p.site] ?? 100000000,
@@ -492,6 +526,8 @@ function buildProjectBody(p: CreateProjectPayload): Record<string, unknown> {
     pth_timestatus: RYG_TO_DV.GREEN,
     pth_criticalpathchangedflag: 0,
   }
+  if (p.projectType) body.pth_projecttype = p.projectType
+  return body
 }
 
 /**
@@ -499,6 +535,7 @@ function buildProjectBody(p: CreateProjectPayload): Record<string, unknown> {
  * Tries the SDK service first, falls back to direct DELETE.
  */
 export async function deleteProjectInDataverse(id: string): Promise<boolean> {
+  if (preferDirectWrite()) return dvDelete('pth_projects', id)
   try { await Pth_projectsService.delete(id); return true } catch (err) { console.warn('SDK delete project unavailable:', err) }
   return dvDelete('pth_projects', id)
 }
@@ -510,6 +547,7 @@ export async function deleteProjectInDataverse(id: string): Promise<boolean> {
  */
 export async function createProjectInDataverse(p: CreateProjectPayload): Promise<string | null> {
   const body = buildProjectBody(p)
+  if (preferDirectWrite()) return dvPost('pth_projects', body)
 
   // 1. SDK path
   try {
@@ -539,6 +577,7 @@ export async function createProjectInDataverse(p: CreateProjectPayload): Promise
  */
 export async function updateProjectInDataverse(id: string, p: CreateProjectPayload): Promise<boolean> {
   const body = buildProjectBody(p)
+  if (preferDirectWrite()) return dvPatch('pth_projects', id, body)
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await Pth_projectsService.update(id, body as any)
@@ -581,6 +620,7 @@ function buildMilestoneBody(m: MilestonePayload): Record<string, unknown> {
 
 export async function createMilestoneInDataverse(m: MilestonePayload): Promise<string | null> {
   const body = buildMilestoneBody(m)
+  if (preferDirectWrite()) return dvPost('pth_milestones', body)
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await Pth_milestonesService.create(body as any)
@@ -599,6 +639,7 @@ export async function updateMilestoneInDataverse(id: string, m: MilestonePayload
     pth_status: m.doneDate ? MILESTONE_STATUS_TO_DV.CLOSED : MILESTONE_STATUS_TO_DV.OPEN,
     'pth_project@odata.bind': `/pth_projects(${m.projectId})`,
   }
+  if (preferDirectWrite()) return dvPatch('pth_milestones', id, body)
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await Pth_milestonesService.update(id, body as any)
@@ -608,6 +649,7 @@ export async function updateMilestoneInDataverse(id: string, m: MilestonePayload
 }
 
 export async function deleteMilestoneInDataverse(id: string): Promise<boolean> {
+  if (preferDirectWrite()) return dvDelete('pth_milestones', id)
   try { await Pth_milestonesService.delete(id); return true } catch (err) { console.warn('SDK delete milestone unavailable:', err) }
   return dvDelete('pth_milestones', id)
 }
@@ -626,6 +668,10 @@ export interface ActivityPayload {
   criticalPath: boolean
   projectId: string
   milestoneId?: string
+  responsible?: string
+  leadtimeWeeks?: number | null
+  workloadPct?: number | null
+  inputs?: string
 }
 
 function buildActivityBody(a: ActivityPayload): Record<string, unknown> {
@@ -639,15 +685,20 @@ function buildActivityBody(a: ActivityPayload): Record<string, unknown> {
     pth_iscriticalpath: a.criticalPath,
     pth_ryg: RYG_TO_DV.GREEN,
     'pth_project@odata.bind': `/pth_projects(${a.projectId})`,
-    pth_activityidexternal: `ACT-${Date.now().toString(36).toUpperCase()}`,
+    pth_activityidexternal: `ACT-${Date.now().toString(36).toUpperCase()}-${Math.floor(performance.now() % 100000)}`,
   }
   if (a.doneDate) body.pth_closeddate = a.doneDate
   if (a.milestoneId) body['pth_milestone@odata.bind'] = `/pth_milestones(${a.milestoneId})`
+  if (a.responsible) body.pth_responsible = a.responsible
+  if (a.leadtimeWeeks != null) body.pth_leadtimeweeks = a.leadtimeWeeks
+  if (a.workloadPct != null) body.pth_workloadpct = a.workloadPct
+  if (a.inputs) body.pth_inputs = a.inputs.slice(0, 2000)
   return body
 }
 
 export async function createActivityInDataverse(a: ActivityPayload): Promise<string | null> {
   const body = buildActivityBody(a)
+  if (preferDirectWrite()) return dvPost('pth_activities', body)
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await Pth_activitiesService.create(body as any)
@@ -672,6 +723,7 @@ export async function updateActivityInDataverse(id: string, a: ActivityPayload):
   }
   if (a.doneDate) body.pth_closeddate = a.doneDate
   if (a.milestoneId) body['pth_milestone@odata.bind'] = `/pth_milestones(${a.milestoneId})`
+  if (preferDirectWrite()) return dvPatch('pth_activities', id, body)
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await Pth_activitiesService.update(id, body as any)
@@ -681,6 +733,7 @@ export async function updateActivityInDataverse(id: string, a: ActivityPayload):
 }
 
 export async function deleteActivityInDataverse(id: string): Promise<boolean> {
+  if (preferDirectWrite()) return dvDelete('pth_activities', id)
   try { await Pth_activitiesService.delete(id); return true } catch (err) { console.warn('SDK delete activity unavailable:', err) }
   return dvDelete('pth_activities', id)
 }
@@ -694,20 +747,43 @@ export interface ResourcePayload {
   role: string
   department?: string
   weeklyCapacity?: number
+  area?: string          // e.g. 'PPS', 'ENG' …
+  location?: string[]    // ['SlpP', 'TlP']
+  managerId?: string     // Dataverse resource GUID of the manager
+  kind?: string          // 'Manager' | 'Associate' (stored in pth_role)
+}
+
+/* Reverse maps: label → Dataverse option-set value */
+const AREA_TO_DV: Record<string, number> = Object.fromEntries(
+  Object.entries(RESOURCE_AREA_MAP).map(([v, k]) => [k, Number(v)]),
+)
+const LOC_TO_DV: Record<string, number> = Object.fromEntries(
+  Object.entries(RESOURCE_LOC_MAP).map(([v, k]) => [k, Number(v)]),
+)
+
+function applyResourceAttrs(body: Record<string, unknown>, r: ResourcePayload): void {
+  if (r.area && AREA_TO_DV[r.area] !== undefined) body.pth_area = AREA_TO_DV[r.area]
+  if (r.location && r.location.length) {
+    body.pth_location = r.location.map((l) => LOC_TO_DV[l]).filter((v) => v !== undefined).join(',')
+  }
+  if (r.managerId) body['pth_Manager@odata.bind'] = `/pth_resources(${r.managerId})`
 }
 
 function buildResourceBody(r: ResourcePayload): Record<string, unknown> {
-  return {
+  const body: Record<string, unknown> = {
     pth_name: r.name,
-    pth_role: r.role,
-    pth_department: r.department ?? '',
+    pth_role: r.kind ?? r.role,
+    pth_department: r.department ?? r.area ?? '',
     pth_weeklycapacityhours: r.weeklyCapacity ?? 40,
     pth_personidexternal: `RES-${Date.now().toString(36).toUpperCase()}`,
   }
+  applyResourceAttrs(body, r)
+  return body
 }
 
 export async function createResourceInDataverse(r: ResourcePayload): Promise<string | null> {
   const body = buildResourceBody(r)
+  if (preferDirectWrite()) return dvPost('pth_resources', body)
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await Pth_resourcesService.create(body as any)
@@ -722,10 +798,12 @@ export async function createResourceInDataverse(r: ResourcePayload): Promise<str
 export async function updateResourceInDataverse(id: string, r: ResourcePayload): Promise<boolean> {
   const body: Record<string, unknown> = {
     pth_name: r.name,
-    pth_role: r.role,
-    pth_department: r.department ?? '',
+    pth_role: r.kind ?? r.role,
+    pth_department: r.department ?? r.area ?? '',
     pth_weeklycapacityhours: r.weeklyCapacity ?? 40,
   }
+  applyResourceAttrs(body, r)
+  if (preferDirectWrite()) return dvPatch('pth_resources', id, body)
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await Pth_resourcesService.update(id, body as any)
@@ -735,6 +813,7 @@ export async function updateResourceInDataverse(id: string, r: ResourcePayload):
 }
 
 export async function deleteResourceInDataverse(id: string): Promise<boolean> {
+  if (preferDirectWrite()) return dvDelete('pth_resources', id)
   try { await Pth_resourcesService.delete(id); return true } catch (err) { console.warn('SDK delete resource unavailable:', err) }
   return dvDelete('pth_resources', id)
 }
@@ -762,6 +841,7 @@ function buildAssignmentBody(a: AssignmentPayload): Record<string, unknown> {
 
 export async function createAssignmentInDataverse(a: AssignmentPayload): Promise<string | null> {
   const body = buildAssignmentBody(a)
+  if (preferDirectWrite()) return dvPost('pth_assignments', body)
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await Pth_assignmentsService.create(body as any)
@@ -779,6 +859,7 @@ export async function updateAssignmentInDataverse(id: string, a: Partial<Assignm
   if (a.weekStartDate) body.pth_weekstartdate = a.weekStartDate
   if (a.activityId) body['pth_activity@odata.bind'] = `/pth_activities(${a.activityId})`
   if (a.resourceId) body['pth_resource@odata.bind'] = `/pth_resources(${a.resourceId})`
+  if (preferDirectWrite()) return dvPatch('pth_assignments', id, body)
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await Pth_assignmentsService.update(id, body as any)
@@ -788,6 +869,7 @@ export async function updateAssignmentInDataverse(id: string, a: Partial<Assignm
 }
 
 export async function deleteAssignmentInDataverse(id: string): Promise<boolean> {
+  if (preferDirectWrite()) return dvDelete('pth_assignments', id)
   try { await Pth_assignmentsService.delete(id); return true } catch (err) { console.warn('SDK delete assignment unavailable:', err) }
   return dvDelete('pth_assignments', id)
 }
@@ -812,12 +894,81 @@ export async function updateSettingsInDataverse(id: string, s: SettingsPayload):
     pth_utilizationwarningthreshold: s.workloadWarningThreshold,
     pth_utilizationcriticalthreshold: s.workloadCriticalThreshold,
   }
+  if (preferDirectWrite()) return dvPatch('pth_ppmsettings', id, body)
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await Pth_ppmsettingsService.update(id, body as any)
     console.log('[DV] Settings updated via SDK, id =', id); return true
   } catch (err) { console.error('[DV] SDK update settings failed:', err) }
   return dvPatch('pth_ppmsettings', id, body)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── TASK TEMPLATES (editable standard per project type) ───────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface TaskTemplateRow {
+  id: string
+  projectType: string
+  sequence: number
+  task: string
+  responsible: string
+  leadtimeWeeks: number | null
+  inputs: string
+  workloadPct: number | null
+}
+
+export interface TaskTemplatePayload {
+  projectType: string
+  sequence: number
+  task: string
+  responsible: string
+  leadtimeWeeks: number | null
+  inputs: string
+  workloadPct: number | null
+}
+
+function mapTaskTemplate(r: Row): TaskTemplateRow {
+  return {
+    id: r.pth_tasktemplateid as string,
+    projectType: (r.pth_projecttype ?? '') as string,
+    sequence: Number(r.pth_sequence ?? 0),
+    task: (r.pth_name ?? '') as string,
+    responsible: (r.pth_responsible ?? '') as string,
+    leadtimeWeeks: r.pth_leadtimeweeks == null ? null : Number(r.pth_leadtimeweeks),
+    inputs: (r.pth_inputs ?? '') as string,
+    workloadPct: r.pth_workloadpct == null ? null : Number(r.pth_workloadpct),
+  }
+}
+
+function buildTaskTemplateBody(p: TaskTemplatePayload): Record<string, unknown> {
+  return {
+    pth_name: p.task,
+    pth_projecttype: p.projectType,
+    pth_sequence: p.sequence,
+    pth_responsible: p.responsible || null,
+    pth_inputs: p.inputs || null,
+    pth_leadtimeweeks: p.leadtimeWeeks,
+    pth_workloadpct: p.workloadPct,
+  }
+}
+
+/** Fetch all task-template rows (no generated SDK service — direct Web API only). */
+export async function fetchTaskTemplates(): Promise<TaskTemplateRow[]> {
+  const rows = await dvGet<Row>('pth_tasktemplates', '$orderby=pth_projecttype,pth_sequence&$top=1000')
+  return rows.map(mapTaskTemplate)
+}
+
+export async function createTaskTemplate(p: TaskTemplatePayload): Promise<string | null> {
+  return dvPost('pth_tasktemplates', buildTaskTemplateBody(p))
+}
+
+export async function updateTaskTemplate(id: string, p: TaskTemplatePayload): Promise<boolean> {
+  return dvPatch('pth_tasktemplates', id, buildTaskTemplateBody(p))
+}
+
+export async function deleteTaskTemplate(id: string): Promise<boolean> {
+  return dvDelete('pth_tasktemplates', id)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -971,7 +1122,7 @@ export interface ProjectCreationEmailPayload {
   projectManager: string
   plannedStartDate: string
   plannedEndDate: string
-  boschCode: string
+  clientCode: string
   milestones: Array<{ name: string; targetDate: string }>
 }
 
@@ -1004,7 +1155,7 @@ export async function sendProjectCreationEmail(payload: ProjectCreationEmailPayl
     <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
       <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;width:40%;border:1px solid #e5e7eb">Project Name</td><td style="padding:8px 12px;border:1px solid #e5e7eb">${payload.projectName}</td></tr>
       <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;border:1px solid #e5e7eb">Project Code</td><td style="padding:8px 12px;border:1px solid #e5e7eb">${payload.projectCode}</td></tr>
-      <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;border:1px solid #e5e7eb">Bosch Code</td><td style="padding:8px 12px;border:1px solid #e5e7eb">${payload.boschCode || '—'}</td></tr>
+      <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;border:1px solid #e5e7eb">Client Code</td><td style="padding:8px 12px;border:1px solid #e5e7eb">${payload.clientCode || '—'}</td></tr>
       <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;border:1px solid #e5e7eb">Category</td><td style="padding:8px 12px;border:1px solid #e5e7eb">${payload.category}</td></tr>
       <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;border:1px solid #e5e7eb">Budget Allocated</td><td style="padding:8px 12px;border:1px solid #e5e7eb">$${payload.budgetAllocated.toLocaleString()}</td></tr>
       <tr><td style="padding:8px 12px;background:#f3f4f6;font-weight:600;border:1px solid #e5e7eb">Site</td><td style="padding:8px 12px;border:1px solid #e5e7eb">${payload.siteName || '—'}</td></tr>
@@ -1074,7 +1225,7 @@ export interface FuncProjectCreatedPayload {
   budgetAllocated: number
   plannedStartDate: string
   plannedEndDate: string
-  boschCode: string
+  clientCode: string
   milestones: Array<{ name: string; targetDate: string }>
   creatorName: string
   creatorEmail: string

@@ -14,11 +14,11 @@ html {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-bosch-panel);
+  background: var(--color-pth-panel);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-bosch-muted);
+  background: var(--color-pth-muted);
 }
 
 /* Theme transition for smooth light/dark switching */
@@ -37,14 +37,14 @@ html {
 
 /* Glassmorphism card utility */
 .glass-card {
-  background: var(--color-bosch-card);
+  background: var(--color-pth-card);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(20px) saturate(180%);
 }
 
 /* Dark mode glass */
 .dark .glass-card {
-  background: var(--color-bosch-card);
+  background: var(--color-pth-card);
   -webkit-backdrop-filter: blur(24px) saturate(150%);
   backdrop-filter: blur(24px) saturate(150%);
 }

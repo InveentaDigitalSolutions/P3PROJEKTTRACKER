@@ -1,0 +1,29 @@
+FILES PARSED (4): ENG SlpP_projects 1.xlsx, ENG TLP.xlsx, MFE SlpP.xlsx, PPS SlpP.xlsx
+TOTAL PROJECTS: 23    TOTAL TASKS: 517
+
+By area/location: ENG/SLP=5, ENG/TLP=5, MFE/SLP=7, PPS/SLP=6
+By project type: CIP=1, CO ECR=2, ECR - Standard=14, ECR Manager Decision=1, Global ECR=1, Other=4
+
+  [ENG/SLP] CIP                     7t  Ford MPC OEE Optimization
+  [ENG/SLP] ECR - Standard         27t  3EXXXXXXXXX: T6 - NLP Airflow, stopper design change
+  [ENG/SLP] ECR - Standard         13t  3E10180125: Housing Order specification update - STLA T
+  [ENG/SLP] ECR - Standard         27t  3E10134551: DV-E 5NC Overview List + Housing DRWs updat
+  [ENG/SLP] ECR - Standard         27t  3E10180125: Housing Order specification update - STLA T
+  [ENG/TLP] ECR - Standard         27t  3E10128035
+  [ENG/TLP] ECR - Standard         27t  3E10141881
+  [ENG/TLP] ECR - Standard         27t  3E10155743
+  [ENG/TLP] ECR - Standard         27t  3E10175353
+  [ENG/TLP] CO ECR                  6t  CO ECR (1)
+  [MFE/SLP] Other                  36t  Flexline
+  [MFE/SLP] Other                  11t  5NC Relocation
+  [MFE/SLP] Other                   8t  Subassembly Consolidation
+  [MFE/SLP] ECR - Standard         27t  ECR - Standard
+  [MFE/SLP] ECR Manager Decision   19t  ECR Manager Decision
+  [MFE/SLP] CO ECR                  6t  CO ECR
+  [MFE/SLP] Global ECR             27t  Global ECR
+  [PPS/SLP] ECR - Standard         28t  ECR - 3E10171456 (T4EVO Cap)
+  [PPS/SLP] Other                  28t  3E10148721 T6 Tube (Scherdel)
+  [PPS/SLP] ECR - Standard         28t  ECR - Standard 3E10153365 STLA
+  [PPS/SLP] ECR - Standard         28t  ECR - Standard 3E10153559 (VW)
+  [PPS/SLP] ECR - Standard         28t  ECR - 3E10153553 (Ford))
+  [PPS/SLP] ECR - Standard         28t  ECR - 3E10153663 (Rotax 46mm)

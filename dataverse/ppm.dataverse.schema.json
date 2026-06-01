@@ -97,7 +97,7 @@
         {
           "schemaName": "pth_BoschCode",
           "logicalName": "pth_boschcode",
-          "displayName": "Bosch Code",
+          "displayName": "Client Code",
           "type": "string",
           "maxLength": 50,
           "required": false

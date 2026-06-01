@@ -4,30 +4,30 @@
 
 @theme {
   /* ───── Light mode (default) ───── */
-  --color-bosch-bg: #F5F5F7;
-  --color-bosch-card: rgba(255, 255, 255, 0.72);
-  --color-bosch-card-solid: #FFFFFF;
-  --color-bosch-panel: #E8E8ED;
-  --color-bosch-border: rgba(0, 0, 0, 0.08);
-  --color-bosch-text: #1D1D1F;
-  --color-bosch-red: #DC2626;
-  --color-bosch-blue: #005691;
-  --color-bosch-btn: #31343A;
-  --color-bosch-btn-hover: #3d4148;
-  --color-bosch-teal: #18837E;
-  --color-bosch-subtle: #F9FAFB;
-  --color-bosch-hover: rgba(0, 0, 0, 0.04);
-  --color-bosch-muted: #86868B;
-  --color-bosch-outer: #31343A;
-  --color-bosch-sidebar: #31343A;
-  --color-bosch-sidebar-text: #FFFFFF;
-  --color-bosch-sidebar-muted: rgba(255, 255, 255, 0.70);
-  --color-bosch-sidebar-faint: rgba(255, 255, 255, 0.45);
-  --color-bosch-sidebar-accent: #FF4D5E;
-  --color-bosch-sidebar-active: rgba(255, 255, 255, 0.15);
-  --color-bosch-sidebar-border: rgba(255, 255, 255, 0.10);
-  --color-bosch-sidebar-hover: rgba(255, 255, 255, 0.10);
-  --color-bosch-sidebar-dot: #FFFFFF;
+  --color-pth-bg: #F5F5F7;
+  --color-pth-card: rgba(255, 255, 255, 0.72);
+  --color-pth-card-solid: #FFFFFF;
+  --color-pth-panel: #E8E8ED;
+  --color-pth-border: rgba(0, 0, 0, 0.08);
+  --color-pth-text: #1D1D1F;
+  --color-pth-red: #DC2626;
+  --color-pth-blue: #005691;
+  --color-pth-btn: #31343A;
+  --color-pth-btn-hover: #3d4148;
+  --color-pth-teal: #18837E;
+  --color-pth-subtle: #F9FAFB;
+  --color-pth-hover: rgba(0, 0, 0, 0.04);
+  --color-pth-muted: #86868B;
+  --color-pth-outer: #31343A;
+  --color-pth-sidebar: #31343A;
+  --color-pth-sidebar-text: #FFFFFF;
+  --color-pth-sidebar-muted: rgba(255, 255, 255, 0.70);
+  --color-pth-sidebar-faint: rgba(255, 255, 255, 0.45);
+  --color-pth-sidebar-accent: #FF4D5E;
+  --color-pth-sidebar-active: rgba(255, 255, 255, 0.15);
+  --color-pth-sidebar-border: rgba(255, 255, 255, 0.10);
+  --color-pth-sidebar-hover: rgba(255, 255, 255, 0.10);
+  --color-pth-sidebar-dot: #FFFFFF;
   --font-sans: 'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif;
   --shadow-card: 0 0 0 1px rgba(0,0,0,0.04), 0 2px 8px -2px rgba(0,0,0,0.06);
   --shadow-elevated: 0 0 0 1px rgba(0,0,0,0.04), 0 16px 40px -8px rgba(0,0,0,0.12), 0 4px 12px -4px rgba(0,0,0,0.06);
@@ -51,45 +51,45 @@
 :root {
   line-height: 1.5;
   font-weight: 400;
-  color: var(--color-bosch-text);
-  background: var(--color-bosch-bg);
+  color: var(--color-pth-text);
+  background: var(--color-pth-bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Dark mode root overrides — remap all bosch tokens to dark values */
+/* Dark mode root overrides — remap all pth tokens to dark values */
 .dark {
-  --color-bosch-bg: #111113;
-  --color-bosch-card: rgba(30, 30, 32, 0.72);
-  --color-bosch-card-solid: #1A1A1C;
-  --color-bosch-panel: #2A2A2C;
-  --color-bosch-border: rgba(255, 255, 255, 0.08);
-  --color-bosch-text: #F5F5F7;
-  --color-bosch-blue: #4DA3E0;
-  --color-bosch-btn: #3d4148;
-  --color-bosch-btn-hover: #4a4f56;
-  --color-bosch-teal: #3CB8B2;
-  --color-bosch-subtle: #141416;
-  --color-bosch-hover: rgba(255, 255, 255, 0.06);
-  --color-bosch-muted: #98989D;
-  --color-bosch-outer: #18181B;
-  --color-bosch-sidebar: #18181B;
-  --color-bosch-sidebar-text: #DFE2E4;
-  --color-bosch-sidebar-muted: rgba(255, 255, 255, 0.60);
-  --color-bosch-sidebar-faint: rgba(255, 255, 255, 0.40);
-  --color-bosch-sidebar-accent: #F25C6E;
-  --color-bosch-sidebar-active: rgba(255, 255, 255, 0.12);
-  --color-bosch-sidebar-border: rgba(255, 255, 255, 0.10);
-  --color-bosch-sidebar-hover: rgba(255, 255, 255, 0.08);
-  --color-bosch-sidebar-dot: #FFFFFF;
+  --color-pth-bg: #111113;
+  --color-pth-card: rgba(30, 30, 32, 0.72);
+  --color-pth-card-solid: #1A1A1C;
+  --color-pth-panel: #2A2A2C;
+  --color-pth-border: rgba(255, 255, 255, 0.08);
+  --color-pth-text: #F5F5F7;
+  --color-pth-blue: #4DA3E0;
+  --color-pth-btn: #3d4148;
+  --color-pth-btn-hover: #4a4f56;
+  --color-pth-teal: #3CB8B2;
+  --color-pth-subtle: #141416;
+  --color-pth-hover: rgba(255, 255, 255, 0.06);
+  --color-pth-muted: #98989D;
+  --color-pth-outer: #18181B;
+  --color-pth-sidebar: #18181B;
+  --color-pth-sidebar-text: #DFE2E4;
+  --color-pth-sidebar-muted: rgba(255, 255, 255, 0.60);
+  --color-pth-sidebar-faint: rgba(255, 255, 255, 0.40);
+  --color-pth-sidebar-accent: #F25C6E;
+  --color-pth-sidebar-active: rgba(255, 255, 255, 0.12);
+  --color-pth-sidebar-border: rgba(255, 255, 255, 0.10);
+  --color-pth-sidebar-hover: rgba(255, 255, 255, 0.08);
+  --color-pth-sidebar-dot: #FFFFFF;
   --shadow-card: 0 0 0 1px rgba(255,255,255,0.06), 0 2px 8px -2px rgba(0,0,0,0.4);
   --shadow-elevated: 0 0 0 1px rgba(255,255,255,0.06), 0 16px 40px -8px rgba(0,0,0,0.5), 0 4px 12px -4px rgba(0,0,0,0.3);
   --shadow-header: 0 0 0 1px rgba(255,255,255,0.06);
   --shadow-glass: 0 8px 32px -8px rgba(0,0,0,0.3);
-  color: var(--color-bosch-text);
-  background: var(--color-bosch-bg);
+  color: var(--color-pth-text);
+  background: var(--color-pth-bg);
 }
 
 * {

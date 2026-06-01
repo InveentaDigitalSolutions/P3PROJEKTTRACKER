@@ -1,0 +1,998 @@
+{
+ "types": [
+  {
+   "type": "New Program",
+   "taskCount": 10,
+   "tasks": [
+    {
+     "seq": 1,
+     "task": "Project Award",
+     "responsible": [],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 2,
+     "task": "Project Kickoff",
+     "responsible": [],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 3,
+     "task": "Design phase",
+     "responsible": [],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 4,
+     "task": "Drawing release",
+     "responsible": [],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 5,
+     "task": "B- Design freeze",
+     "responsible": [],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 6,
+     "task": "Soft tooling",
+     "responsible": [],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 7,
+     "task": "B-samples production run",
+     "responsible": [],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 8,
+     "task": "B-samples",
+     "responsible": [],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 9,
+     "task": "DV",
+     "responsible": [],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 10,
+     "task": "DVP&R",
+     "responsible": [],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    }
+   ]
+  },
+  {
+   "type": "CIP",
+   "taskCount": 7,
+   "tasks": [
+    {
+     "seq": 1,
+     "task": "New Set up standard alignment",
+     "responsible": [],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 2,
+     "task": "Technical Evaluation of new standard",
+     "responsible": [],
+     "leadtimeWeeks": null,
+     "inputs": "* Edge break measurements",
+     "workloadPct": null
+    },
+    {
+     "seq": 3,
+     "task": "Change of documentation (set up release format)",
+     "responsible": [],
+     "leadtimeWeeks": null,
+     "inputs": "* ENG Lead development reviews / * Data on how is performed in SlpP, machinning plate line",
+     "workloadPct": null
+    },
+    {
+     "seq": 4,
+     "task": "New Standard implementation",
+     "responsible": [],
+     "leadtimeWeeks": null,
+     "inputs": "* Business case for supplier  / * Business case for implementation inhouse",
+     "workloadPct": null
+    },
+    {
+     "seq": 5,
+     "task": "Evaluation / Feedback of new standard",
+     "responsible": [],
+     "leadtimeWeeks": null,
+     "inputs": "*New standard implemented",
+     "workloadPct": null
+    },
+    {
+     "seq": 6,
+     "task": "Change over concept training",
+     "responsible": [],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 7,
+     "task": "Lessons Learned sharing",
+     "responsible": [],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    }
+   ]
+  },
+  {
+   "type": "ECR - Standard",
+   "taskCount": 27,
+   "tasks": [
+    {
+     "seq": 1,
+     "task": "Business case available",
+     "responsible": [
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* Supplier feasibility  / *Task force activities, customer meetings / * Quotation for the change from supplier  / * Updated drawing",
+     "workloadPct": 45
+    },
+    {
+     "seq": 2,
+     "task": "KO meeting",
+     "responsible": [
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "*ECR / * Updated drawing / * Customer presentation  / * CTG Checklist",
+     "workloadPct": 25
+    },
+    {
+     "seq": 3,
+     "task": "TR meeting",
+     "responsible": [
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "*ECR / * Updated drawing / * Customer presentation  / * CTG Checklist",
+     "workloadPct": 25
+    },
+    {
+     "seq": 4,
+     "task": "RACE submission for new PN if applies",
+     "responsible": [
+      "ENG"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "NA",
+     "workloadPct": null
+    },
+    {
+     "seq": 5,
+     "task": "Customer acceptance of the ECR",
+     "responsible": [
+      "PJM",
+      "Sales"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* Customer technical meetings  / * Design definition",
+     "workloadPct": 15
+    },
+    {
+     "seq": 6,
+     "task": "PTR parts available",
+     "responsible": [
+      "PPS"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* Updated Drawing  / * Feasilibity confirmation  / * Purchasing Order",
+     "workloadPct": 20
+    },
+    {
+     "seq": 7,
+     "task": "First part of MP206 completion",
+     "responsible": [
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* PTR parts / * Manufacturing setup",
+     "workloadPct": 30
+    },
+    {
+     "seq": 8,
+     "task": "Counter measurement start date",
+     "responsible": [
+      "PUQ"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "NA",
+     "workloadPct": null
+    },
+    {
+     "seq": 9,
+     "task": "Counter measurement end date",
+     "responsible": [
+      "PUQ"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* Counter measurement data  / * Analysis results",
+     "workloadPct": 20
+    },
+    {
+     "seq": 10,
+     "task": "DL review and release if applies",
+     "responsible": [
+      "PUQ",
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* QMM Test results  / * PTR results (EoL test, airflow) / * DL with proposed deviations",
+     "workloadPct": 15
+    },
+    {
+     "seq": 11,
+     "task": "PTR Date",
+     "responsible": [
+      "LOG",
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* Pieces available with the machined LMS at 15.3°",
+     "workloadPct": 10
+    },
+    {
+     "seq": 12,
+     "task": "PV start date",
+     "responsible": [
+      "ChR",
+      "ENG"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* PTR approval  / * Pieces available within specification",
+     "workloadPct": 15
+    },
+    {
+     "seq": 13,
+     "task": "PV end date",
+     "responsible": [
+      "ChR",
+      "ENG"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* Production validation tests",
+     "workloadPct": 25
+    },
+    {
+     "seq": 14,
+     "task": "PTR and PV report",
+     "responsible": [
+      "MFE",
+      "ENG",
+      "QMM"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* All test data  / * Validation results / * Teardown Analysis",
+     "workloadPct": 20
+    },
+    {
+     "seq": 15,
+     "task": "Interim PSW",
+     "responsible": [
+      "ChR",
+      "PUQ"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* PTR report / * PV report",
+     "workloadPct": 15
+    },
+    {
+     "seq": 16,
+     "task": "Customer validation completion",
+     "responsible": [
+      "ChR",
+      "ENG"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* Interim PSW / * Customer testing",
+     "workloadPct": 20
+    },
+    {
+     "seq": 17,
+     "task": "Final Review presentation",
+     "responsible": [
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* All validation data",
+     "workloadPct": 25
+    },
+    {
+     "seq": 18,
+     "task": "New PN release and available in SAP",
+     "responsible": [
+      "TEF6"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* Final approval",
+     "workloadPct": 10
+    },
+    {
+     "seq": 19,
+     "task": "ECR ST40",
+     "responsible": [
+      "ChR",
+      "Lcoal Change Co"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* PN release confirmation",
+     "workloadPct": 5
+    },
+    {
+     "seq": 20,
+     "task": "Customer approval (full PSW)",
+     "responsible": [
+      "QMM"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* Complete documentation",
+     "workloadPct": 15
+    },
+    {
+     "seq": 21,
+     "task": "PO Update",
+     "responsible": [
+      "Sales"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* Customer approval",
+     "workloadPct": 5
+    },
+    {
+     "seq": 22,
+     "task": "Full PSW Supplier",
+     "responsible": [
+      "PUQ"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* All documentation",
+     "workloadPct": 20
+    },
+    {
+     "seq": 23,
+     "task": "Systematic release to supplier",
+     "responsible": [
+      "PPS",
+      "LOG"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* Full PSW complete",
+     "workloadPct": 10
+    },
+    {
+     "seq": 24,
+     "task": "SOP supplier",
+     "responsible": [
+      "PPS",
+      "LOG"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* Production readiness",
+     "workloadPct": 25
+    },
+    {
+     "seq": 25,
+     "task": "Date of first batch arrival",
+     "responsible": [
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* SOP confirmation",
+     "workloadPct": 5
+    },
+    {
+     "seq": 26,
+     "task": "SOP BOSCH",
+     "responsible": [
+      "CFT"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* First batch received",
+     "workloadPct": 15
+    },
+    {
+     "seq": 27,
+     "task": "ECR close ST48",
+     "responsible": [
+      "CFT"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "* SOP complete",
+     "workloadPct": 5
+    }
+   ]
+  },
+  {
+   "type": "ECR Manager Decision",
+   "taskCount": 19,
+   "tasks": [
+    {
+     "seq": 1,
+     "task": "Business case available",
+     "responsible": [
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 2,
+     "task": "KO meeting",
+     "responsible": [
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 3,
+     "task": "TR meeting",
+     "responsible": [
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 4,
+     "task": "PTR parts available",
+     "responsible": [
+      "PPS"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 5,
+     "task": "First part of MP206 completion",
+     "responsible": [
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 6,
+     "task": "Counter measurement start date",
+     "responsible": [
+      "PUQ"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 7,
+     "task": "Counter measurement end date",
+     "responsible": [
+      "PUQ"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 8,
+     "task": "DL review and release if applies",
+     "responsible": [
+      "PUQ",
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 9,
+     "task": "PTR Date",
+     "responsible": [
+      "LOG",
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 10,
+     "task": "PTR and PV report",
+     "responsible": [
+      "ChR",
+      "ENG"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 11,
+     "task": "Interim PSW",
+     "responsible": [
+      "ChR",
+      "PUQ"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 12,
+     "task": "Final Review presentation",
+     "responsible": [
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 13,
+     "task": "ECR ST40",
+     "responsible": [
+      "ChR",
+      "Lcoal Change Co"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 14,
+     "task": "Full PSW Supplier",
+     "responsible": [
+      "PUQ"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 15,
+     "task": "Systematic release to supplier",
+     "responsible": [
+      "PPS",
+      "LOG"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 16,
+     "task": "SOP supplier",
+     "responsible": [
+      "PPS",
+      "LOG"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 17,
+     "task": "Date of first batch arrival",
+     "responsible": [
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 18,
+     "task": "SOP BOSCH",
+     "responsible": [
+      "CFT"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 19,
+     "task": "ECR close ST48",
+     "responsible": [
+      "CFT"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    }
+   ]
+  },
+  {
+   "type": "CO ECR",
+   "taskCount": 6,
+   "tasks": [
+    {
+     "seq": 1,
+     "task": "KO meeting",
+     "responsible": [
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 2,
+     "task": "TR meeting",
+     "responsible": [
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 3,
+     "task": "Correction on SAP",
+     "responsible": [
+      "Doc. Department"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 4,
+     "task": "ECR ST40",
+     "responsible": [
+      "ChR",
+      "Local Change Co"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 5,
+     "task": "SOP BOSCH",
+     "responsible": [
+      "CFT"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 6,
+     "task": "ECR close ST48",
+     "responsible": [
+      "Local Change Co"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    }
+   ]
+  },
+  {
+   "type": "Global ECR",
+   "taskCount": 27,
+   "tasks": [
+    {
+     "seq": 1,
+     "task": "Business case available",
+     "responsible": [
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 2,
+     "task": "KO meeting",
+     "responsible": [
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 3,
+     "task": "TR meeting",
+     "responsible": [
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 4,
+     "task": "RACE submission for new PN if applies",
+     "responsible": [
+      "ENG"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 5,
+     "task": "Customer acceptance of the ECR",
+     "responsible": [
+      "PJM",
+      "Sales"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 6,
+     "task": "PTR parts available",
+     "responsible": [
+      "PPS"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 7,
+     "task": "First part of MP206 completion",
+     "responsible": [
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 8,
+     "task": "Counter measurement start date",
+     "responsible": [
+      "PUQ"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 9,
+     "task": "Counter measurement end date",
+     "responsible": [
+      "PUQ"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 10,
+     "task": "DL review and release if applies",
+     "responsible": [
+      "PUQ",
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 11,
+     "task": "PTR Date",
+     "responsible": [
+      "LOG",
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 12,
+     "task": "PV start date",
+     "responsible": [
+      "ChR",
+      "ENG"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 13,
+     "task": "PV end date",
+     "responsible": [
+      "ChR",
+      "ENG"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 14,
+     "task": "PTR and PV report",
+     "responsible": [
+      "MFE",
+      "ENG",
+      "QMM"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 15,
+     "task": "Interim PSW",
+     "responsible": [
+      "ChR",
+      "PUQ"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 16,
+     "task": "Customer validation completion",
+     "responsible": [
+      "ChR",
+      "ENG"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 17,
+     "task": "Final Review presentation",
+     "responsible": [
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 18,
+     "task": "New PN release and available in SAP",
+     "responsible": [
+      "TEF6"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 19,
+     "task": "ECR ST40",
+     "responsible": [
+      "ChR",
+      "Local Change Co"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 20,
+     "task": "Customer approval (full PSW)",
+     "responsible": [
+      "QMM"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 21,
+     "task": "PO Update",
+     "responsible": [
+      "Sales"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 22,
+     "task": "Full PSW Supplier",
+     "responsible": [
+      "PUQ"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 23,
+     "task": "Systematic release to supplier",
+     "responsible": [
+      "PPS",
+      "LOG"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 24,
+     "task": "SOP supplier",
+     "responsible": [
+      "PPS",
+      "LOG"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 25,
+     "task": "Date of first batch arrival",
+     "responsible": [
+      "ChR"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 26,
+     "task": "SOP BOSCH",
+     "responsible": [
+      "CFT"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    },
+    {
+     "seq": 27,
+     "task": "ECR close ST48",
+     "responsible": [
+      "CFT"
+     ],
+     "leadtimeWeeks": null,
+     "inputs": "",
+     "workloadPct": null
+    }
+   ]
+  }
+ ]
+}

@@ -116,7 +116,7 @@ function labelObject(label) {
   }
 }
 
-async function dataverseRequest(path, method, body) {
+async function dataverseRequest(path, method, body, retries = 3) {
   const endpoint = `${dataverseUrl}/api/data/v9.2/${path}`
   const headers = {
     Accept: 'application/json',
@@ -126,23 +126,34 @@ async function dataverseRequest(path, method, body) {
     Authorization: `Bearer ${token}`,
   }
 
-  const response = await fetch(endpoint, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  })
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(endpoint, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      })
 
-  if (response.ok) {
-    if (response.status === 204) {
-      return null
+      if (response.ok) {
+        if (response.status === 204) {
+          return null
+        }
+
+        const text = await response.text()
+        return text ? JSON.parse(text) : null
+      }
+
+      const errorText = await response.text()
+      throw new Error(`${method} ${path} failed (${response.status}) ${errorText}`)
+    } catch (err) {
+      if (attempt < retries && (err.message.includes('fetch failed') || err.message.includes('network') || err.message.includes('ECONNRESET'))) {
+        console.log(`  Retry ${attempt}/${retries} after network error…`)
+        await new Promise((r) => setTimeout(r, 2000 * attempt))
+        continue
+      }
+      throw err
     }
-
-    const text = await response.text()
-    return text ? JSON.parse(text) : null
   }
-
-  const errorText = await response.text()
-  throw new Error(`${method} ${path} failed (${response.status}) ${errorText}`)
 }
 
 function buildColumnPayload(column) {
@@ -179,6 +190,27 @@ function buildColumnPayload(column) {
         Description: labelObject(column.displayName),
         MinValue: column.min ?? 0,
         MaxValue: column.max ?? 2147483647,
+        ...required,
+      }
+    case 'decimal':
+      return {
+        '@odata.type': 'Microsoft.Dynamics.CRM.DecimalAttributeMetadata',
+        SchemaName: column.schemaName,
+        DisplayName: labelObject(column.displayName),
+        Description: labelObject(column.displayName),
+        Precision: column.precision ?? 2,
+        MinValue: column.minValue ?? 0,
+        MaxValue: column.maxValue ?? 999999999,
+        ...required,
+      }
+    case 'datetime':
+      return {
+        '@odata.type': 'Microsoft.Dynamics.CRM.DateTimeAttributeMetadata',
+        SchemaName: column.schemaName,
+        DisplayName: labelObject(column.displayName),
+        Description: labelObject(column.displayName),
+        Format: column.format ?? 'DateOnly',
+        ImeMode: 'Auto',
         ...required,
       }
     case 'date':
@@ -307,7 +339,18 @@ async function createTable(table) {
     return table.schemaName.toLowerCase()
   }
 
-  await dataverseRequest('EntityDefinitions', 'POST', payload)
+  try {
+    await dataverseRequest('EntityDefinitions', 'POST', payload)
+  } catch (err) {
+    // If table already exists (race / retry), treat as success
+    if (err.message.includes('already exists') || err.message.includes('0x80044363')) {
+      console.log(`Table ${table.schemaName.toLowerCase()} already exists (caught on create)`)
+      return table.schemaName.toLowerCase()
+    }
+    throw err
+  }
+  // Wait for Dataverse to fully provision the table before adding columns
+  await new Promise((r) => setTimeout(r, 5000))
   const logicalName = await resolveLogicalName(table.schemaName)
   console.log(`Created table ${logicalName} (schema: ${table.schemaName})`)
   return logicalName

@@ -1,13 +1,13 @@
 /**
  * Shared email layout — matches the Project Tracker Hub design system.
  *
- * Bosch CI tokens:
- *   --bosch-bg:       #F5F5F7     --bosch-card:     #FFFFFF
- *   --bosch-panel:    #E8E8ED     --bosch-border:   rgba(0,0,0,0.08)
- *   --bosch-text:     #1D1D1F     --bosch-muted:    #86868B
- *   --bosch-blue:     #005691     --bosch-red:      #DC2626
- *   --bosch-teal:     #18837E     --bosch-sidebar:  #31343A
- *   --bosch-btn:      #31343A     --bosch-accent:   #FF4D5E
+ * Design tokens:
+ *   --pth-bg:       #F5F5F7     --pth-card:     #FFFFFF
+ *   --pth-panel:    #E8E8ED     --pth-border:   rgba(0,0,0,0.08)
+ *   --pth-text:     #1D1D1F     --pth-muted:    #86868B
+ *   --pth-blue:     #005691     --pth-red:      #DC2626
+ *   --pth-teal:     #18837E     --pth-sidebar:  #31343A
+ *   --pth-btn:      #31343A     --pth-accent:   #FF4D5E
  *
  * All emails use this wrapper so they look consistent and branded.
  */

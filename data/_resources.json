@@ -1,0 +1,1171 @@
+{
+ "managers": [
+  {
+   "name": "Carreira Leandro",
+   "area": "PPS",
+   "orgcode": "M/PPS-CC-NA",
+   "locs": [
+    "SlpP",
+    "TlP"
+   ]
+  },
+  {
+   "name": "Gonzalez Bravo Jesus Ivan",
+   "area": "ENG",
+   "orgcode": "PS-CC/ENG2-MX",
+   "locs": [
+    "SlpP",
+    "TlP"
+   ]
+  },
+  {
+   "name": "Gonzalez Loredo Jose Angel",
+   "area": "ENG",
+   "orgcode": "PS-CC/ENG1-MX",
+   "locs": [
+    "SlpP",
+    "TlP"
+   ]
+  },
+  {
+   "name": "De Souza Eduardo Henrique",
+   "area": "QMM",
+   "orgcode": "PS/QMM-MSE3-SlpP",
+   "locs": [
+    "SlpP"
+   ]
+  },
+  {
+   "name": "Medina Gonzalez Fernando",
+   "area": "QMM",
+   "orgcode": "EM/QMM4-Tl",
+   "locs": [
+    "TlP"
+   ]
+  },
+  {
+   "name": "Ovalle Juarez Aldo Cesar",
+   "area": "LOD",
+   "orgcode": "SlpP/LOM SlpP/LOD1.1",
+   "locs": [
+    "SlpP"
+   ]
+  },
+  {
+   "name": "Mueller Robin",
+   "area": "LOP",
+   "orgcode": "SlpP/LOP2",
+   "locs": [
+    "SlpP"
+   ]
+  },
+  {
+   "name": "Albarran Aguirre Anayeli",
+   "area": "LOP5",
+   "orgcode": "TlP/LOP11",
+   "locs": [
+    "TlP"
+   ]
+  },
+  {
+   "name": "Lopez Munoz Alma Isabel",
+   "area": "LOP4",
+   "orgcode": "TlP/LOP4",
+   "locs": [
+    "TlP"
+   ]
+  },
+  {
+   "name": "Kargi Furkan",
+   "area": "MSE",
+   "orgcode": "SlpP/VSL3",
+   "locs": [
+    "SlpP"
+   ]
+  },
+  {
+   "name": "Alvarado Morales Luis Martin",
+   "area": "MSE",
+   "orgcode": "TlP/MOE-PS-CC1",
+   "locs": [
+    "TlP"
+   ]
+  },
+  {
+   "name": "Koenninger Bastian Martin",
+   "area": "CTG",
+   "orgcode": "SlpP/CTG3",
+   "locs": [
+    "SlpP"
+   ]
+  },
+  {
+   "name": "Verdejo Alvarado Yolanda Vanessa",
+   "area": "CTG",
+   "orgcode": "TlP/CTG1",
+   "locs": [
+    "TlP"
+   ]
+  },
+  {
+   "name": "Castillo Lopez Maria Guadalupe",
+   "area": "PUQ1",
+   "orgcode": "M/PUQ16-PS M/PUQ34-EM",
+   "locs": [
+    "SlpP",
+    "TlP"
+   ]
+  },
+  {
+   "name": "Galvan Rodriguez Jose Luis",
+   "area": "PUQ2",
+   "orgcode": "M/PUQ-SlpP M/PUQ2-SlpP",
+   "locs": [
+    "SlpP"
+   ]
+  },
+  {
+   "name": "Garcia Bringas Jose Alejandro",
+   "area": "PUQ2",
+   "orgcode": "M/PUQ2-TlP",
+   "locs": [
+    "TlP"
+   ]
+  }
+ ],
+ "associates": [
+  {
+   "name": "Daniela Garcia Hernandez",
+   "area": "PPS",
+   "locs": [
+    "SlpP",
+    "TlP"
+   ],
+   "manager": "Carreira Leandro"
+  },
+  {
+   "name": "Dario Andres Gonzalez Martinez",
+   "area": "PPS",
+   "locs": [
+    "SlpP",
+    "TlP"
+   ],
+   "manager": "Carreira Leandro"
+  },
+  {
+   "name": "Amaury Martinez Garcia",
+   "area": "PPS",
+   "locs": [
+    "SlpP",
+    "TlP"
+   ],
+   "manager": "Carreira Leandro"
+  },
+  {
+   "name": "Ray Edgardo Martinez Vargas",
+   "area": "PPS",
+   "locs": [
+    "SlpP",
+    "TlP"
+   ],
+   "manager": "Carreira Leandro"
+  },
+  {
+   "name": "Ricardo Jose Vazquez Morales",
+   "area": "PPS",
+   "locs": [
+    "SlpP",
+    "TlP"
+   ],
+   "manager": "Carreira Leandro"
+  },
+  {
+   "name": "Lucero Villegas Toranzo",
+   "area": "PPS",
+   "locs": [
+    "SlpP",
+    "TlP"
+   ],
+   "manager": "Carreira Leandro"
+  },
+  {
+   "name": "Teofilo Flores Gonzalez",
+   "area": "ENG",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Gonzalez Bravo Jesus Ivan"
+  },
+  {
+   "name": "Alejandro Antonio Lara Hernandez",
+   "area": "ENG",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Gonzalez Bravo Jesus Ivan"
+  },
+  {
+   "name": "Arnulfo Mauricio Serrano Alvarado",
+   "area": "ENG",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Gonzalez Bravo Jesus Ivan"
+  },
+  {
+   "name": "Julio Cesar Vera Vazquez",
+   "area": "ENG",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Gonzalez Bravo Jesus Ivan"
+  },
+  {
+   "name": "Gabriel Cruz Guzman",
+   "area": "ENG",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Gonzalez Bravo Jesus Ivan"
+  },
+  {
+   "name": "Alberto Levi Rossano Ruiz",
+   "area": "ENG",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Gonzalez Bravo Jesus Ivan"
+  },
+  {
+   "name": "Diana Gabriela Cervantes Marin",
+   "area": "ENG",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Gonzalez Loredo Jose Angel"
+  },
+  {
+   "name": "Jose Daniel Garcia Larios",
+   "area": "ENG",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Gonzalez Loredo Jose Angel"
+  },
+  {
+   "name": "Rodolfo Lopez Halun",
+   "area": "ENG",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Gonzalez Loredo Jose Angel"
+  },
+  {
+   "name": "Carlos Alberto Monroy Medellin",
+   "area": "ENG",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Gonzalez Loredo Jose Angel"
+  },
+  {
+   "name": "Andres Navarro Chevaile",
+   "area": "ENG",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Gonzalez Loredo Jose Angel"
+  },
+  {
+   "name": "Carlos Omar Heredia Morales",
+   "area": "ENG",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Gonzalez Loredo Jose Angel"
+  },
+  {
+   "name": "Alejandro Ceballos Sanchez",
+   "area": "ENG",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Gonzalez Loredo Jose Angel"
+  },
+  {
+   "name": "Eric Maximiliano Marmolejo Ortiz",
+   "area": "ENG",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Gonzalez Loredo Jose Angel"
+  },
+  {
+   "name": "Edgar Dario Narciso Jordan",
+   "area": "ENG",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Gonzalez Loredo Jose Angel"
+  },
+  {
+   "name": "Mauricio Anzures Enriquez",
+   "area": "QMM",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "De Souza Eduardo Henrique"
+  },
+  {
+   "name": "Alejandra Diaz Villela",
+   "area": "QMM",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "De Souza Eduardo Henrique"
+  },
+  {
+   "name": "Enny Paula Escobar Ruiz",
+   "area": "QMM",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "De Souza Eduardo Henrique"
+  },
+  {
+   "name": "Karen Linan Gomez",
+   "area": "QMM",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "De Souza Eduardo Henrique"
+  },
+  {
+   "name": "Eli Israel Mendez Lopez",
+   "area": "QMM",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "De Souza Eduardo Henrique"
+  },
+  {
+   "name": "Liliana Jaqueline Ramirez Quintanar",
+   "area": "QMM",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "De Souza Eduardo Henrique"
+  },
+  {
+   "name": "Juan Carlos Salas Sanchez",
+   "area": "QMM",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "De Souza Eduardo Henrique"
+  },
+  {
+   "name": "Karina Salazar Fuentes",
+   "area": "QMM",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "De Souza Eduardo Henrique"
+  },
+  {
+   "name": "Rosario Gabriela Caltzonzin Mercado",
+   "area": "QMM",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Medina Gonzalez Fernando"
+  },
+  {
+   "name": "Emerson Flores Chavez",
+   "area": "QMM",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Medina Gonzalez Fernando"
+  },
+  {
+   "name": "Karla Fernanda Lechuga Gonzalez",
+   "area": "QMM",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Medina Gonzalez Fernando"
+  },
+  {
+   "name": "Jesus Alejandro Ruiz Gonzalez",
+   "area": "QMM",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Medina Gonzalez Fernando"
+  },
+  {
+   "name": "Alejandra Velazquez Nava",
+   "area": "QMM",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Medina Gonzalez Fernando"
+  },
+  {
+   "name": "Jaime Alberto Casas Aleman Martinez",
+   "area": "LOD",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Ovalle Juarez Aldo Cesar"
+  },
+  {
+   "name": "Jesus Estrada Vazquez",
+   "area": "LOD",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Ovalle Juarez Aldo Cesar"
+  },
+  {
+   "name": "Luis Angel Fernandez Zapata",
+   "area": "LOD",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Ovalle Juarez Aldo Cesar"
+  },
+  {
+   "name": "Pedro Alejandro Campos Martinez",
+   "area": "LOP",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Mueller Robin"
+  },
+  {
+   "name": "Monserrat Canseco Roman",
+   "area": "LOP",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Mueller Robin"
+  },
+  {
+   "name": "Maria Sandra Carranco Martinez",
+   "area": "LOP",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Mueller Robin"
+  },
+  {
+   "name": "Evelyn Cerda Cerda",
+   "area": "LOP",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Mueller Robin"
+  },
+  {
+   "name": "Harumi Anai Flores Cano",
+   "area": "LOP",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Mueller Robin"
+  },
+  {
+   "name": "Pamela Garcia Arvizu",
+   "area": "LOP",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Mueller Robin"
+  },
+  {
+   "name": "Jose Luis Jaramillo Merida",
+   "area": "LOP",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Mueller Robin"
+  },
+  {
+   "name": "Ma. Elena Pruneda Castillo",
+   "area": "LOP",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Mueller Robin"
+  },
+  {
+   "name": "Laura Isabel Torres Blanco",
+   "area": "LOP",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Mueller Robin"
+  },
+  {
+   "name": "Carolina Valtierra Zavala",
+   "area": "LOP",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Mueller Robin"
+  },
+  {
+   "name": "Carlos Eduardo Zavala Garcia",
+   "area": "LOP",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Mueller Robin"
+  },
+  {
+   "name": "Arturo Ivan Flores Maccise",
+   "area": "LOP5",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Albarran Aguirre Anayeli"
+  },
+  {
+   "name": "Maria Guadalupe Hernandez Bejarano",
+   "area": "LOP5",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Albarran Aguirre Anayeli"
+  },
+  {
+   "name": "Ana Karen Mejia Cayetano",
+   "area": "LOP5",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Albarran Aguirre Anayeli"
+  },
+  {
+   "name": "Elsa Irma Mejia Estevez",
+   "area": "LOP5",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Albarran Aguirre Anayeli"
+  },
+  {
+   "name": "Celia Villalobos Camacho",
+   "area": "LOP5",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Albarran Aguirre Anayeli"
+  },
+  {
+   "name": "Natalia Gabriela Enriquez Valdez",
+   "area": "LOP4",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Lopez Munoz Alma Isabel"
+  },
+  {
+   "name": "Fabiola Hernandez Castillo",
+   "area": "LOP4",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Lopez Munoz Alma Isabel"
+  },
+  {
+   "name": "Paulina Hernandez Chavez",
+   "area": "LOP4",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Lopez Munoz Alma Isabel"
+  },
+  {
+   "name": "Pedro Arturo Lopez Martinez",
+   "area": "LOP4",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Lopez Munoz Alma Isabel"
+  },
+  {
+   "name": "Jaime Omar Marceleno Leija",
+   "area": "LOP4",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Lopez Munoz Alma Isabel"
+  },
+  {
+   "name": "Lisette Alejandra Pureco Esquivel",
+   "area": "LOP4",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Lopez Munoz Alma Isabel"
+  },
+  {
+   "name": "Jesus Ivan Martinez Gamez",
+   "area": "MSE",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Kargi Furkan"
+  },
+  {
+   "name": "Edgar Francisco Beltran De La Torre",
+   "area": "MSE",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Kargi Furkan"
+  },
+  {
+   "name": "Jose Oscar Guevara Romero",
+   "area": "MSE",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Kargi Furkan"
+  },
+  {
+   "name": "Rodrigo Gutierrez Madrazo",
+   "area": "MSE",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Kargi Furkan"
+  },
+  {
+   "name": "Gerardo Emmanuel Lopez Lopez",
+   "area": "MSE",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Kargi Furkan"
+  },
+  {
+   "name": "Jacobo Lopez Velarde Ruiz",
+   "area": "MSE",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Kargi Furkan"
+  },
+  {
+   "name": "Luis Alberto Montes Hernandez",
+   "area": "MSE",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Kargi Furkan"
+  },
+  {
+   "name": "Jose Emmanuel Vazquez Aviles",
+   "area": "MSE",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Kargi Furkan"
+  },
+  {
+   "name": "Guillermo Adrian Ornelas Robledo",
+   "area": "MSE",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Kargi Furkan"
+  },
+  {
+   "name": "Ricardo Chindo Bear",
+   "area": "MSE",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Kargi Furkan"
+  },
+  {
+   "name": "Ricardo Fabian Corral Garcia",
+   "area": "MSE",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Kargi Furkan"
+  },
+  {
+   "name": "Jose Leobardo Gomez Lopez",
+   "area": "MSE",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Kargi Furkan"
+  },
+  {
+   "name": "Alejandra Guadalupe Gonzalez Duque",
+   "area": "MSE",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Kargi Furkan"
+  },
+  {
+   "name": "Luis Antonio Sanchez Paez",
+   "area": "MSE",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Kargi Furkan"
+  },
+  {
+   "name": "Jose Alfredo Merlos Jimenez",
+   "area": "MSE",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Alvarado Morales Luis Martin"
+  },
+  {
+   "name": "Maria Fernanda Munguia Martinez",
+   "area": "MSE",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Alvarado Morales Luis Martin"
+  },
+  {
+   "name": "Sandra Karina Oro Sanchez",
+   "area": "MSE",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Alvarado Morales Luis Martin"
+  },
+  {
+   "name": "Gerardo Velazquez Velazquez",
+   "area": "MSE",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Alvarado Morales Luis Martin"
+  },
+  {
+   "name": "Montserrat Arambula",
+   "area": "CTG",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Koenninger Bastian Martin"
+  },
+  {
+   "name": "Carla Daniela Arroyo",
+   "area": "CTG",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Koenninger Bastian Martin"
+  },
+  {
+   "name": "Aime Montserrat Fraga Guerrero",
+   "area": "CTG",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Koenninger Bastian Martin"
+  },
+  {
+   "name": "Oscar Uriel Medellin Vazquez",
+   "area": "CTG",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Koenninger Bastian Martin"
+  },
+  {
+   "name": "Elizabeth Barrueta Enriquez",
+   "area": "CTG",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Verdejo Alvarado Yolanda Vanessa"
+  },
+  {
+   "name": "Artemio Alfredo Carranza De La Vega",
+   "area": "CTG",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Verdejo Alvarado Yolanda Vanessa"
+  },
+  {
+   "name": "Esperanza Del Rosario Carrillo Solis",
+   "area": "CTG",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Verdejo Alvarado Yolanda Vanessa"
+  },
+  {
+   "name": "Enya Desiree Galvez Jaimes",
+   "area": "CTG",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Verdejo Alvarado Yolanda Vanessa"
+  },
+  {
+   "name": "Maximiliano Hernandez Alamo",
+   "area": "CTG",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Verdejo Alvarado Yolanda Vanessa"
+  },
+  {
+   "name": "Viridiana Rivera Dimas",
+   "area": "CTG",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Verdejo Alvarado Yolanda Vanessa"
+  },
+  {
+   "name": "David Hernandez Araiza",
+   "area": "PUQ1",
+   "locs": [
+    "SlpP",
+    "TlP"
+   ],
+   "manager": "Castillo Lopez Maria Guadalupe"
+  },
+  {
+   "name": "Erick Alan De Santos Martinez",
+   "area": "PUQ1",
+   "locs": [
+    "SlpP",
+    "TlP"
+   ],
+   "manager": "Castillo Lopez Maria Guadalupe"
+  },
+  {
+   "name": "Cesar Ulises Hernandez Palacios",
+   "area": "PUQ1",
+   "locs": [
+    "SlpP",
+    "TlP"
+   ],
+   "manager": "Castillo Lopez Maria Guadalupe"
+  },
+  {
+   "name": "Jose Emmanuel Castillo Cadena",
+   "area": "PUQ1",
+   "locs": [
+    "SlpP",
+    "TlP"
+   ],
+   "manager": "Castillo Lopez Maria Guadalupe"
+  },
+  {
+   "name": "Eduardo Hernandez Camacho",
+   "area": "PUQ1",
+   "locs": [
+    "SlpP",
+    "TlP"
+   ],
+   "manager": "Castillo Lopez Maria Guadalupe"
+  },
+  {
+   "name": "Jorge Ernesto Hernandez Neri",
+   "area": "PUQ1",
+   "locs": [
+    "SlpP",
+    "TlP"
+   ],
+   "manager": "Castillo Lopez Maria Guadalupe"
+  },
+  {
+   "name": "Javier Jasso Lopez",
+   "area": "PUQ1",
+   "locs": [
+    "SlpP",
+    "TlP"
+   ],
+   "manager": "Castillo Lopez Maria Guadalupe"
+  },
+  {
+   "name": "Jessica Ethel Mendoza Tobias",
+   "area": "PUQ1",
+   "locs": [
+    "SlpP",
+    "TlP"
+   ],
+   "manager": "Castillo Lopez Maria Guadalupe"
+  },
+  {
+   "name": "Lizeth Pacheco Herrera",
+   "area": "PUQ1",
+   "locs": [
+    "SlpP",
+    "TlP"
+   ],
+   "manager": "Castillo Lopez Maria Guadalupe"
+  },
+  {
+   "name": "Eduardo Portillo Carmona",
+   "area": "PUQ1",
+   "locs": [
+    "SlpP",
+    "TlP"
+   ],
+   "manager": "Castillo Lopez Maria Guadalupe"
+  },
+  {
+   "name": "Victor Manuel Vazquez Morales",
+   "area": "PUQ1",
+   "locs": [
+    "SlpP",
+    "TlP"
+   ],
+   "manager": "Castillo Lopez Maria Guadalupe"
+  },
+  {
+   "name": "Jorge Luis Flores Guerrero",
+   "area": "PUQ2",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Galvan Rodriguez Jose Luis"
+  },
+  {
+   "name": "Sandra Karina Galvan Rivera",
+   "area": "PUQ2",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Galvan Rodriguez Jose Luis"
+  },
+  {
+   "name": "Silvino Martinez Cruz",
+   "area": "PUQ2",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Galvan Rodriguez Jose Luis"
+  },
+  {
+   "name": "Hector Rodriguez Lopez",
+   "area": "PUQ2",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Galvan Rodriguez Jose Luis"
+  },
+  {
+   "name": "Hector De Jesus Izaguirre Hernandez",
+   "area": "PUQ2",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Galvan Rodriguez Jose Luis"
+  },
+  {
+   "name": "Alma Alejandra Bustamante Mayorga",
+   "area": "PUQ2",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Galvan Rodriguez Jose Luis"
+  },
+  {
+   "name": "Karla Mariel Gamez",
+   "area": "PUQ2",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Galvan Rodriguez Jose Luis"
+  },
+  {
+   "name": "Ana Paula Guerrero Martinez",
+   "area": "PUQ2",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Galvan Rodriguez Jose Luis"
+  },
+  {
+   "name": "Marco Antonio Gutierrez Huerta",
+   "area": "PUQ2",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Galvan Rodriguez Jose Luis"
+  },
+  {
+   "name": "Jorge Alberto Olivares Huerta",
+   "area": "PUQ2",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Galvan Rodriguez Jose Luis"
+  },
+  {
+   "name": "Juan Pablo Romero Merino",
+   "area": "PUQ2",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Galvan Rodriguez Jose Luis"
+  },
+  {
+   "name": "Miguel Rodriguez Leija",
+   "area": "PUQ2",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Galvan Rodriguez Jose Luis"
+  },
+  {
+   "name": "Berenice Del Rocio Castillo Valero",
+   "area": "PUQ2",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Galvan Rodriguez Jose Luis"
+  },
+  {
+   "name": "Monica Alejandra Garcia Tellez",
+   "area": "PUQ2",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Galvan Rodriguez Jose Luis"
+  },
+  {
+   "name": "Ana Veronica Quiroz Hernandez",
+   "area": "PUQ2",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Galvan Rodriguez Jose Luis"
+  },
+  {
+   "name": "Francisco Aaron Rivera Torres",
+   "area": "PUQ2",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Galvan Rodriguez Jose Luis"
+  },
+  {
+   "name": "Jose De Jesus Zuniga Flores",
+   "area": "PUQ2",
+   "locs": [
+    "SlpP"
+   ],
+   "manager": "Galvan Rodriguez Jose Luis"
+  },
+  {
+   "name": "Leticia Lizbeth Flores Garcia",
+   "area": "PUQ2",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Garcia Bringas Jose Alejandro"
+  },
+  {
+   "name": "Luis Hernandez Colindres",
+   "area": "PUQ2",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Garcia Bringas Jose Alejandro"
+  },
+  {
+   "name": "Oscar Hernandez Martinez",
+   "area": "PUQ2",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Garcia Bringas Jose Alejandro"
+  },
+  {
+   "name": "Edna Scarlet Lopez Lara",
+   "area": "PUQ2",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Garcia Bringas Jose Alejandro"
+  },
+  {
+   "name": "Marco Antonio Valdes Rivas",
+   "area": "PUQ2",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Garcia Bringas Jose Alejandro"
+  },
+  {
+   "name": "Jose Hernandez Gonzalez",
+   "area": "PUQ2",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Garcia Bringas Jose Alejandro"
+  },
+  {
+   "name": "Cuauhtemoc Ballesteros Sanchez",
+   "area": "PUQ2",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Garcia Bringas Jose Alejandro"
+  },
+  {
+   "name": "Fernando Davila Esteban",
+   "area": "PUQ2",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Garcia Bringas Jose Alejandro"
+  },
+  {
+   "name": "Moises De Jesus Chavez",
+   "area": "PUQ2",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Garcia Bringas Jose Alejandro"
+  },
+  {
+   "name": "Hilario Javier Martinez Velazquez",
+   "area": "PUQ2",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Garcia Bringas Jose Alejandro"
+  },
+  {
+   "name": "Maria Del Carmen Pena Rayon",
+   "area": "PUQ2",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Garcia Bringas Jose Alejandro"
+  },
+  {
+   "name": "Omar Rosales Gonzalez",
+   "area": "PUQ2",
+   "locs": [
+    "TlP"
+   ],
+   "manager": "Garcia Bringas Jose Alejandro"
+  }
+ ]
+}

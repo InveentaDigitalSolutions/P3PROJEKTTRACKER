@@ -1,0 +1,14 @@
+category,milestone,task_name,area,start_offset_days,duration_days,critical_path
+ECR,ECR Kickoff,Requirements Gathering,PPS,0,5,yes
+ECR,ECR Kickoff,Technical Design Review,ENG,5,7,yes
+ECR,Engineering Release Review,Process FMEA Update,QMM,12,5,no
+ECR,ECR Implementation Complete,Validation Testing,QMM,17,10,yes
+CIP,CIP Baseline,Baseline Data Collection,QMM,0,5,no
+CIP,CIP Improvement Gate,Improvement Workshop,MSE,5,3,yes
+CIP,CIP Sustainment Review,Sustainment Audit,QMM,30,4,no
+Path Forward,Path Forward Alignment,Stakeholder Alignment,PPS,0,3,yes
+Path Forward,Path Forward Validation,Process Controls Phase-in,MSE,10,14,yes
+Path Forward,Path Forward Sign-Off,Final Sign-Off,PPS,40,2,no
+New Programs,Program Kickoff,Program Kickoff,PPS,0,3,yes
+New Programs,Prototype Gate,Prototype Build,ENG,15,21,yes
+New Programs,SOP Readiness,SOP Readiness Review,QMM,60,5,yes

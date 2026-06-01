@@ -10,7 +10,7 @@ export default defineConfig({
     proxy: {
       // Proxy Dataverse API calls to avoid CORS issues in local dev
       '/api/data': {
-        target: 'https://org2d99840c.crm.dynamics.com',
+        target: 'https://org91869c7b.crm4.dynamics.com',
         changeOrigin: true,
         secure: true,
       },

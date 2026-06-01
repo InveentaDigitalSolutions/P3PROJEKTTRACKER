@@ -9,7 +9,7 @@
  * POST /api/onProjectCreated
  * Body: { projectName, projectCode, category, objective, siteName,
  *         sponsorExecutive, projectManager, budgetAllocated,
- *         plannedStartDate, plannedEndDate, boschCode, milestones,
+ *         plannedStartDate, plannedEndDate, clientCode, milestones,
  *         creatorName, creatorEmail }
  */
 
@@ -34,7 +34,7 @@ interface ProjectCreatedPayload {
   budgetAllocated: number
   plannedStartDate: string
   plannedEndDate: string
-  boschCode: string
+  clientCode: string
   milestones: { name: string; targetDate: string }[]
   creatorName: string
   creatorEmail: string
@@ -52,7 +52,7 @@ function buildEmailBody(p: ProjectCreatedPayload): string {
     ['Project Name', `<strong>${p.projectName}</strong>`],
     ['Project Code', p.projectCode],
   ]
-  if (p.boschCode) rows.push(['Bosch Code', p.boschCode])
+  if (p.clientCode) rows.push(['Client Code', p.clientCode])
   rows.push(
     ['Category', categoryBadge(p.category)],
     ['Site', p.siteName || '—'],

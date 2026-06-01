@@ -220,7 +220,7 @@
         },
         "pth_boschcode": {
           "type": "string",
-          "title": "Bosch Code",
+          "title": "Client Code",
           "x-ms-dataverse-attribute": "pth_boschcode",
           "x-ms-dataverse-type": "StringType",
           "x-ms-schema-name": "pth_BoschCode",

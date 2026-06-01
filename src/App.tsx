@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { getContext, type IContext } from '@microsoft/power-apps/app'
-import { fetchAllFromDataverse, fetchDataverseUsers, isDataverseConfigured, createProjectInDataverse, deleteProjectInDataverse, updateProjectInDataverse, createMilestoneInDataverse, updateMilestoneInDataverse, deleteMilestoneInDataverse, createActivityInDataverse, updateActivityInDataverse, deleteActivityInDataverse, createResourceInDataverse, updateResourceInDataverse, deleteResourceInDataverse, updateSettingsInDataverse, searchAadUsers, fetchCurrentUserProfile, sendProjectCreationEmail, sendProjectCreationViaFunction, type AadUser, type DataverseUser } from './dataverse'
+import logoImg from '/logo.png?inline'
+import { fetchAllFromDataverse, fetchDataverseUsers, isDataverseConfigured, createProjectInDataverse, deleteProjectInDataverse, updateProjectInDataverse, createMilestoneInDataverse, updateMilestoneInDataverse, deleteMilestoneInDataverse, createActivityInDataverse, updateActivityInDataverse, deleteActivityInDataverse, createResourceInDataverse, updateResourceInDataverse, deleteResourceInDataverse, updateSettingsInDataverse, searchAadUsers, fetchCurrentUserProfile, sendProjectCreationEmail, sendProjectCreationViaFunction, fetchTaskTemplates, createTaskTemplate, updateTaskTemplate, deleteTaskTemplate, type TaskTemplateRow, type AadUser, type DataverseUser } from './dataverse'
 import {
   Bell,
   BellRing,
@@ -73,11 +74,11 @@ type FlowLogEntry = {
 
 type Role = 'PROJECT_MANAGER' | 'MANAGER' | 'DIRECTOR'
 type NavPage = 'overview' | 'workload' | 'reports' | 'alerts' | 'admin' | 'masterData' | 'createProject'
-type MasterDataTab = 'people' | 'customers' | 'suppliers'
+type MasterDataTab = 'people' | 'customers' | 'suppliers' | 'templates'
 type ReportActivityTab = 'upcoming' | 'closed' | 'delayed'
 type ProjectCategory = 'ECR' | 'CIP' | 'Path Forward' | 'New Programs'
 type RygStatus = 'RED' | 'YELLOW' | 'GREEN'
-type ReportTab = 'projectsStatus' | 'prioritization' | 'workloadOverview'
+type ReportTab = 'projectsStatus' | 'taskTracking' | 'prioritization' | 'workloadOverview'
 type ActivityState = 'NOT_STARTED' | 'IN_PROGRESS' | 'DONE'
 
 type Site = { id: string; name: string }
@@ -89,6 +90,10 @@ type Person = {
   initials: string
   role: Role | 'RESOURCE'
   managerId?: string
+  area?: string
+  location?: string[]
+  resourceKind?: string
+  weeklyCapacity?: number
 }
 
 
@@ -97,7 +102,7 @@ type Project = {
   id: string
   projectCode: string
   name: string
-  boschCode: string
+  clientCode: string
   category: ProjectCategory
   budgetAllocated: number
   siteIds: string[]
@@ -108,6 +113,7 @@ type Project = {
   objective: string
   plannedStartDate: string
   plannedEndDate: string
+  projectType?: string
 }
 
 type Milestone = {
@@ -129,6 +135,8 @@ type Activity = {
   doneDate?: string
   state: ActivityState
   criticalPath: boolean
+  responsible?: string
+  workloadPct?: number | null
 }
 
 type Dependency = {
@@ -180,8 +188,9 @@ type AppState = {
 
 type NewProjectForm = {
   name: string
-  boschCode: string
+  clientCode: string
   category: ProjectCategory
+  projectType: string
   budgetAllocated: number
   siteIds: string[]
   sponsorExecutiveId: string
@@ -195,7 +204,7 @@ type NewProjectForm = {
 
 type ProjectOverviewForm = {
   name: string
-  boschCode: string
+  clientCode: string
   category: ProjectCategory
   budgetAllocated: number
   siteIds: string[]
@@ -245,28 +254,73 @@ const ROLE_LABEL: Record<Role, string> = {
   DIRECTOR: 'Director',
 }
 
-const CATEGORY_MILESTONES: Record<ProjectCategory, Array<{ name: string; offset: number }>> = {
+/**
+ * ── PROJECT TASK STANDARD ──────────────────────────────────────────────────
+ * Per-category standard breakdown: each category has phase milestones, and
+ * each milestone has standard tasks. Offsets are in DAYS relative to the
+ * project's planned start date. Generated tasks start UNASSIGNED — the manager
+ * assigns each to a specific resource afterward.
+ *
+ * ⚠️ PLACEHOLDER CONTENT — replace with the real company standard
+ *    (source: data/task-template.csv).
+ */
+type TaskTemplate = { name: string; area: string; startOffset: number; duration: number; criticalPath: boolean }
+type MilestoneTemplate = { name: string; offset: number; tasks: TaskTemplate[] }
+
+const CATEGORY_TEMPLATE: Record<ProjectCategory, MilestoneTemplate[]> = {
   ECR: [
-    { name: 'ECR Kickoff', offset: -21 },
-    { name: 'Engineering Release Review', offset: 7 },
-    { name: 'ECR Implementation Complete', offset: 42 },
+    { name: 'ECR Kickoff', offset: 0, tasks: [
+      { name: 'Requirements Gathering', area: 'PPS', startOffset: 0, duration: 5, criticalPath: true },
+      { name: 'Technical Design Review', area: 'ENG', startOffset: 5, duration: 7, criticalPath: true },
+    ] },
+    { name: 'Engineering Release Review', offset: 17, tasks: [
+      { name: 'Process FMEA Update', area: 'QMM', startOffset: 12, duration: 5, criticalPath: false },
+    ] },
+    { name: 'ECR Implementation Complete', offset: 42, tasks: [
+      { name: 'Validation Testing', area: 'QMM', startOffset: 17, duration: 10, criticalPath: true },
+    ] },
   ],
   CIP: [
-    { name: 'CIP Baseline', offset: -14 },
-    { name: 'CIP Improvement Gate', offset: 10 },
-    { name: 'CIP Sustainment Review', offset: 35 },
+    { name: 'CIP Baseline', offset: 0, tasks: [
+      { name: 'Baseline Data Collection', area: 'QMM', startOffset: 0, duration: 5, criticalPath: false },
+    ] },
+    { name: 'CIP Improvement Gate', offset: 10, tasks: [
+      { name: 'Improvement Workshop', area: 'MSE', startOffset: 5, duration: 3, criticalPath: true },
+    ] },
+    { name: 'CIP Sustainment Review', offset: 35, tasks: [
+      { name: 'Sustainment Audit', area: 'QMM', startOffset: 30, duration: 4, criticalPath: false },
+    ] },
   ],
   'Path Forward': [
-    { name: 'Path Forward Alignment', offset: -10 },
-    { name: 'Path Forward Validation', offset: 14 },
-    { name: 'Path Forward Sign-Off', offset: 45 },
+    { name: 'Path Forward Alignment', offset: 0, tasks: [
+      { name: 'Stakeholder Alignment', area: 'PPS', startOffset: 0, duration: 3, criticalPath: true },
+    ] },
+    { name: 'Path Forward Validation', offset: 14, tasks: [
+      { name: 'Process Controls Phase-in', area: 'MSE', startOffset: 10, duration: 14, criticalPath: true },
+    ] },
+    { name: 'Path Forward Sign-Off', offset: 45, tasks: [
+      { name: 'Final Sign-Off', area: 'PPS', startOffset: 40, duration: 2, criticalPath: false },
+    ] },
   ],
   'New Programs': [
-    { name: 'Program Kickoff', offset: -7 },
-    { name: 'Prototype Gate', offset: 21 },
-    { name: 'SOP Readiness', offset: 63 },
+    { name: 'Program Kickoff', offset: 0, tasks: [
+      { name: 'Program Kickoff', area: 'PPS', startOffset: 0, duration: 3, criticalPath: true },
+    ] },
+    { name: 'Prototype Gate', offset: 21, tasks: [
+      { name: 'Prototype Build', area: 'ENG', startOffset: 15, duration: 21, criticalPath: true },
+    ] },
+    { name: 'SOP Readiness', offset: 63, tasks: [
+      { name: 'SOP Readiness Review', area: 'QMM', startOffset: 60, duration: 5, criticalPath: true },
+    ] },
   ],
 }
+
+// Derived: milestone names + offsets only (keeps existing references working)
+const CATEGORY_MILESTONES: Record<ProjectCategory, Array<{ name: string; offset: number }>> =
+  Object.fromEntries(
+    (Object.entries(CATEGORY_TEMPLATE) as Array<[ProjectCategory, MilestoneTemplate[]]>)
+      .map(([cat, ms]) => [cat, ms.map((m) => ({ name: m.name, offset: m.offset }))]),
+  ) as Record<ProjectCategory, Array<{ name: string; offset: number }>>
 
 const sites: Site[] = [
   { id: 'site_tca', name: 'TCA' },
@@ -290,6 +344,9 @@ const INITIAL_CLIENTS: Partner[] = [
   { id: 'client_gm', name: 'GM' },
   { id: 'client_vw', name: 'VW' },
   { id: 'client_toyota', name: 'Toyota' },
+  { id: 'client_stellantis', name: 'Stellantis' },
+  { id: 'client_bmw', name: 'BMW' },
+  { id: 'client_mercedes', name: 'Mercedes-Benz' },
   { id: 'client_na', name: 'Not Applicable' },
 ]
 
@@ -297,6 +354,9 @@ const INITIAL_SUPPLIERS: Partner[] = [
   { id: 'supplier_rbcb', name: 'RBCB' },
   { id: 'supplier_dmp', name: 'DMP' },
   { id: 'supplier_a', name: 'Supplier A' },
+  { id: 'supplier_conti', name: 'Continental' },
+  { id: 'supplier_bosch', name: 'Bosch' },
+  { id: 'supplier_zf', name: 'ZF Friedrichshafen' },
   { id: 'supplier_na', name: 'Not Applicable' },
 ]
 
@@ -307,12 +367,17 @@ const INITIAL_PEOPLE: Person[] = [
   { id: 'u_pm_1', name: 'Rafael Gomez', initials: 'RG', role: 'PROJECT_MANAGER', managerId: 'u_mgr_1' },
   { id: 'u_pm_2', name: 'Sven Maurer', initials: 'SM', role: 'PROJECT_MANAGER', managerId: 'u_mgr_1' },
   { id: 'u_pm_3', name: 'Clara Rossi', initials: 'CR', role: 'PROJECT_MANAGER', managerId: 'u_mgr_2' },
+  { id: 'u_pm_4', name: 'Jan Krüger', initials: 'JK', role: 'PROJECT_MANAGER', managerId: 'u_mgr_2' },
   { id: 'u_res_1', name: 'Nina Becker', initials: 'NB', role: 'RESOURCE', managerId: 'u_mgr_1' },
   { id: 'u_res_2', name: 'Viktor Hahn', initials: 'VH', role: 'RESOURCE', managerId: 'u_mgr_1' },
   { id: 'u_res_3', name: 'Iris Weber', initials: 'IW', role: 'RESOURCE', managerId: 'u_mgr_1' },
   { id: 'u_res_4', name: 'Pablo Diaz', initials: 'PD', role: 'RESOURCE', managerId: 'u_mgr_2' },
   { id: 'u_res_5', name: 'Elena Costa', initials: 'EC', role: 'RESOURCE', managerId: 'u_mgr_2' },
   { id: 'u_res_6', name: 'Marco Lenz', initials: 'ML', role: 'RESOURCE', managerId: 'u_mgr_2' },
+  { id: 'u_res_7', name: 'Annika Braun', initials: 'AB', role: 'RESOURCE', managerId: 'u_mgr_1' },
+  { id: 'u_res_8', name: 'Felix Hartmann', initials: 'FH', role: 'RESOURCE', managerId: 'u_mgr_1' },
+  { id: 'u_res_9', name: 'Sofia Martín', initials: 'SM', role: 'RESOURCE', managerId: 'u_mgr_2' },
+  { id: 'u_res_10', name: 'Lukas Richter', initials: 'LR', role: 'RESOURCE', managerId: 'u_mgr_2' },
 ]
 
 function uid(prefix: string): string {
@@ -399,6 +464,31 @@ function rygFromDueDate(dueISO: string, warningDays: number): RygStatus {
   return 'GREEN'
 }
 
+/** Buffer (in days) a task should ideally finish ahead of its due date. */
+const STATUS_BUFFER_DAYS = 14 // 2 weeks
+
+/**
+ * Completion-vs-buffer status for a single task.
+ *  - Done:   GREEN if finished on/before (due − buffer); YELLOW if finished by
+ *            the due date (inside the buffer window); RED if finished late.
+ *  - Open:   RED if already past due; YELLOW if due within the buffer window
+ *            (at risk of missing the buffer); GREEN otherwise.
+ */
+function rygForActivity(act: { endDate: string; doneDate?: string }, bufferDays = STATUS_BUFFER_DAYS): RygStatus {
+  const due = act.endDate
+  if (!due) return 'GREEN'
+  if (act.doneDate) {
+    const slack = dayDiff(act.doneDate, due) // due − done; positive = finished early
+    if (slack >= bufferDays) return 'GREEN'
+    if (slack >= 0) return 'YELLOW'
+    return 'RED'
+  }
+  const daysToDue = dayDiff(todayISO(), due) // due − today
+  if (daysToDue < 0) return 'RED'
+  if (daysToDue <= bufferDays) return 'YELLOW'
+  return 'GREEN'
+}
+
 function rankStatus(status: RygStatus): number {
   if (status === 'RED') return 0
   if (status === 'YELLOW') return 1
@@ -411,7 +501,7 @@ function generateInitialState(): AppState {
       id: 'p_1',
       projectCode: nextProjectCode(['site_tca']),
       name: 'Assembly Line CIP – TCA Station 12',
-      boschCode: 'BC-001',
+      clientCode: 'BC-001',
       category: 'CIP',
       budgetAllocated: 120000,
       siteIds: ['site_tca'],
@@ -427,7 +517,7 @@ function generateInitialState(): AppState {
       id: 'p_2',
       projectCode: nextProjectCode(['site_slp']),
       name: 'ESC Sensor New Program',
-      boschCode: 'BC-002',
+      clientCode: 'BC-002',
       category: 'New Programs',
       budgetAllocated: 250000,
       siteIds: ['site_slp'],
@@ -443,7 +533,7 @@ function generateInitialState(): AppState {
       id: 'p_3',
       projectCode: nextProjectCode(['site_tca', 'site_slp']),
       name: 'Brake Caliper Path Forward',
-      boschCode: 'BC-003',
+      clientCode: 'BC-003',
       category: 'Path Forward',
       budgetAllocated: 80000,
       siteIds: ['site_tca', 'site_slp'],
@@ -459,7 +549,7 @@ function generateInitialState(): AppState {
       id: 'p_4',
       projectCode: nextProjectCode(['site_slp']),
       name: 'ABS Module ECR',
-      boschCode: 'BC-004',
+      clientCode: 'BC-004',
       category: 'ECR',
       budgetAllocated: 65000,
       siteIds: ['site_slp'],
@@ -475,7 +565,7 @@ function generateInitialState(): AppState {
       id: 'p_5',
       projectCode: nextProjectCode(['site_tca']),
       name: 'Sparkplugs Manufacturing CIP',
-      boschCode: 'BC-005',
+      clientCode: 'BC-005',
       category: 'CIP',
       budgetAllocated: 95000,
       siteIds: ['site_tca'],
@@ -491,7 +581,7 @@ function generateInitialState(): AppState {
       id: 'p_6',
       projectCode: nextProjectCode(['site_tca', 'site_slp']),
       name: 'ADAS Path Forward – Radar Cell',
-      boschCode: 'BC-006',
+      clientCode: 'BC-006',
       category: 'Path Forward',
       budgetAllocated: 180000,
       siteIds: ['site_tca', 'site_slp'],
@@ -502,6 +592,102 @@ function generateInitialState(): AppState {
       objective: 'Recover ADAS radar cell throughput and delivery adherence.',
       plannedStartDate: addDays(todayISO(), -28),
       plannedEndDate: addDays(todayISO(), 70),
+    },
+    {
+      id: 'p_7',
+      projectCode: nextProjectCode(['site_tca']),
+      name: 'Steering Column ECR – Phase 2',
+      clientCode: 'BC-007',
+      category: 'ECR',
+      budgetAllocated: 72000,
+      siteIds: ['site_tca'],
+      sponsorExecutiveId: 'u_dir_1',
+      projectManagerId: 'u_pm_4',
+      clientIds: ['client_bmw'],
+      supplierIds: ['supplier_zf'],
+      objective: 'Implement revised steering column per updated BMW specification.',
+      plannedStartDate: addDays(todayISO(), -5),
+      plannedEndDate: addDays(todayISO(), 55),
+    },
+    {
+      id: 'p_8',
+      projectCode: nextProjectCode(['site_slp']),
+      name: 'Battery Pack New Program – Gen2',
+      clientCode: 'BC-008',
+      category: 'New Programs',
+      budgetAllocated: 420000,
+      siteIds: ['site_slp'],
+      sponsorExecutiveId: 'u_dir_1',
+      projectManagerId: 'u_pm_1',
+      clientIds: ['client_stellantis'],
+      supplierIds: ['supplier_conti', 'supplier_bosch'],
+      objective: 'Launch Gen2 battery pack assembly for Stellantis EV platform.',
+      plannedStartDate: addDays(todayISO(), -35),
+      plannedEndDate: addDays(todayISO(), 120),
+    },
+    {
+      id: 'p_9',
+      projectCode: nextProjectCode(['site_tca']),
+      name: 'Wiring Harness CIP – Defect Reduction',
+      clientCode: 'BC-009',
+      category: 'CIP',
+      budgetAllocated: 55000,
+      siteIds: ['site_tca'],
+      sponsorExecutiveId: 'u_dir_1',
+      projectManagerId: 'u_pm_2',
+      clientIds: ['client_mercedes'],
+      supplierIds: ['supplier_dmp'],
+      objective: 'Reduce wiring harness defect rate from 3.2% to <1% via poke-yoke.',
+      plannedStartDate: addDays(todayISO(), -18),
+      plannedEndDate: addDays(todayISO(), 40),
+    },
+    {
+      id: 'p_10',
+      projectCode: nextProjectCode(['site_tca', 'site_slp']),
+      name: 'EV Drivetrain Path Forward',
+      clientCode: 'BC-010',
+      category: 'Path Forward',
+      budgetAllocated: 310000,
+      siteIds: ['site_tca', 'site_slp'],
+      sponsorExecutiveId: 'u_dir_1',
+      projectManagerId: 'u_pm_3',
+      clientIds: ['client_vw', 'client_bmw'],
+      supplierIds: ['supplier_zf', 'supplier_bosch'],
+      objective: 'Stabilize EV drivetrain test throughput and reduce rework loops.',
+      plannedStartDate: addDays(todayISO(), -42),
+      plannedEndDate: addDays(todayISO(), 85),
+    },
+    {
+      id: 'p_11',
+      projectCode: nextProjectCode(['site_slp']),
+      name: 'Fuel Injector ECR – Emission Compliance',
+      clientCode: 'BC-011',
+      category: 'ECR',
+      budgetAllocated: 88000,
+      siteIds: ['site_slp'],
+      sponsorExecutiveId: 'u_dir_1',
+      projectManagerId: 'u_pm_4',
+      clientIds: ['client_ford', 'client_gm'],
+      supplierIds: ['supplier_rbcb'],
+      objective: 'Re-engineer fuel injector nozzle to meet Euro 7 emission limits.',
+      plannedStartDate: addDays(todayISO(), -12),
+      plannedEndDate: addDays(todayISO(), 65),
+    },
+    {
+      id: 'p_12',
+      projectCode: nextProjectCode(['site_tca']),
+      name: 'Paint Shop CIP – VOC Reduction',
+      clientCode: 'BC-012',
+      category: 'CIP',
+      budgetAllocated: 145000,
+      siteIds: ['site_tca'],
+      sponsorExecutiveId: 'u_dir_1',
+      projectManagerId: 'u_pm_1',
+      clientIds: ['client_toyota', 'client_stellantis'],
+      supplierIds: ['supplier_a', 'supplier_conti'],
+      objective: 'Cut VOC emissions in paint shop by 25% while maintaining finish quality.',
+      plannedStartDate: addDays(todayISO(), -20),
+      plannedEndDate: addDays(todayISO(), 75),
     },
   ]
 
@@ -517,13 +703,20 @@ function generateInitialState(): AppState {
     }),
   )
 
-  const activityOwners = ['u_res_1', 'u_res_2', 'u_res_3', 'u_res_4', 'u_res_5', 'u_res_6']
+  const activityOwners = ['u_res_1', 'u_res_2', 'u_res_3', 'u_res_4', 'u_res_5', 'u_res_6', 'u_res_7', 'u_res_8', 'u_res_9', 'u_res_10']
+  const activityTemplates = [
+    'Requirements Gathering', 'Technical Design Review', 'Prototype Build',
+    'Validation Testing', 'Process FMEA Update', 'Tooling Procurement',
+    'Pilot Run Coordination', 'Supplier Qualification', 'Documentation Package',
+    'Customer Sample Submission',
+  ]
   const activities: Activity[] = []
 
   projects.forEach((project, projectIdx) => {
     const pMilestones = milestones.filter((ms) => ms.projectId === project.id)
-    const doneThreshold = [2, 4, 3, 1, 5, 3][projectIdx % 6] // varied per project
-    for (let i = 0; i < 6; i += 1) {
+    const doneThreshold = [2, 4, 3, 1, 5, 3, 4, 2, 3, 5, 1, 4][projectIdx % 12]
+    const actCount = 6 + (projectIdx % 4) // 6-9 activities per project for variety
+    for (let i = 0; i < actCount; i += 1) {
       const start = addDays(todayISO(), -18 + i * 8 - projectIdx * 2)
       const end = addDays(start, 7 + (i % 3))
       const isDone = i < doneThreshold
@@ -535,7 +728,7 @@ function generateInitialState(): AppState {
         id: uid('act'),
         projectId: project.id,
         milestoneId: pMilestones[i % pMilestones.length]?.id,
-        name: `${project.name.split(' ')[0]} Activity ${i + 1}`,
+        name: activityTemplates[(projectIdx + i) % activityTemplates.length],
         ownerId: activityOwners[(projectIdx + i) % activityOwners.length],
         startDate: start,
         endDate,
@@ -599,9 +792,65 @@ function generateInitialState(): AppState {
     },
     {
       id: uid('ntf'),
+      createdAt: todayISO(),
+      severity: 'RED',
+      message: 'Battery Pack New Program – Gen2: Prototype Build is 5 days overdue.',
+      recipients: ['PROJECT_MANAGER', 'MANAGER', 'DIRECTOR'],
+    },
+    {
+      id: uid('ntf'),
       createdAt: addDays(todayISO(), -1),
       severity: 'YELLOW',
       message: '7 activities are due within the warning threshold.',
+      recipients: ['PROJECT_MANAGER', 'MANAGER', 'DIRECTOR'],
+    },
+    {
+      id: uid('ntf'),
+      createdAt: addDays(todayISO(), -1),
+      severity: 'YELLOW',
+      message: 'Viktor Hahn is at 105% utilization this week (CW 16).',
+      recipients: ['MANAGER', 'DIRECTOR'],
+    },
+    {
+      id: uid('ntf'),
+      createdAt: addDays(todayISO(), -2),
+      severity: 'GREEN',
+      message: 'Assembly Line CIP – TCA Station 12: CIP Improvement Gate completed on time.',
+      recipients: ['PROJECT_MANAGER', 'MANAGER'],
+    },
+    {
+      id: uid('ntf'),
+      createdAt: addDays(todayISO(), -3),
+      severity: 'RED',
+      message: 'EV Drivetrain Path Forward: critical path changed — Tooling Procurement now blocking.',
+      recipients: ['PROJECT_MANAGER', 'MANAGER', 'DIRECTOR'],
+    },
+    {
+      id: uid('ntf'),
+      createdAt: addDays(todayISO(), -4),
+      severity: 'YELLOW',
+      message: 'Annika Braun approaching 90% capacity next week (CW 17).',
+      recipients: ['MANAGER'],
+    },
+    {
+      id: uid('ntf'),
+      createdAt: addDays(todayISO(), -5),
+      severity: 'GREEN',
+      message: 'Sparkplugs Manufacturing CIP: Supplier Qualification completed ahead of schedule.',
+      recipients: ['PROJECT_MANAGER'],
+    },
+    {
+      id: uid('ntf'),
+      createdAt: addDays(todayISO(), -6),
+      severity: 'YELLOW',
+      message: 'Steering Column ECR – Phase 2: Technical Design Review due in 3 days.',
+      recipients: ['PROJECT_MANAGER', 'MANAGER'],
+    },
+    {
+      id: uid('ntf'),
+      createdAt: addDays(todayISO(), -7),
+      severity: 'RED',
+      message: 'Fuel Injector ECR: Validation Testing blocked — awaiting supplier nozzle samples.',
       recipients: ['PROJECT_MANAGER', 'MANAGER', 'DIRECTOR'],
     },
   ]
@@ -627,11 +876,15 @@ function generateInitialState(): AppState {
   }
 }
 
+/**
+ * Project status = worst task status under the completion-vs-buffer rule.
+ * A task is rated by whether it's (projected to be) done a buffer ahead of due.
+ */
 function seededProjectStatus(state: AppState, projectId: string): RygStatus {
   const projectActivities = state.activities.filter((a) => a.projectId === projectId)
   if (projectActivities.length === 0) return 'GREEN'
 
-  const statuses = projectActivities.map((activity) => rygFromDueDate(activity.endDate, state.settings.warningDaysThreshold))
+  const statuses = projectActivities.map((activity) => rygForActivity(activity))
   if (statuses.includes('RED')) return 'RED'
   if (statuses.includes('YELLOW')) return 'YELLOW'
   return 'GREEN'
@@ -698,8 +951,8 @@ function activityStateBadge(actState: ActivityState): ReactElement {
   if (actState === 'DONE')
     return <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/8 px-2.5 py-1 text-[11px] font-medium text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">Complete</span>
   if (actState === 'IN_PROGRESS')
-    return <span className="inline-flex items-center gap-1.5 rounded-lg bg-bosch-blue/8 px-2.5 py-1 text-[11px] font-medium text-bosch-blue dark:bg-bosch-blue/15">In Progress</span>
-  return <span className="inline-flex items-center gap-1.5 rounded-lg bg-bosch-muted/8 px-2.5 py-1 text-[11px] font-medium text-bosch-muted dark:bg-bosch-muted/15">Open</span>
+    return <span className="inline-flex items-center gap-1.5 rounded-lg bg-pth-blue/8 px-2.5 py-1 text-[11px] font-medium text-pth-blue dark:bg-pth-blue/15">In Progress</span>
+  return <span className="inline-flex items-center gap-1.5 rounded-lg bg-pth-muted/8 px-2.5 py-1 text-[11px] font-medium text-pth-muted dark:bg-pth-muted/15">Open</span>
 }
 
 function categoryBadge(cat: ProjectCategory): ReactElement {
@@ -707,7 +960,7 @@ function categoryBadge(cat: ProjectCategory): ReactElement {
     ECR: 'bg-amber-500/8 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400',
     CIP: 'bg-red-500/8 text-red-600 dark:bg-red-500/15 dark:text-red-400',
     'Path Forward': 'bg-emerald-500/8 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400',
-    'New Programs': 'bg-bosch-blue/8 text-bosch-blue dark:bg-bosch-blue/15',
+    'New Programs': 'bg-pth-blue/8 text-pth-blue dark:bg-pth-blue/15',
   }
   return <span className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${colours[cat]}`}>{cat}</span>
 }
@@ -768,6 +1021,9 @@ export default function App(): ReactElement {
   const [projectSearch, setProjectSearch] = useState('')
   const [workloadWeekOffset, setWorkloadWeekOffset] = useState(0)
   const [workloadSearch, setWorkloadSearch] = useState('')
+  const [workloadView, setWorkloadView] = useState<'cards' | 'list'>('cards')
+  const [workloadSiteFilter, setWorkloadSiteFilter] = useState<'all' | 'SlpP' | 'TlP'>('all')
+  const [workloadAreaFilter, setWorkloadAreaFilter] = useState<string>('all')
   const [expandedRiskProjectId, setExpandedRiskProjectId] = useState<string | null>(null)
   const [milestoneDialogOpen, setMilestoneDialogOpen] = useState(false)
   const [milestoneEditId, setMilestoneEditId] = useState<string | null>(null)
@@ -781,6 +1037,14 @@ export default function App(): ReactElement {
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null)
   const [expandedWorkloadPersonId, setExpandedWorkloadPersonId] = useState<string | null>(null)
   const [masterDataTab, setMasterDataTab] = useState<MasterDataTab>('people')
+  const [teamSiteFilter, setTeamSiteFilter] = useState<'all' | 'SlpP' | 'TlP'>('all')
+  const [teamAreaFilter, setTeamAreaFilter] = useState<string>('all')
+  // ── Task template editor ──
+  const [taskTemplates, setTaskTemplates] = useState<TaskTemplateRow[]>([])
+  const [ttType, setTtType] = useState<string>('')
+  const [ttDialogOpen, setTtDialogOpen] = useState(false)
+  const [ttEditId, setTtEditId] = useState<string | null>(null)
+  const [ttForm, setTtForm] = useState<{ task: string; responsible: string; sequence: number; leadtimeWeeks: string; workloadPct: string; inputs: string }>({ task: '', responsible: '', sequence: 0, leadtimeWeeks: '', workloadPct: '', inputs: '' })
   const [reportProjectId, setReportProjectId] = useState<string | null>(null)
   const [reportActivityTab, setReportActivityTab] = useState<ReportActivityTab>('upcoming')
   const [rptSearch, setRptSearch] = useState('')
@@ -788,11 +1052,16 @@ export default function App(): ReactElement {
   const [rptStatus, setRptStatus] = useState<string>('all')
   const [rptManager, setRptManager] = useState<string>('all')
   const [rptSite, setRptSite] = useState<string>('all')
+  // ── Task Tracking (preventive) filters ──
+  const [ttArea, setTtArea] = useState<string>('all')
+  const [ttLoc, setTtLoc] = useState<string>('all')
+  const [ttProjType, setTtProjType] = useState<string>('all')
+  const [ttRisk, setTtRisk] = useState<string>('atrisk')
   const [dragPersonId, setDragPersonId] = useState<string | null>(null)
   const [dropTargetId, setDropTargetId] = useState<string | null>(null)
   const [mdDialogOpen, setMdDialogOpen] = useState(false)
   const [mdEditId, setMdEditId] = useState<string | null>(null)
-  const [mdForm, setMdForm] = useState<{ name: string; initials: string; role: Person['role']; managerId: string }>({ name: '', initials: '', role: 'RESOURCE', managerId: '' })
+  const [mdForm, setMdForm] = useState<{ name: string; initials: string; role: Person['role']; managerId: string; area: string; location: string[]; kind: string; capacity: number }>({ name: '', initials: '', role: 'RESOURCE', managerId: '', area: '', location: [], kind: 'Associate', capacity: 40 })
   const [aadResults, setAadResults] = useState<AadUser[]>([])
   const [aadLoading, setAadLoading] = useState(false)
   const [aadQuery, setAadQuery] = useState('')
@@ -807,7 +1076,15 @@ export default function App(): ReactElement {
     { id: 'flow-4', name: 'Project Created Notification', description: 'Sends an email to the creator with all project details when a new project is created', triggerType: 'project_created', enabled: true },
   ])
   const [paWebhookUrl, setPaWebhookUrl] = useState('https://prod-00.westus.logic.azure.com:443/workflows/94283d50-c20e...')
-  const [paFlowLog, setPaFlowLog] = useState<FlowLogEntry[]>([])
+  const [paFlowLog, setPaFlowLog] = useState<FlowLogEntry[]>([
+    { id: 'flog-1', flowName: 'Overdue Milestones Alert', triggeredAt: addDays(todayISO(), -1) + 'T08:00:00Z', status: 'success', payload: '{"milestones":2,"recipients":["u_pm_1","u_pm_3"],"channel":"Teams"}' },
+    { id: 'flog-2', flowName: 'Delayed Activities Digest', triggeredAt: addDays(todayISO(), -1) + 'T07:30:00Z', status: 'success', payload: '{"activities":5,"digest":"daily","sent_to":"pm-group@p3-group.com"}' },
+    { id: 'flog-3', flowName: 'Workload Threshold Breach', triggeredAt: addDays(todayISO(), -2) + 'T14:15:00Z', status: 'failed', payload: '{"error":"Webhook URL unreachable — 503 Service Unavailable"}' },
+    { id: 'flog-4', flowName: 'Overdue Milestones Alert', triggeredAt: addDays(todayISO(), -3) + 'T08:00:00Z', status: 'success', payload: '{"milestones":1,"recipients":["u_pm_2"],"channel":"Teams"}' },
+    { id: 'flog-5', flowName: 'Project Created Notification', triggeredAt: addDays(todayISO(), -5) + 'T11:22:00Z', status: 'success', payload: '{"project":"Paint Shop CIP – VOC Reduction","creator":"u_pm_1","email":"rafael.gomez@p3-group.com"}' },
+    { id: 'flog-6', flowName: 'Delayed Activities Digest', triggeredAt: addDays(todayISO(), -6) + 'T07:30:00Z', status: 'success', payload: '{"activities":3,"digest":"daily","sent_to":"pm-group@p3-group.com"}' },
+    { id: 'flog-7', flowName: 'Workload Threshold Breach', triggeredAt: addDays(todayISO(), -7) + 'T10:05:00Z', status: 'success', payload: '{"resource":"Viktor Hahn","utilization":"108%","week":"CW 15","channel":"Teams"}' },
+  ])
   const [paTestingFlowId, setPaTestingFlowId] = useState<string | null>(null)
 
   const [darkMode, setDarkMode] = useState(() => {
@@ -827,11 +1104,15 @@ export default function App(): ReactElement {
     if (!isDataverseConfigured()) return
     setDvLoading(true)
     try {
-      // Fetch Dataverse users in parallel with main data
-      const [dv, users] = await Promise.all([
+      // Fetch Dataverse users in parallel with main data.
+      // Isolate each call so a failure (e.g. systemusers 403) can't reject the
+      // whole load and drop the projects/activities.
+      const [dvRes, usersRes] = await Promise.allSettled([
         fetchAllFromDataverse(),
         fetchDataverseUsers(),
       ])
+      const dv = dvRes.status === 'fulfilled' ? dvRes.value : null
+      const users = usersRes.status === 'fulfilled' ? usersRes.value : []
       console.log('[APP] fetchAllFromDataverse returned:', dv
         ? `projects=${dv.projects.length}, milestones=${dv.milestones.length}, activities=${dv.activities.length}, resources=${dv.resources.length}, assignments=${dv.assignments.length}`
         : 'NULL')
@@ -861,6 +1142,11 @@ export default function App(): ReactElement {
           name: r.name,
           initials: r.initials,
           role: 'RESOURCE' as const,
+          managerId: r.managerId,
+          area: r.area,
+          location: r.location,
+          resourceKind: r.resourceKind,
+          weeklyCapacity: r.weeklyCapacity,
         })),
       ]
 
@@ -873,12 +1159,14 @@ export default function App(): ReactElement {
           projectId: a.projectId,
           milestoneId: a.milestoneId,
           name: a.name,
-          ownerId: matched?.id ?? (dv.resources.length > 0 ? dv.resources[0].id : 'u_res_1'),
+          ownerId: matched?.id ?? '',
           startDate: a.startDate,
           endDate: a.endDate,
           doneDate: a.doneDate,
           state: a.state,
           criticalPath: a.criticalPath,
+          responsible: (a as { responsible?: string }).responsible ?? '',
+          workloadPct: (a as { workloadPct?: number | null }).workloadPct ?? null,
         }
       })
 
@@ -933,7 +1221,7 @@ export default function App(): ReactElement {
           id: p.id,
           projectCode: p.projectIdExternal || nextProjectCode(p.siteId ? [p.siteId] : []),
           name: p.name,
-          boschCode: p.boschCode || '',
+          clientCode: p.clientCode || '',
           category: p.category,
           budgetAllocated: p.budgetAllocated || 0,
           siteIds: p.siteId ? [p.siteId] : [],
@@ -944,6 +1232,7 @@ export default function App(): ReactElement {
           objective: p.objective,
           plannedStartDate: p.plannedStartDate || todayISO(),
           plannedEndDate: p.plannedEndDate || addDays(todayISO(), 30),
+          projectType: (p as { projectType?: string }).projectType ?? '',
         }}),
         milestones: dv.milestones.map((m) => ({
           id: m.id,
@@ -967,6 +1256,16 @@ export default function App(): ReactElement {
   }, [])
 
   useEffect(() => { loadFromDataverse() }, [loadFromDataverse])
+
+  // Load editable task templates from Dataverse
+  const reloadTaskTemplates = useCallback(async () => {
+    try {
+      const rows = await fetchTaskTemplates()
+      setTaskTemplates(rows)
+      setTtType((cur) => cur || rows[0]?.projectType || '')
+    } catch (err) { console.warn('[APP] task templates load failed:', err) }
+  }, [])
+  useEffect(() => { reloadTaskTemplates() }, [reloadTaskTemplates])
 
   /* ── Power Apps context: retrieve signed-in user ── */
   useEffect(() => {
@@ -1291,7 +1590,7 @@ export default function App(): ReactElement {
   const overviewForm = useForm<ProjectOverviewForm>({
     values: {
       name: selectedProject?.name ?? '',
-      boschCode: selectedProject?.boschCode ?? '',
+      clientCode: selectedProject?.clientCode ?? '',
       category: selectedProject?.category ?? 'CIP',
       budgetAllocated: selectedProject?.budgetAllocated ?? 0,
       siteIds: selectedProject?.siteIds ?? [],
@@ -1325,7 +1624,7 @@ export default function App(): ReactElement {
     if (!selectedProject) return
     overviewForm.reset({
       name: selectedProject.name,
-      boschCode: selectedProject.boschCode,
+      clientCode: selectedProject.clientCode,
       category: selectedProject.category,
       budgetAllocated: selectedProject.budgetAllocated,
       siteIds: selectedProject.siteIds,
@@ -1342,8 +1641,9 @@ export default function App(): ReactElement {
   const newProjectForm = useForm<NewProjectForm>({
     defaultValues: {
       name: '',
-      boschCode: '',
+      clientCode: '',
       category: 'CIP',
+      projectType: '',
       budgetAllocated: 0,
       siteIds: [],
       sponsorExecutiveId: people.find((p) => p.role === 'DIRECTOR')?.id ?? '',
@@ -1369,7 +1669,7 @@ export default function App(): ReactElement {
     if (isDataverseConfigured()) {
       dvId = await createProjectInDataverse({
         name: values.name,
-        boschCode: values.boschCode,
+        clientCode: values.clientCode,
         category: values.category,
         budgetAllocated: values.budgetAllocated,
         site: values.siteIds[0] ?? 'site_tca',
@@ -1379,6 +1679,7 @@ export default function App(): ReactElement {
         plannedStartDate: values.plannedStartDate,
         plannedEndDate: values.plannedEndDate,
         projectIdExternal: projectCode,
+        projectType: values.projectType || undefined,
       })
     }
 
@@ -1386,7 +1687,7 @@ export default function App(): ReactElement {
       id: dvId ?? uid('proj'),
       projectCode,
       name: values.name,
-      boschCode: values.boschCode,
+      clientCode: values.clientCode,
       category: values.category,
       budgetAllocated: values.budgetAllocated,
       siteIds: values.siteIds,
@@ -1400,6 +1701,38 @@ export default function App(): ReactElement {
     }
 
     const autoMs = makeAutoMilestones(newProject.id, values.category)
+
+    // ── Generate standard tasks from the selected Project Type template ──
+    // Tasks are dated by cumulative leadtime (weeks) from the planned start,
+    // start UNASSIGNED, and carry responsible / workload / inputs. They are
+    // created directly under the project (no milestone) per the flat-list model.
+    const templateTasks = values.projectType
+      ? taskTemplates.filter((t) => t.projectType === values.projectType).sort((a, b) => a.sequence - b.sequence)
+      : []
+    const genActivities: Activity[] = []
+    {
+      let cursor = values.plannedStartDate || todayISO()
+      for (const t of templateTasks) {
+        const weeks = t.leadtimeWeeks && t.leadtimeWeeks > 0 ? t.leadtimeWeeks : 1
+        const start = cursor
+        const end = addDays(start, weeks * 7)
+        genActivities.push({
+          id: uid('act'),
+          projectId: newProject.id,
+          name: t.task,
+          ownerId: '',                       // UNASSIGNED — manager assigns later
+          startDate: start,
+          endDate: end,
+          state: 'NOT_STARTED' as ActivityState,
+          criticalPath: false,
+          _responsible: t.responsible,
+          _leadtimeWeeks: t.leadtimeWeeks,
+          _workloadPct: t.workloadPct,
+          _inputs: t.inputs,
+        } as Activity & Record<string, unknown>)
+        cursor = end
+      }
+    }
 
     // ── Build user-defined inline milestones + tasks ──
     const userMilestones: Milestone[] = inlineMilestones.map((im) => ({
@@ -1427,6 +1760,20 @@ export default function App(): ReactElement {
 
     // Sync milestones to Dataverse (fire-and-forget, update IDs)
     if (isDataverseConfigured()) {
+      // Standard template tasks — created directly under the project (no milestone)
+      genActivities.forEach(async (act) => {
+        const a = act as Activity & Record<string, unknown>
+        const dvActId = await createActivityInDataverse({
+          name: act.name, ownerName: 'Unassigned', startDate: act.startDate, endDate: act.endDate,
+          state: 'NOT_STARTED', criticalPath: false, projectId: newProject.id,
+          responsible: a._responsible as string | undefined,
+          leadtimeWeeks: a._leadtimeWeeks as number | null | undefined,
+          workloadPct: a._workloadPct as number | null | undefined,
+          inputs: a._inputs as string | undefined,
+        })
+        if (dvActId) act.id = dvActId
+      })
+
       Promise.all(
         allMilestones.map(async (ms) => {
           const dvMsId = await createMilestoneInDataverse({ name: ms.name, targetDate: ms.targetDate, projectId: newProject.id })
@@ -1449,7 +1796,7 @@ export default function App(): ReactElement {
       ...prev,
       projects: [...prev.projects, newProject],
       milestones: [...prev.milestones, ...allMilestones],
-      activities: [...prev.activities, ...userActivities],
+      activities: [...prev.activities, ...userActivities, ...genActivities],
     }))
 
     // ── Send project creation email notification ──
@@ -1475,7 +1822,7 @@ export default function App(): ReactElement {
         projectManager: pmName,
         plannedStartDate: values.plannedStartDate,
         plannedEndDate: values.plannedEndDate,
-        boschCode: values.boschCode,
+        clientCode: values.clientCode,
         milestones: allEmailMs,
       }).then((sent) => {
         const logEntry: FlowLogEntry = {
@@ -1523,7 +1870,7 @@ export default function App(): ReactElement {
       budgetAllocated: values.budgetAllocated,
       plannedStartDate: values.plannedStartDate,
       plannedEndDate: values.plannedEndDate,
-      boschCode: values.boschCode,
+      clientCode: values.clientCode,
       milestones: allEmailMs,
       creatorName: creatorNameForFunc,
       creatorEmail,
@@ -1539,7 +1886,6 @@ export default function App(): ReactElement {
   async function saveOverview(values: ProjectOverviewForm): Promise<void> {
     if (!selectedProject) return
 
-    const siteNames = values.siteIds.map((id) => sites.find((s) => s.id === id)?.name ?? id).join(', ')
     const pmName = dvUsers.find((u) => u.id === values.projectManagerId)?.fullname
       ?? people.find((p) => p.id === values.projectManagerId)?.name ?? ''
     const sponsorName = dvUsers.find((u) => u.id === values.sponsorExecutiveId)?.fullname
@@ -1550,7 +1896,7 @@ export default function App(): ReactElement {
       try {
         await updateProjectInDataverse(selectedProject.id, {
           name: values.name,
-          boschCode: values.boschCode,
+          clientCode: values.clientCode,
           category: values.category,
           budgetAllocated: values.budgetAllocated,
           site: values.siteIds[0] ?? 'site_tca',
@@ -1570,7 +1916,7 @@ export default function App(): ReactElement {
       const nextProject: Project = {
         ...selectedProject,
         name: values.name,
-        boschCode: values.boschCode,
+        clientCode: values.clientCode,
         category: values.category,
         budgetAllocated: values.budgetAllocated,
         siteIds: values.siteIds,
@@ -1874,30 +2220,48 @@ export default function App(): ReactElement {
   /* ── Master Data CRUD ── */
   function openAddPerson(): void {
     setMdEditId(null)
-    setMdForm({ name: '', initials: '', role: 'RESOURCE', managerId: '' })
+    setMdForm({ name: '', initials: '', role: 'RESOURCE', managerId: '', area: '', location: [], kind: 'Associate', capacity: 40 })
     setAadQuery('')
     setAadResults([])
     setMdDialogOpen(true)
   }
   function openEditPerson(p: Person): void {
     setMdEditId(p.id)
-    setMdForm({ name: p.name, initials: p.initials, role: p.role, managerId: p.managerId ?? '' })
+    setMdForm({ name: p.name, initials: p.initials, role: p.role, managerId: p.managerId ?? '', area: p.area ?? '', location: p.location ?? [], kind: p.resourceKind ?? 'Associate', capacity: p.weeklyCapacity ?? 40 })
     setMdDialogOpen(true)
   }
   async function submitPerson(): Promise<void> {
     if (!mdForm.name.trim()) return
     const initials = mdForm.initials.trim() || mdForm.name.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2)
+    const isResource = mdForm.role === 'RESOURCE'
+    const payload = {
+      name: mdForm.name.trim(),
+      role: mdForm.role,
+      kind: isResource ? mdForm.kind : undefined,
+      area: isResource ? (mdForm.area || undefined) : undefined,
+      location: isResource ? mdForm.location : undefined,
+      managerId: mdForm.managerId || undefined,
+      department: isResource ? (mdForm.area || undefined) : undefined,
+      weeklyCapacity: mdForm.capacity,
+    }
+    const personFields: Partial<Person> = {
+      managerId: mdForm.managerId || undefined,
+      area: isResource ? (mdForm.area || undefined) : undefined,
+      location: isResource ? mdForm.location : undefined,
+      resourceKind: isResource ? mdForm.kind : undefined,
+      weeklyCapacity: mdForm.capacity,
+    }
     if (mdEditId) {
       if (isDataverseConfigured()) {
-        await updateResourceInDataverse(mdEditId, { name: mdForm.name.trim(), role: mdForm.role })
+        await updateResourceInDataverse(mdEditId, payload)
       }
-      setState((prev) => ({ ...prev, people: prev.people.map((p) => p.id === mdEditId ? { ...p, name: mdForm.name.trim(), initials, role: mdForm.role, managerId: mdForm.managerId || undefined } : p) }))
+      setState((prev) => ({ ...prev, people: prev.people.map((p) => p.id === mdEditId ? { ...p, name: mdForm.name.trim(), initials, role: mdForm.role, ...personFields } : p) }))
     } else {
       let dvId: string | null = null
       if (isDataverseConfigured()) {
-        dvId = await createResourceInDataverse({ name: mdForm.name.trim(), role: mdForm.role })
+        dvId = await createResourceInDataverse(payload)
       }
-      const newPerson: Person = { id: dvId ?? uid('u'), name: mdForm.name.trim(), initials, role: mdForm.role, managerId: mdForm.managerId || undefined }
+      const newPerson: Person = { id: dvId ?? uid('u'), name: mdForm.name.trim(), initials, role: mdForm.role, ...personFields }
       setState((prev) => ({ ...prev, people: [...prev.people, newPerson] }))
     }
     setMdDialogOpen(false)
@@ -1909,6 +2273,39 @@ export default function App(): ReactElement {
       people: prev.people.filter((p) => p.id !== id),
       activities: prev.activities.map((a) => a.ownerId === id ? { ...a, ownerId: prev.people.find((pp) => pp.role === 'RESOURCE' && pp.id !== id)?.id ?? a.ownerId } : a),
     }))
+  }
+
+  // ── Task template editor handlers ──
+  function openAddTemplate(): void {
+    setTtEditId(null)
+    const maxSeq = taskTemplates.filter((t) => t.projectType === ttType).reduce((m, t) => Math.max(m, t.sequence), 0)
+    setTtForm({ task: '', responsible: '', sequence: maxSeq + 1, leadtimeWeeks: '', workloadPct: '', inputs: '' })
+    setTtDialogOpen(true)
+  }
+  function openEditTemplate(t: TaskTemplateRow): void {
+    setTtEditId(t.id)
+    setTtForm({ task: t.task, responsible: t.responsible, sequence: t.sequence, leadtimeWeeks: t.leadtimeWeeks == null ? '' : String(t.leadtimeWeeks), workloadPct: t.workloadPct == null ? '' : String(t.workloadPct), inputs: t.inputs })
+    setTtDialogOpen(true)
+  }
+  async function submitTemplate(): Promise<void> {
+    if (!ttForm.task.trim() || !ttType) return
+    const payload = {
+      projectType: ttType,
+      sequence: Number(ttForm.sequence) || 0,
+      task: ttForm.task.trim(),
+      responsible: ttForm.responsible.trim(),
+      leadtimeWeeks: ttForm.leadtimeWeeks === '' ? null : Number(ttForm.leadtimeWeeks),
+      inputs: ttForm.inputs.trim(),
+      workloadPct: ttForm.workloadPct === '' ? null : Number(ttForm.workloadPct),
+    }
+    if (ttEditId) await updateTaskTemplate(ttEditId, payload)
+    else await createTaskTemplate(payload)
+    await reloadTaskTemplates()
+    setTtDialogOpen(false)
+  }
+  async function deleteTemplate(id: string): Promise<void> {
+    await deleteTaskTemplate(id)
+    setTaskTemplates((prev) => prev.filter((t) => t.id !== id))
   }
 
   function addPartner(type: 'clients' | 'suppliers', name: string): void {
@@ -1959,44 +2356,44 @@ export default function App(): ReactElement {
 
 
   return (
-    <div className="relative flex min-h-screen bg-bosch-bg font-sans text-bosch-text md:bg-bosch-outer md:pr-3 md:py-3">
+    <div className="relative flex min-h-screen bg-pth-bg font-sans text-pth-text md:bg-pth-outer md:pr-3 md:py-3">
       {/* Subtle blue-to-dark-gray gradient behind everything */}
       <div className="pointer-events-none absolute inset-0 hidden md:block" style={{ background: 'linear-gradient(135deg, #242a32 0%, #31343A 35%, #31343A 100%)' }} />
       {/* ─── DATAVERSE LOADING OVERLAY ─── */}
       {dvLoading && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-bosch-bg/80 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-4 rounded-2xl bg-bosch-card p-8 shadow-elevated ring-1 ring-bosch-border/20">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-bosch-blue/20 border-t-bosch-blue" />
-            <div className="text-sm font-medium text-bosch-muted">Loading…</div>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-pth-bg/80 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4 rounded-2xl bg-pth-card p-8 shadow-elevated ring-1 ring-pth-border/20">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-pth-blue/20 border-t-pth-blue" />
+            <div className="text-sm font-medium text-pth-muted">Loading…</div>
           </div>
         </div>
       )}
       {/* ─── SIDEBAR (desktop: sticky column) ─── */}
       <aside
-        className={`fixed bottom-0 left-0 top-14 z-40 flex flex-col bg-transparent text-bosch-sidebar-text transition-all duration-200 ease-in-out ${sidebarCollapsed ? 'w-16' : 'w-56'} ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:sticky md:top-0 md:z-auto md:h-screen md:translate-x-0 md:shrink-0`}
+        className={`fixed bottom-0 left-0 top-14 z-40 flex flex-col bg-transparent text-pth-sidebar-text transition-all duration-200 ease-in-out ${sidebarCollapsed ? 'w-16' : 'w-56'} ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:sticky md:top-0 md:z-auto md:h-screen md:translate-x-0 md:shrink-0`}
       >
         {/* Brand area — single source of logo */}
         <button
           type="button"
-          className={`hidden w-full items-center border-b border-bosch-sidebar-border transition-colors hover:bg-bosch-sidebar-hover md:flex ${sidebarCollapsed ? 'justify-center px-2 py-4' : 'gap-3 px-4 py-4'}`}
+          className={`hidden w-full items-center border-b border-pth-sidebar-border transition-colors hover:bg-pth-sidebar-hover md:flex ${sidebarCollapsed ? 'justify-center px-2 py-4' : 'gap-3 px-4 py-4'}`}
           onClick={() => setSidebarCollapsed((c) => !c)}
           aria-label="Toggle sidebar"
         >
           <div className="flex h-9 w-9 shrink-0 items-center justify-center">
-            <img src="logo.png" alt="Project Tracker Hub" className="h-9 w-9 object-contain" />
+            <img src={logoImg} alt="Project Tracker Hub" className="h-9 w-9 object-contain" />
           </div>
           {!sidebarCollapsed && (
             <div className="min-w-0 flex-1 text-left">
-              <div className="text-sm font-bold tracking-tight truncate text-bosch-sidebar-text">Project Tracker Hub</div>
-              <div className="text-[11px] text-bosch-sidebar-muted truncate">{displayName}</div>
-              <div className="text-[10px] text-bosch-sidebar-faint truncate">{displayRole}</div>
+              <div className="text-sm font-bold tracking-tight truncate text-pth-sidebar-text">Project Tracker Hub</div>
+              <div className="text-[11px] text-pth-sidebar-muted truncate">{displayName}</div>
+              <div className="text-[10px] text-pth-sidebar-faint truncate">{displayRole}</div>
             </div>
           )}
         </button>
 
         <div className={`flex-1 overflow-y-auto ${sidebarCollapsed ? 'p-2' : 'p-4'}`}>
           {!sidebarCollapsed && (
-            <div className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-bosch-sidebar-faint">Main Menu</div>
+            <div className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-pth-sidebar-faint">Main Menu</div>
           )}
 
           <nav className="space-y-1">
@@ -2006,8 +2403,8 @@ export default function App(): ReactElement {
                 type="button"
                 className={`relative flex w-full items-center gap-3 rounded-lg ${sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2.5'} text-sm font-medium transition-all duration-200 ${
                   navPage === item.key
-                    ? 'text-bosch-sidebar-text'
-                    : 'text-bosch-sidebar-muted hover:bg-bosch-sidebar-hover hover:text-bosch-sidebar-text'
+                    ? 'text-pth-sidebar-text'
+                    : 'text-pth-sidebar-muted hover:bg-pth-sidebar-hover hover:text-pth-sidebar-text'
                 }`}
                 onClick={() => {
                   setNavPage(item.key)
@@ -2016,18 +2413,18 @@ export default function App(): ReactElement {
                 title={sidebarCollapsed ? item.label : undefined}
               >
                 {navPage === item.key && (
-                  <motion.div layoutId="nav-active" className="absolute inset-0 rounded-lg bg-bosch-sidebar-active" transition={{ type: 'spring', duration: 0.4, bounce: 0.15 }} />
+                  <motion.div layoutId="nav-active" className="absolute inset-0 rounded-lg bg-pth-sidebar-active" transition={{ type: 'spring', duration: 0.4, bounce: 0.15 }} />
                 )}
-                <span className={`relative z-10 flex items-center ${sidebarCollapsed ? '' : 'gap-3'} ${navPage === item.key ? 'text-bosch-sidebar-accent' : ''}`}>
+                <span className={`relative z-10 flex items-center ${sidebarCollapsed ? '' : 'gap-3'} ${navPage === item.key ? 'text-pth-sidebar-accent' : ''}`}>
                   {item.icon}
-                  {!sidebarCollapsed && <span className={navPage === item.key ? 'text-bosch-sidebar-text' : ''}>{item.label}</span>}
+                  {!sidebarCollapsed && <span className={navPage === item.key ? 'text-pth-sidebar-text' : ''}>{item.label}</span>}
                 </span>
-                {navPage === item.key && !sidebarCollapsed && <span className="relative z-10 ml-auto h-1.5 w-1.5 rounded-full bg-bosch-sidebar-dot" />}
+                {navPage === item.key && !sidebarCollapsed && <span className="relative z-10 ml-auto h-1.5 w-1.5 rounded-full bg-pth-sidebar-dot" />}
               </button>
             ))}
 
           {!sidebarCollapsed && (
-            <div className="mb-2 mt-6 px-3 text-[10px] font-semibold uppercase tracking-wider text-bosch-sidebar-faint">Setup</div>
+            <div className="mb-2 mt-6 px-3 text-[10px] font-semibold uppercase tracking-wider text-pth-sidebar-faint">Setup</div>
           )}
 
             {setupItems.map((item) => (
@@ -2036,8 +2433,8 @@ export default function App(): ReactElement {
                 type="button"
                 className={`relative flex w-full items-center gap-3 rounded-lg ${sidebarCollapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2.5'} text-sm font-medium transition-all duration-200 ${
                   navPage === item.key
-                    ? 'text-bosch-sidebar-text'
-                    : 'text-bosch-sidebar-muted hover:bg-bosch-sidebar-hover hover:text-bosch-sidebar-text'
+                    ? 'text-pth-sidebar-text'
+                    : 'text-pth-sidebar-muted hover:bg-pth-sidebar-hover hover:text-pth-sidebar-text'
                 }`}
                 onClick={() => {
                   setNavPage(item.key)
@@ -2046,34 +2443,34 @@ export default function App(): ReactElement {
                 title={sidebarCollapsed ? item.label : undefined}
               >
                 {navPage === item.key && (
-                  <motion.div layoutId="nav-active" className="absolute inset-0 rounded-lg bg-bosch-sidebar-active" transition={{ type: 'spring', duration: 0.4, bounce: 0.15 }} />
+                  <motion.div layoutId="nav-active" className="absolute inset-0 rounded-lg bg-pth-sidebar-active" transition={{ type: 'spring', duration: 0.4, bounce: 0.15 }} />
                 )}
-                <span className={`relative z-10 flex items-center ${sidebarCollapsed ? '' : 'gap-3'} ${navPage === item.key ? 'text-bosch-sidebar-accent' : ''}`}>
+                <span className={`relative z-10 flex items-center ${sidebarCollapsed ? '' : 'gap-3'} ${navPage === item.key ? 'text-pth-sidebar-accent' : ''}`}>
                   {item.icon}
-                  {!sidebarCollapsed && <span className={navPage === item.key ? 'text-bosch-sidebar-text' : ''}>{item.label}</span>}
+                  {!sidebarCollapsed && <span className={navPage === item.key ? 'text-pth-sidebar-text' : ''}>{item.label}</span>}
                 </span>
-                {navPage === item.key && !sidebarCollapsed && <span className="relative z-10 ml-auto h-1.5 w-1.5 rounded-full bg-bosch-sidebar-dot" />}
+                {navPage === item.key && !sidebarCollapsed && <span className="relative z-10 ml-auto h-1.5 w-1.5 rounded-full bg-pth-sidebar-dot" />}
               </button>
             ))}
           </nav>
 
           {/* Mobile-only selectors */}
           {!sidebarCollapsed && (
-            <div className="mt-4 space-y-3 border-t border-bosch-sidebar-border pt-4 md:hidden">
-              <label className="block text-xs font-medium text-bosch-sidebar-muted">
+            <div className="mt-4 space-y-3 border-t border-pth-sidebar-border pt-4 md:hidden">
+              <label className="block text-xs font-medium text-pth-sidebar-muted">
                 Month
                 <select
-                  className="mt-1 h-9 w-full rounded-lg border border-bosch-sidebar-border bg-bosch-sidebar-hover px-3 text-sm text-bosch-sidebar-text"
+                  className="mt-1 h-9 w-full rounded-lg border border-pth-sidebar-border bg-pth-sidebar-hover px-3 text-sm text-pth-sidebar-text"
                   value={filterMonth}
                   onChange={(e) => { setFilterMonth(e.target.value); setFilterCW('all') }}
                 >
                   {monthOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </label>
-              <label className="block text-xs font-medium text-bosch-sidebar-muted">
+              <label className="block text-xs font-medium text-pth-sidebar-muted">
                 Week
                 <select
-                  className="mt-1 h-9 w-full rounded-lg border border-bosch-sidebar-border bg-bosch-sidebar-hover px-3 text-sm text-bosch-sidebar-text"
+                  className="mt-1 h-9 w-full rounded-lg border border-pth-sidebar-border bg-pth-sidebar-hover px-3 text-sm text-pth-sidebar-text"
                   value={filterCW}
                   onChange={(e) => setFilterCW(e.target.value === 'all' ? 'all' : Number(e.target.value))}
                 >
@@ -2085,34 +2482,13 @@ export default function App(): ReactElement {
           )}
         </div>
 
-        {/* ── Sidebar footer: official Bosch logo + version ── */}
-        <div className={`shrink-0 border-t border-bosch-sidebar-border ${sidebarCollapsed ? 'px-2 py-3' : 'px-4 py-4'}`}>
-          {sidebarCollapsed ? (
-            <div className="flex flex-col items-center gap-1">
-              {/* Bosch caliper mark – collapsed */}
-              <svg className="h-5 w-5 text-bosch-sidebar-faint" viewBox="60 71 90 97" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path fill="currentColor" d="M100.8,71.5c-26.6,0-48.2,21.6-48.2,48.2s21.6,48.2,48.2,48.2c26.6,0,48.2-21.6,48.2-48.2S127.4,71.5,100.8,71.5z M100.8,163.4c-24.1,0-43.7-19.6-43.7-43.7S76.7,76,100.8,76c24.1,0,43.7,19.6,43.7,43.7S124.9,163.4,100.8,163.4z" />
-                <path fill="currentColor" d="M120.7,89.6h-3.3v16.5H84.3V89.6h-3.4c-9.7,6.5-16.2,17.5-16.2,30.1c0,12.6,6.5,23.6,16.2,30.1h3.4v-16.5h33.1v16.5h3.3c9.8-6.5,16.2-17.5,16.2-30.1C136.9,107.1,130.5,96.1,120.7,89.6z M79.7,143.3c-6.7-5.9-10.6-14.4-10.6-23.6c0-9.2,3.9-17.7,10.6-23.6V143.3z M117.4,128.7H84.3v-18.1h33.1C117.4,110.7,117.4,128.7,117.4,128.7z M121.9,143.2v-10l0,0v-27.1l0,0v-10c6.6,5.9,10.5,14.4,10.5,23.5C132.4,128.8,128.5,137.3,121.9,143.2z" />
-              </svg>
-              <span className="text-[8px] font-bold text-bosch-sidebar-faint">v1.0</span>
-            </div>
-          ) : (
-            <div className="flex flex-col items-start gap-1.5">
-              {/* Official Bosch logotype (caliper + wordmark) */}
-              <svg className="h-5 shrink-0 text-bosch-sidebar-faint" viewBox="50 70 440 100" xmlns="http://www.w3.org/2000/svg">
-                {/* Caliper symbol */}
-                <path fill="currentColor" d="M100.8,71.5c-26.6,0-48.2,21.6-48.2,48.2s21.6,48.2,48.2,48.2c26.6,0,48.2-21.6,48.2-48.2S127.4,71.5,100.8,71.5z M100.8,163.4c-24.1,0-43.7-19.6-43.7-43.7S76.7,76,100.8,76c24.1,0,43.7,19.6,43.7,43.7S124.9,163.4,100.8,163.4z" />
-                <path fill="currentColor" d="M120.7,89.6h-3.3v16.5H84.3V89.6h-3.4c-9.7,6.5-16.2,17.5-16.2,30.1c0,12.6,6.5,23.6,16.2,30.1h3.4v-16.5h33.1v16.5h3.3c9.8-6.5,16.2-17.5,16.2-30.1C136.9,107.1,130.5,96.1,120.7,89.6z M79.7,143.3c-6.7-5.9-10.6-14.4-10.6-23.6c0-9.2,3.9-17.7,10.6-23.6V143.3z M117.4,128.7H84.3v-18.1h33.1C117.4,110.7,117.4,128.7,117.4,128.7z M121.9,143.2v-10l0,0v-27.1l0,0v-10c6.6,5.9,10.5,14.4,10.5,23.5C132.4,128.8,128.5,137.3,121.9,143.2z" />
-                {/* BOSCH wordmark */}
-                <path fill="currentColor" opacity="0.7" d="M237.8,118.4c0,0,8.8-3,8.8-13c0-11.7-8.3-17.5-19.7-17.5H197v63.6h32.5c10,0,19.8-7,19.8-17.7C249.3,121.1,237.8,118.5,237.8,118.4z M212.6,101.1h11.6c3.6,0,6,2.4,6,6c0,2.8-2.2,5.8-6.3,5.8h-11.4V101.1z M224.3,138.2h-11.6v-12.5H224c5.7,0,8.4,2.5,8.4,6.2C232.4,136.5,229,138.2,224.3,138.2z" />
-                <path fill="currentColor" opacity="0.7" d="M283.7,86.3c-18.4,0-29.2,14.7-29.2,33.3c0,18.7,10.8,33.3,29.2,33.3c18.5,0,29.2-14.6,29.2-33.3C312.9,101,302.2,86.3,283.7,86.3z M283.7,137.7c-9,0-13.5-8.1-13.5-18.1c0-10,4.5-18,13.5-18s13.6,8.1,13.6,18C297.3,129.6,292.7,137.7,283.7,137.7z" />
-                <path fill="currentColor" opacity="0.7" d="M346.8,112.8l-2.2-0.5c-5.4-1.1-9.7-2.5-9.7-6.4c0-4.2,4.1-5.9,7.7-5.9c5.3,0,10,2.6,13,5.9l9.9-9.8c-4.5-5.1-11.8-10-23.2-10c-13.4,0-23.5,7.5-23.5,20c0,11.4,8.2,17,18.2,19.1l2.2,0.5c8.3,1.7,11.4,3,11.4,7c0,3.8-3.4,6.3-8.6,6.3c-6.2,0-11.8-2.7-16.1-8.2l-10.1,10c5.6,6.7,12.7,11.9,26.4,11.9c11.9,0,24.6-6.8,24.6-20.7C366.9,117.5,355.9,114.7,346.8,112.8z" />
-                <path fill="currentColor" opacity="0.7" d="M402.3,137.7c-7,0-14.3-5.8-14.3-18.5c0-11.3,6.8-17.6,13.9-17.6c5.6,0,8.9,2.6,11.5,7.1l12.8-8.5c-6.4-9.7-14-13.8-24.5-13.8c-19.2,0-29.6,14.9-29.6,32.9c0,18.9,11.5,33.7,29.4,33.7c12.6,0,18.6-4.4,25.1-13.8l-12.9-8.7C411.1,134.7,408.3,137.7,402.3,137.7z" />
-                <polygon fill="currentColor" opacity="0.7" points="468.9,87.8 468.9,111.2 449.6,111.2 449.6,87.8 432.9,87.8 432.9,151.4 449.6,151.4 449.6,126.3 468.9,126.3 468.9,151.4 485.6,151.4 485.6,87.8" />
-              </svg>
-              <div className="text-[10px] text-bosch-sidebar-faint">Project Tracker v1.0</div>
-            </div>
-          )}
+        {/* ── Sidebar footer: version ── */}
+        <div className={`shrink-0 border-t border-pth-sidebar-border ${sidebarCollapsed ? 'px-2 py-3' : 'px-4 py-4'}`}>
+          <div className={`flex flex-col ${sidebarCollapsed ? 'items-center' : 'items-start'} gap-1`}>
+            <span className={`font-bold text-pth-sidebar-faint ${sidebarCollapsed ? 'text-[8px]' : 'text-[10px]'}`}>
+              {sidebarCollapsed ? 'v1.0' : 'Project Tracker Hub v1.0'}
+            </span>
+          </div>
         </div>
       </aside>
 
@@ -2126,11 +2502,11 @@ export default function App(): ReactElement {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.96 }}
               transition={{ duration: 0.15 }}
-              className="glass-card fixed right-4 top-[58px] z-[70] w-[380px] rounded-xl border border-bosch-border/20 shadow-elevated md:right-6"
+              className="glass-card fixed right-4 top-[58px] z-[70] w-[380px] rounded-xl border border-pth-border/20 shadow-elevated md:right-6"
             >
-              <div className="flex items-center justify-between border-b border-bosch-border/20 px-4 py-3">
+              <div className="flex items-center justify-between border-b border-pth-border/20 px-4 py-3">
                 <h3 className="text-sm font-semibold">Notifications</h3>
-                <button type="button" title="Close notifications" className="rounded-lg p-1 text-bosch-muted transition-colors hover:bg-bosch-hover" onClick={() => setNotificationsOpen(false)}>
+                <button type="button" title="Close notifications" className="rounded-lg p-1 text-pth-muted transition-colors hover:bg-pth-hover" onClick={() => setNotificationsOpen(false)}>
                   <X size={14} />
                 </button>
               </div>
@@ -2138,13 +2514,13 @@ export default function App(): ReactElement {
                 {visibleNotifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className="rounded-lg p-3 transition-colors hover:bg-bosch-subtle"
+                    className="rounded-lg p-3 transition-colors hover:bg-pth-subtle"
                   >
                     <div className="mb-1.5 flex items-center justify-between">
                       {statusBadge(notification.severity)}
-                      <span className="text-[11px] text-bosch-muted">{formatDate(notification.createdAt)}</span>
+                      <span className="text-[11px] text-pth-muted">{formatDate(notification.createdAt)}</span>
                     </div>
-                    <p className="text-xs leading-relaxed text-bosch-text/80">{notification.message}</p>
+                    <p className="text-xs leading-relaxed text-pth-text/80">{notification.message}</p>
                   </div>
                 ))}
               </div>
@@ -2167,16 +2543,16 @@ export default function App(): ReactElement {
       </AnimatePresence>
 
       {/* ─── RIGHT COLUMN: header + content ─── */}
-      <div className="relative flex min-w-0 flex-1 flex-col bg-bosch-bg text-bosch-text md:ml-3 md:rounded-2xl md:shadow-lg md:overflow-hidden md:ring-1 md:ring-bosch-sidebar-border">
+      <div className="relative flex min-w-0 flex-1 flex-col bg-pth-bg text-pth-text md:ml-3 md:rounded-2xl md:shadow-lg md:overflow-hidden md:ring-1 md:ring-pth-sidebar-border">
         {/* Decorative gradient fade at top */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-0 hidden h-48 md:block md:rounded-t-2xl" style={{ background: 'linear-gradient(180deg, rgba(0,86,145,0.07) 0%, rgba(0,86,145,0.02) 40%, transparent 100%)' }} />
         {/* ─── HEADER ─── */}
-        <header className="glass-card sticky top-0 z-50 border-b border-bosch-border/30 shadow-header md:rounded-t-2xl" style={{ position: 'relative', zIndex: 50 }}>
+        <header className="glass-card sticky top-0 z-50 border-b border-pth-border/30 shadow-header md:rounded-t-2xl" style={{ position: 'relative', zIndex: 50 }}>
           <div className="flex h-14 items-center gap-3 px-4 md:px-6">
             {/* Mobile hamburger */}
             <button
               type="button"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-bosch-muted transition-colors hover:bg-bosch-hover md:hidden"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-pth-muted transition-colors hover:bg-pth-hover md:hidden"
               onClick={() => setSidebarOpen((open) => !open)}
               aria-label="Toggle sidebar"
             >
@@ -2185,7 +2561,7 @@ export default function App(): ReactElement {
 
             {/* Logo — visible only on small screens */}
             <div className="flex items-center gap-2 md:hidden">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-bosch-blue">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-pth-blue">
                 <FolderKanban size={16} className="text-white" />
               </div>
               <span className="text-sm font-bold tracking-tight sm:inline">PROJECT HUB</span>
@@ -2194,7 +2570,7 @@ export default function App(): ReactElement {
             {/* Desktop sidebar collapse toggle */}
             <button
               type="button"
-              className="hidden h-9 w-9 items-center justify-center rounded-lg text-bosch-muted transition-colors hover:bg-bosch-hover md:inline-flex"
+              className="hidden h-9 w-9 items-center justify-center rounded-lg text-pth-muted transition-colors hover:bg-pth-hover md:inline-flex"
               onClick={() => setSidebarCollapsed((c) => !c)}
               aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
@@ -2215,7 +2591,7 @@ export default function App(): ReactElement {
             {/* Theme toggle */}
             <button
               type="button"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-bosch-muted transition-colors hover:bg-bosch-hover"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-pth-muted transition-colors hover:bg-pth-hover"
               onClick={() => setDarkMode((prev) => !prev)}
               aria-label="Toggle dark mode"
             >
@@ -2225,13 +2601,13 @@ export default function App(): ReactElement {
             {/* Notifications */}
             <button
               type="button"
-              className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-bosch-muted transition-colors hover:bg-bosch-hover"
+              className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-pth-muted transition-colors hover:bg-pth-hover"
               onClick={() => setNotificationsOpen((open) => !open)}
               aria-label="Notifications"
             >
               <Bell size={18} />
               {visibleNotifications.length > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-bosch-red px-1 text-[10px] font-bold text-white">
+                <span className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-pth-red px-1 text-[10px] font-bold text-white">
                   {visibleNotifications.length}
                 </span>
               )}
@@ -2239,7 +2615,7 @@ export default function App(): ReactElement {
 
             {/* User avatar */}
             <div
-              className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-bosch-btn text-xs font-bold text-white overflow-hidden"
+              className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pth-btn text-xs font-bold text-white overflow-hidden"
               title={`${displayName} — ${displayRole}`}
             >
               {userPhotoUrl
@@ -2266,18 +2642,18 @@ export default function App(): ReactElement {
                   {/* ── Page header ── */}
                   <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                     <div>
-                      <p className="text-xs font-medium uppercase tracking-wider text-bosch-muted">BOSCH PROJECT HUB</p>
+                      <p className="text-xs font-medium uppercase tracking-wider text-pth-muted">PROJECT TRACKER HUB</p>
                       <h1 className="text-xl font-bold tracking-tight md:text-2xl">Project Dashboard</h1>
                     </div>
                     <div className="flex items-center gap-2">
-                      <select title="Month" className="h-9 rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-xs transition-colors focus:border-bosch-blue focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" value={filterMonth} onChange={(e) => { setFilterMonth(e.target.value); setFilterCW('all') }}>
+                      <select title="Month" className="h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-xs transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" value={filterMonth} onChange={(e) => { setFilterMonth(e.target.value); setFilterCW('all') }}>
                         {monthOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                       </select>
-                      <select title="Calendar Week" className="h-9 rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-xs transition-colors focus:border-bosch-blue focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" value={filterCW} onChange={(e) => setFilterCW(e.target.value === 'all' ? 'all' : Number(e.target.value))}>
+                      <select title="Calendar Week" className="h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-xs transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" value={filterCW} onChange={(e) => setFilterCW(e.target.value === 'all' ? 'all' : Number(e.target.value))}>
                         <option value="all">All Weeks</option>
                         {cwOptions.map((cw) => <option key={cw} value={cw}>{`CW ${cw}`}</option>)}
                       </select>
-                      <button type="button" onClick={() => { newProjectForm.reset(); setNavPage('createProject') }} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-bosch-btn px-3 text-xs font-semibold text-white shadow-sm transition-all hover:bg-bosch-btn-hover active:scale-[0.98]">
+                      <button type="button" onClick={() => { newProjectForm.reset(); setNavPage('createProject') }} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-pth-btn px-3 text-xs font-semibold text-white shadow-sm transition-all hover:bg-pth-btn-hover active:scale-[0.98]">
                         <Plus size={14} /> New Project
                       </button>
                     </div>
@@ -2286,15 +2662,15 @@ export default function App(): ReactElement {
                   {/* ── KPI Cards ── */}
                   <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
                     {[
-                      { label: 'TOTAL', value: kpiCounts.total, icon: <Briefcase size={16} className="text-bosch-muted" />, color: '' },
+                      { label: 'TOTAL', value: kpiCounts.total, icon: <Briefcase size={16} className="text-pth-muted" />, color: '' },
                       { label: 'ON TRACK', value: kpiCounts.onTrack, icon: <span className="h-3 w-3 rounded-full bg-emerald-500" />, color: 'text-emerald-600 dark:text-emerald-400' },
                       { label: 'AT RISK', value: kpiCounts.atRisk, icon: <span className="h-3 w-3 rounded-full bg-amber-500" />, color: 'text-amber-600 dark:text-amber-400' },
-                      { label: 'CRITICAL', value: kpiCounts.critical, icon: <span className="h-3 w-3 rounded-full bg-bosch-red" />, color: 'text-bosch-red' },
-                      { label: 'COMPLETED', value: kpiCounts.completed, icon: <span className="h-3 w-3 rounded-full border-2 border-bosch-muted" />, color: '' },
+                      { label: 'CRITICAL', value: kpiCounts.critical, icon: <span className="h-3 w-3 rounded-full bg-pth-red" />, color: 'text-pth-red' },
+                      { label: 'COMPLETED', value: kpiCounts.completed, icon: <span className="h-3 w-3 rounded-full border-2 border-pth-muted" />, color: '' },
                     ].map((kpi) => (
                       <div key={kpi.label} className="glass-card rounded-xl p-4 shadow-card">
                         <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-semibold uppercase tracking-wider text-bosch-muted">{kpi.label}</span>
+                          <span className="text-[11px] font-semibold uppercase tracking-wider text-pth-muted">{kpi.label}</span>
                           {kpi.icon}
                         </div>
                         <div className={`mt-2 text-2xl font-bold ${kpi.color}`}>{kpi.value}</div>
@@ -2307,24 +2683,24 @@ export default function App(): ReactElement {
                   <div className="flex flex-col gap-3 md:flex-row md:items-center">
                     <div className="relative flex-1">
                       <input
-                        className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle pl-10 pr-4 text-sm placeholder:text-bosch-muted transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20"
+                        className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle pl-10 pr-4 text-sm placeholder:text-pth-muted transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20"
                         placeholder="Search projects..."
                         value={projectSearch}
                         onChange={(e) => setProjectSearch(e.target.value)}
                       />
-                      <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-bosch-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+                      <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-pth-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
                     </div>
-                    <select title="Category filter" className="h-10 rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+                    <select title="Category filter" className="h-10 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
                       <option value="all">All Categories</option>
                       {(['ECR', 'CIP', 'Path Forward', 'New Programs'] as ProjectCategory[]).map((c) => <option key={c} value={c}>{c}</option>)}
                     </select>
-                    <select title="Status filter" className="h-10 rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                    <select title="Status filter" className="h-10 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
                       <option value="all">All Status</option>
                       <option value="GREEN">On Track</option>
                       <option value="YELLOW">At Risk</option>
                       <option value="RED">Critical</option>
                     </select>
-                    <select title="Manager filter" className="h-10 rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" value={filterManager} onChange={(e) => setFilterManager(e.target.value)}>
+                    <select title="Manager filter" className="h-10 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" value={filterManager} onChange={(e) => setFilterManager(e.target.value)}>
                       <option value="all">All Managers</option>
                       {dvConnected && dvUsers.length > 0
                         ? dvUsers.map((u) => <option key={u.id} value={u.id}>{u.fullname}</option>)
@@ -2335,17 +2711,17 @@ export default function App(): ReactElement {
                   {/* ── Active Projects header with counter + view toggle ── */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <h2 className="text-xs font-semibold uppercase tracking-wider text-bosch-muted">Active Projects</h2>
-                      <span className="rounded-md bg-bosch-subtle px-2 py-0.5 text-[11px] font-medium text-bosch-muted">
+                      <h2 className="text-xs font-semibold uppercase tracking-wider text-pth-muted">Active Projects</h2>
+                      <span className="rounded-md bg-pth-subtle px-2 py-0.5 text-[11px] font-medium text-pth-muted">
                         Showing {filteredProjects.length} of {scopedProjects.length}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1 rounded-lg bg-bosch-subtle p-0.5">
-                      <button type="button" title="Gallery view" className={`inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors ${viewMode === 'gallery' ? 'bg-bosch-card shadow-sm text-bosch-text' : 'text-bosch-muted hover:text-bosch-text'}`} onClick={() => setViewMode('gallery')}>
+                    <div className="flex items-center gap-1 rounded-lg bg-pth-subtle p-0.5">
+                      <button type="button" title="Gallery view" className={`inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors ${viewMode === 'gallery' ? 'bg-pth-card shadow-sm text-pth-text' : 'text-pth-muted hover:text-pth-text'}`} onClick={() => setViewMode('gallery')}>
                         <LayoutGrid size={14} />
                       </button>
-                      <button type="button" title="List view" className={`inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors ${viewMode === 'list' ? 'bg-bosch-card shadow-sm text-bosch-text' : 'text-bosch-muted hover:text-bosch-text'}`} onClick={() => setViewMode('list')}>
+                      <button type="button" title="List view" className={`inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors ${viewMode === 'list' ? 'bg-pth-card shadow-sm text-pth-text' : 'text-pth-muted hover:text-pth-text'}`} onClick={() => setViewMode('list')}>
                         <List size={14} />
                       </button>
                     </div>
@@ -2379,41 +2755,41 @@ export default function App(): ReactElement {
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-center gap-2">
                               {categoryBadge(row.project.category)}
-                              <span className="text-[11px] font-medium text-bosch-muted">{row.project.projectCode}</span>
+                              <span className="text-[11px] font-medium text-pth-muted">{row.project.projectCode}</span>
                             </div>
                             {statusBadge(row.status)}
                           </div>
 
                           {/* Title */}
-                          <h3 className="mt-3 text-sm font-semibold leading-snug group-hover:text-bosch-blue transition-colors">{row.project.name}</h3>
+                          <h3 className="mt-3 text-sm font-semibold leading-snug group-hover:text-pth-blue transition-colors">{row.project.name}</h3>
 
                           {/* Description */}
-                          <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-bosch-muted">{row.project.objective}</p>
+                          <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-pth-muted">{row.project.objective}</p>
 
                           {/* Meta: Due date + Site */}
-                          <div className="mt-4 flex items-center gap-6 text-[11px] text-bosch-muted">
+                          <div className="mt-4 flex items-center gap-6 text-[11px] text-pth-muted">
                             {endDate && (
                               <div>
-                                <span className="block text-[10px] font-semibold uppercase tracking-wider text-bosch-muted/60">DUE</span>
-                                <span className="font-medium text-bosch-text">{formatDate(endDate)}</span>
+                                <span className="block text-[10px] font-semibold uppercase tracking-wider text-pth-muted/60">DUE</span>
+                                <span className="font-medium text-pth-text">{formatDate(endDate)}</span>
                               </div>
                             )}
                             <div>
-                              <span className="block text-[10px] font-semibold uppercase tracking-wider text-bosch-muted/60">SITE</span>
-                              <span className="font-medium text-bosch-text">{row.site}</span>
+                              <span className="block text-[10px] font-semibold uppercase tracking-wider text-pth-muted/60">SITE</span>
+                              <span className="font-medium text-pth-text">{row.site}</span>
                             </div>
                           </div>
 
                           {/* Progress bar */}
                           <div className="mt-3">
                             <div className="mb-1 flex items-center justify-between text-[10px]">
-                              <span className="font-semibold uppercase tracking-wider text-bosch-muted/60">Progress</span>
-                              <span className="font-medium text-bosch-muted">{row.progressPct}%</span>
+                              <span className="font-semibold uppercase tracking-wider text-pth-muted/60">Progress</span>
+                              <span className="font-medium text-pth-muted">{row.progressPct}%</span>
                             </div>
-                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-bosch-border/30">
+                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-pth-border/30">
                               <div
                                 ref={dynRef({ width: `${row.progressPct}%` })}
-                                className="h-full rounded-full transition-all bg-bosch-blue"
+                                className="h-full rounded-full transition-all bg-pth-blue"
                               />
                             </div>
                           </div>
@@ -2421,25 +2797,25 @@ export default function App(): ReactElement {
                           {/* RYG triple indicators */}
                           <div className="mt-4 flex items-center gap-3">
                             <div className="flex items-center gap-1.5 text-[11px]">
-                              <span className="font-semibold text-bosch-muted">T</span>
+                              <span className="font-semibold text-pth-muted">T</span>
                               {statusBadge(msStatus)}
                             </div>
                             <div className="flex items-center gap-1.5 text-[11px]">
-                              <span className="font-semibold text-bosch-muted">C</span>
+                              <span className="font-semibold text-pth-muted">C</span>
                               {statusBadge(actStatus)}
                             </div>
                             <div className="flex items-center gap-1.5 text-[11px]">
-                              <span className="font-semibold text-bosch-muted">Q</span>
+                              <span className="font-semibold text-pth-muted">Q</span>
                               {statusBadge(qualityStatus)}
                             </div>
                           </div>
 
                           {/* PM + Sponsor */}
-                          <div className="mt-4 flex items-center gap-2 border-t border-bosch-border/15 pt-3">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-bosch-subtle text-[10px] font-bold text-bosch-text">{pm?.initials ?? '??'}</div>
+                          <div className="mt-4 flex items-center gap-2 border-t border-pth-border/15 pt-3">
+                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-pth-subtle text-[10px] font-bold text-pth-text">{pm?.initials ?? '??'}</div>
                             <div className="min-w-0 text-xs leading-tight">
                               <div className="truncate font-medium">{pm?.name ?? 'Unknown'}</div>
-                              <div className="truncate text-bosch-muted">{sponsor?.name ?? 'Unknown'}</div>
+                              <div className="truncate text-pth-muted">{sponsor?.name ?? 'Unknown'}</div>
                             </div>
                           </div>
                         </button>
@@ -2453,7 +2829,7 @@ export default function App(): ReactElement {
                   <div className="glass-card overflow-hidden rounded-xl shadow-card">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-bosch-subtle text-[11px] font-semibold uppercase tracking-wider text-bosch-muted">
+                        <tr className="bg-pth-subtle text-[11px] font-semibold uppercase tracking-wider text-pth-muted">
                           <th className="px-4 py-3 text-left">ID</th>
                           <th className="px-4 py-3 text-left">Project</th>
                           <th className="hidden px-4 py-3 text-left md:table-cell">Category</th>
@@ -2465,39 +2841,39 @@ export default function App(): ReactElement {
                           <th className="hidden px-4 py-3 text-left lg:table-cell">Delayed</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-bosch-border/10">
+                      <tbody className="divide-y divide-pth-border/10">
                         {projectRows.map((row) => (
                           <tr
                             key={row.project.id}
-                            className="cursor-pointer transition-colors hover:bg-bosch-hover"
+                            className="cursor-pointer transition-colors hover:bg-pth-hover"
                             onClick={() => {
                               setDetailProjectId(row.project.id)
                               setSelectedProjectId(row.project.id)
                             }}
                           >
                             <td className="px-4 py-3">
-                              <span className="text-xs font-mono font-medium text-bosch-blue">{row.project.projectCode}</span>
+                              <span className="text-xs font-mono font-medium text-pth-blue">{row.project.projectCode}</span>
                             </td>
                             <td className="px-4 py-3">
                               <div className="font-medium">{row.project.name}</div>
                             </td>
                             <td className="hidden px-4 py-3 md:table-cell">{categoryBadge(row.project.category)}</td>
                             <td className="px-4 py-3">{statusBadge(row.status)}</td>
-                            <td className="hidden px-4 py-3 text-bosch-muted md:table-cell">{row.pm}</td>
-                            <td className="hidden px-4 py-3 text-bosch-muted lg:table-cell">{row.site}</td>
-                            <td className="px-4 py-3 text-xs text-bosch-muted whitespace-nowrap">{row.dueDate ? formatDate(row.dueDate) : '—'}</td>
+                            <td className="hidden px-4 py-3 text-pth-muted md:table-cell">{row.pm}</td>
+                            <td className="hidden px-4 py-3 text-pth-muted lg:table-cell">{row.site}</td>
+                            <td className="px-4 py-3 text-xs text-pth-muted whitespace-nowrap">{row.dueDate ? formatDate(row.dueDate) : '—'}</td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
-                                <div className="h-1.5 w-20 overflow-hidden rounded-full bg-bosch-border/30">
+                                <div className="h-1.5 w-20 overflow-hidden rounded-full bg-pth-border/30">
                                   <div
                                     ref={dynRef({ width: `${row.progressPct}%` })}
-                                    className="h-full rounded-full transition-all bg-bosch-blue"
+                                    className="h-full rounded-full transition-all bg-pth-blue"
                                   />
                                 </div>
-                                <span className="text-[11px] font-medium text-bosch-muted">{row.progressPct}%</span>
+                                <span className="text-[11px] font-medium text-pth-muted">{row.progressPct}%</span>
                               </div>
                             </td>
-                            <td className="hidden px-4 py-3 lg:table-cell">{row.delayedCount > 0 ? <span className="text-xs font-semibold text-bosch-red">{row.delayedCount}</span> : <span className="text-xs text-bosch-muted">0</span>}</td>
+                            <td className="hidden px-4 py-3 lg:table-cell">{row.delayedCount > 0 ? <span className="text-xs font-semibold text-pth-red">{row.delayedCount}</span> : <span className="text-xs text-pth-muted">0</span>}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -2510,7 +2886,7 @@ export default function App(): ReactElement {
               {/* ── Project Detail (drill-in from card) ── */}
               {navPage === 'overview' && detailProjectId && selectedProject && (
                 <>
-                  <button type="button" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-bosch-muted transition-colors hover:bg-bosch-hover hover:text-bosch-text" onClick={() => { setDetailProjectId(null); setEditingProject(false) }}>
+                  <button type="button" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-pth-muted transition-colors hover:bg-pth-hover hover:text-pth-text" onClick={() => { setDetailProjectId(null); setEditingProject(false) }}>
                     <ChevronLeft size={16} /> Back to Dashboard
                   </button>
 
@@ -2549,17 +2925,17 @@ export default function App(): ReactElement {
                               <h1 className="text-xl font-bold md:text-2xl">{selectedProject.name}</h1>
                               {statusBadge(projStatus)}
                             </div>
-                            <p className="mt-1 text-sm text-bosch-muted">Code: {selectedProject.projectCode}</p>
+                            <p className="mt-1 text-sm text-pth-muted">Code: {selectedProject.projectCode}</p>
                             <div className="mt-2 flex items-center gap-2">
                               {categoryBadge(selectedProject.category)}
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <button type="button" className="inline-flex items-center gap-2 rounded-lg border border-bosch-border/40 bg-bosch-card px-4 py-2 text-sm font-medium text-bosch-text shadow-sm transition-colors hover:bg-bosch-hover" onClick={() => setEditingProject(true)}>
+                            <button type="button" className="inline-flex items-center gap-2 rounded-lg border border-pth-border/40 bg-pth-card px-4 py-2 text-sm font-medium text-pth-text shadow-sm transition-colors hover:bg-pth-hover" onClick={() => setEditingProject(true)}>
                               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
                               Edit Project
                             </button>
-                            <button type="button" className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-bosch-card px-4 py-2 text-sm font-medium text-bosch-red shadow-sm transition-colors hover:bg-red-50 dark:border-red-900/40 dark:hover:bg-red-900/20" onClick={() => setDeleteProjectDialogOpen(true)}>
+                            <button type="button" className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-pth-card px-4 py-2 text-sm font-medium text-pth-red shadow-sm transition-colors hover:bg-red-50 dark:border-red-900/40 dark:hover:bg-red-900/20" onClick={() => setDeleteProjectDialogOpen(true)}>
                               <Trash2 size={16} />
                               Delete
                             </button>
@@ -2569,10 +2945,10 @@ export default function App(): ReactElement {
                         {/* ── T / C / Q / Risk Indicators ── */}
                         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                           {[
-                            { label: 'Time', icon: <Clock3 size={16} className="text-bosch-blue" />, status: msWorst },
-                            { label: 'Cost', icon: <span className="text-sm font-bold text-bosch-blue">$</span>, status: actWorst },
-                            { label: 'Quality', icon: <span className="text-sm text-bosch-blue">◉</span>, status: 'GREEN' as RygStatus },
-                            { label: 'Risk', icon: <ShieldAlert size={16} className="text-bosch-blue" />, status: projStatus },
+                            { label: 'Time', icon: <Clock3 size={16} className="text-pth-blue" />, status: msWorst },
+                            { label: 'Cost', icon: <span className="text-sm font-bold text-pth-blue">$</span>, status: actWorst },
+                            { label: 'Quality', icon: <span className="text-sm text-pth-blue">◉</span>, status: 'GREEN' as RygStatus },
+                            { label: 'Risk', icon: <ShieldAlert size={16} className="text-pth-blue" />, status: projStatus },
                           ].map((ind) => (
                             <div key={ind.label} className="glass-card rounded-xl p-4 shadow-card">
                               <div className="flex items-center gap-2">
@@ -2590,28 +2966,28 @@ export default function App(): ReactElement {
                             <h2 className="text-base font-semibold tracking-tight mb-4">Project Information</h2>
                             <div className="space-y-4">
                               <div>
-                                <span className="text-xs font-medium text-bosch-blue">Objective</span>
+                                <span className="text-xs font-medium text-pth-blue">Objective</span>
                                 <p className="mt-0.5 text-sm leading-relaxed">{selectedProject.objective}</p>
                               </div>
                               <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                                 <div>
-                                  <span className="text-xs font-medium text-bosch-blue">Executive Sponsor</span>
+                                  <span className="text-xs font-medium text-pth-blue">Executive Sponsor</span>
                                   <p className="mt-0.5 text-sm font-medium">{sponsor?.name ?? '—'}</p>
                                 </div>
                                 <div>
-                                  <span className="text-xs font-medium text-bosch-blue">Project Responsible</span>
+                                  <span className="text-xs font-medium text-pth-blue">Project Responsible</span>
                                   <p className="mt-0.5 text-sm font-medium">{pm?.name ?? '—'}</p>
                                 </div>
                                 <div>
-                                  <span className="text-xs font-medium text-bosch-blue">Planned Start</span>
+                                  <span className="text-xs font-medium text-pth-blue">Planned Start</span>
                                   <p className="mt-0.5 text-sm font-medium">{plannedStart ? formatDate(plannedStart) : '—'}</p>
                                 </div>
                                 <div>
-                                  <span className="text-xs font-medium text-bosch-blue">Planned End</span>
+                                  <span className="text-xs font-medium text-pth-blue">Planned End</span>
                                   <p className="mt-0.5 text-sm font-medium">{plannedEnd ? formatDate(plannedEnd) : '—'}</p>
                                 </div>
                                 <div>
-                                  <span className="text-xs font-medium text-bosch-blue">Real Start</span>
+                                  <span className="text-xs font-medium text-pth-blue">Real Start</span>
                                   <p className="mt-0.5 text-sm font-medium">{realStart ? formatDate(realStart) : '—'}</p>
                                 </div>
                               </div>
@@ -2621,15 +2997,15 @@ export default function App(): ReactElement {
                             <h2 className="text-base font-semibold tracking-tight mb-4">Stakeholders</h2>
                             <div className="space-y-4">
                               <div>
-                                <div className="flex items-center gap-1.5 text-xs font-medium text-bosch-muted"><Users size={12} /> Customers</div>
+                                <div className="flex items-center gap-1.5 text-xs font-medium text-pth-muted"><Users size={12} /> Customers</div>
                                 <p className="mt-0.5 text-sm">{projClients}</p>
                               </div>
                               <div>
-                                <div className="flex items-center gap-1.5 text-xs font-medium text-bosch-muted"><Briefcase size={12} /> Suppliers</div>
+                                <div className="flex items-center gap-1.5 text-xs font-medium text-pth-muted"><Briefcase size={12} /> Suppliers</div>
                                 <p className="mt-0.5 text-sm">{projSuppliers}</p>
                               </div>
                               <div>
-                                <div className="flex items-center gap-1.5 text-xs font-medium text-bosch-muted"><span className="text-xs font-bold">$</span> Budget</div>
+                                <div className="flex items-center gap-1.5 text-xs font-medium text-pth-muted"><span className="text-xs font-bold">$</span> Budget</div>
                                 <p className="mt-0.5 text-sm font-medium">—</p>
                               </div>
                             </div>
@@ -2640,12 +3016,12 @@ export default function App(): ReactElement {
                         <div className="glass-card rounded-xl p-6 shadow-card">
                           <div className="flex items-center gap-3 mb-8">
                             <h2 className="text-base font-semibold tracking-tight">Project Timeline</h2>
-                            <span className="rounded-md bg-bosch-blue px-2.5 py-0.5 text-xs font-bold text-white shadow-sm">Today</span>
+                            <span className="rounded-md bg-pth-blue px-2.5 py-0.5 text-xs font-bold text-white shadow-sm">Today</span>
                           </div>
                           <div className="relative mx-4">
-                            <div className="h-2 w-full rounded-full bg-bosch-border/20" />
-                            <div ref={dynRef({ width: `${todayPct}%` })} className="absolute left-0 top-0 h-2 rounded-full bg-gradient-to-r from-bosch-blue to-bosch-blue/60" />
-                            <div ref={dynRef({ left: `${todayPct}%` })} className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 h-3.5 w-3.5 rounded-full border-2 border-white bg-bosch-blue shadow-md dark:border-bosch-bg" />
+                            <div className="h-2 w-full rounded-full bg-pth-border/20" />
+                            <div ref={dynRef({ width: `${todayPct}%` })} className="absolute left-0 top-0 h-2 rounded-full bg-gradient-to-r from-pth-blue to-pth-blue/60" />
+                            <div ref={dynRef({ left: `${todayPct}%` })} className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 h-3.5 w-3.5 rounded-full border-2 border-white bg-pth-blue shadow-md dark:border-pth-bg" />
                             <div className="relative mt-5">
                               {pMss.map((ms) => {
                                 const pos = Math.min(Math.max((dayDiff(tlMin, ms.targetDate) / tlRange) * 100, 0), 100)
@@ -2653,19 +3029,19 @@ export default function App(): ReactElement {
                                 return (
                                   <div key={ms.id} ref={dynRef({ left: `${pos}%` })} className="absolute top-0 -translate-x-1/2">
                                     <div className="flex flex-col items-center">
-                                      <div className="h-4 w-px bg-bosch-border/30" />
-                                      <div className={`flex h-6 w-6 items-center justify-center rounded-full border-2 shadow-sm ${isDone ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30' : 'border-bosch-border/50 bg-bosch-card'}`}>
+                                      <div className="h-4 w-px bg-pth-border/30" />
+                                      <div className={`flex h-6 w-6 items-center justify-center rounded-full border-2 shadow-sm ${isDone ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30' : 'border-pth-border/50 bg-pth-card'}`}>
                                         {isDone && <svg className="h-3 w-3 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                                       </div>
                                       <span className="mt-1.5 max-w-[80px] truncate text-center text-[11px] font-medium leading-tight">{ms.name}</span>
-                                      <span className="text-[10px] text-bosch-blue">{formatShortDate(ms.targetDate)}</span>
+                                      <span className="text-[10px] text-pth-blue">{formatShortDate(ms.targetDate)}</span>
                                     </div>
                                   </div>
                                 )
                               })}
                             </div>
                           </div>
-                          <div className="mt-24 flex items-center justify-between text-xs text-bosch-muted">
+                          <div className="mt-24 flex items-center justify-between text-xs text-pth-muted">
                             <span>{plannedStart ? formatDate(plannedStart) : formatDate(tlMin)}</span>
                             <span>{plannedEnd ? formatDate(plannedEnd) : formatDate(tlMax)}</span>
                           </div>
@@ -2677,7 +3053,7 @@ export default function App(): ReactElement {
                           <div>
                             <div className="flex items-center justify-between mb-5">
                               <h2 className="text-base font-semibold tracking-tight">Milestones</h2>
-                              <button type="button" className="inline-flex items-center gap-1.5 rounded-lg bg-bosch-btn px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-bosch-btn-hover active:scale-[0.98]" onClick={openCreateMilestone}>
+                              <button type="button" className="inline-flex items-center gap-1.5 rounded-lg bg-pth-btn px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-pth-btn-hover active:scale-[0.98]" onClick={openCreateMilestone}>
                                 <Plus size={14} /> Add Milestone
                               </button>
                             </div>
@@ -2695,13 +3071,13 @@ export default function App(): ReactElement {
                                 return (
                                   <div
                                     key={ms.id}
-                                    className={`relative pl-10 rounded-lg transition-all ${isMsDropTarget ? 'bg-bosch-blue/5 ring-2 ring-bosch-blue/30 ring-inset' : ''}`}
+                                    className={`relative pl-10 rounded-lg transition-all ${isMsDropTarget ? 'bg-pth-blue/5 ring-2 ring-pth-blue/30 ring-inset' : ''}`}
                                     onDragOver={(e) => { e.preventDefault(); setDropTargetId(`ms_${ms.id}`) }}
                                     onDragLeave={() => setDropTargetId(null)}
                                     onDrop={(e) => { e.preventDefault(); handleDropOnMilestone(ms.id) }}
                                   >
-                                    {!isLast && <div className="absolute left-[11px] top-6 bottom-0 w-0.5 bg-bosch-border/20" />}
-                                    <div className={`absolute left-0 top-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 shadow-sm ${isDone ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30' : msRyg === 'RED' ? 'border-bosch-red bg-bosch-red/5' : 'border-bosch-blue/40 bg-bosch-blue/5 dark:border-bosch-blue/50 dark:bg-bosch-blue/10'}`}>
+                                    {!isLast && <div className="absolute left-[11px] top-6 bottom-0 w-0.5 bg-pth-border/20" />}
+                                    <div className={`absolute left-0 top-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 shadow-sm ${isDone ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30' : msRyg === 'RED' ? 'border-pth-red bg-pth-red/5' : 'border-pth-blue/40 bg-pth-blue/5 dark:border-pth-blue/50 dark:bg-pth-blue/10'}`}>
                                       {isDone && <svg className="h-3 w-3 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                                     </div>
                                     <div className="pb-8">
@@ -2709,30 +3085,30 @@ export default function App(): ReactElement {
                                       <div className="flex items-start justify-between gap-2">
                                         <div className="flex items-center gap-2 flex-wrap">
                                           <h3 className="text-sm font-bold">{ms.name}</h3>
-                                          {isDone ? <span className="rounded-md bg-bosch-subtle px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-bosch-muted">Completed</span> : statusBadge(msRyg)}
+                                          {isDone ? <span className="rounded-md bg-pth-subtle px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-pth-muted">Completed</span> : statusBadge(msRyg)}
                                           {msActs.some((a) => a.criticalPath && !a.doneDate && rygFromDueDate(a.endDate, state.settings.warningDaysThreshold) === 'RED') && (
-                                            <span className="rounded-md bg-bosch-red/10 px-2 py-0.5 text-[11px] font-semibold text-bosch-red">Critical</span>
+                                            <span className="rounded-md bg-pth-red/10 px-2 py-0.5 text-[11px] font-semibold text-pth-red">Critical</span>
                                           )}
-                                          {isMsDropTarget && <span className="rounded-md bg-bosch-blue/10 px-2 py-0.5 text-[11px] font-semibold text-bosch-blue animate-pulse">Drop to add task</span>}
+                                          {isMsDropTarget && <span className="rounded-md bg-pth-blue/10 px-2 py-0.5 text-[11px] font-semibold text-pth-blue animate-pulse">Drop to add task</span>}
                                         </div>
                                         <div className="flex items-center gap-1 shrink-0">
-                                          <button type="button" className="rounded-lg p-1.5 text-bosch-muted transition-colors hover:bg-bosch-hover hover:text-bosch-text" onClick={() => openEditMilestone(ms)} title="Edit milestone">
+                                          <button type="button" className="rounded-lg p-1.5 text-pth-muted transition-colors hover:bg-pth-hover hover:text-pth-text" onClick={() => openEditMilestone(ms)} title="Edit milestone">
                                             <Pencil size={13} />
                                           </button>
-                                          <button type="button" className="rounded-lg p-1.5 text-bosch-muted transition-colors hover:bg-red-50 hover:text-bosch-red dark:hover:bg-bosch-red/10" onClick={() => deleteMilestone(ms.id)} title="Delete milestone">
+                                          <button type="button" className="rounded-lg p-1.5 text-pth-muted transition-colors hover:bg-red-50 hover:text-pth-red dark:hover:bg-pth-red/10" onClick={() => deleteMilestone(ms.id)} title="Delete milestone">
                                             <Trash2 size={13} />
                                           </button>
                                         </div>
                                       </div>
-                                      <div className="mt-1 flex items-center gap-3 text-xs text-bosch-muted">
+                                      <div className="mt-1 flex items-center gap-3 text-xs text-pth-muted">
                                         <span className="flex items-center gap-1"><CalendarClock size={12} /> {formatDate(ms.targetDate)}</span>
                                         {msOwner && <span>{msOwner.name}</span>}
                                       </div>
                                       {msActs.length > 0 && (
                                         <div className="mt-4 ml-2">
                                           <div className="flex items-center justify-between mb-2">
-                                            <span className="text-xs font-semibold text-bosch-muted">Tasks</span>
-                                            <span className="text-[11px] text-bosch-muted">{msActs.filter((a) => a.state === 'DONE').length}/{msActs.length} complete</span>
+                                            <span className="text-xs font-semibold text-pth-muted">Tasks</span>
+                                            <span className="text-[11px] text-pth-muted">{msActs.filter((a) => a.state === 'DONE').length}/{msActs.length} complete</span>
                                           </div>
                                           <div className="space-y-0.5">
                                             {msActs.map((act) => {
@@ -2742,22 +3118,22 @@ export default function App(): ReactElement {
                                               return (
                                                 <div
                                                   key={act.id}
-                                                  className={`group/task flex items-center justify-between rounded-lg px-3 py-2 transition-all ${isTaskDropTarget ? 'bg-bosch-blue/10 ring-2 ring-bosch-blue/30 ring-inset' : 'hover:bg-bosch-subtle'}`}
+                                                  className={`group/task flex items-center justify-between rounded-lg px-3 py-2 transition-all ${isTaskDropTarget ? 'bg-pth-blue/10 ring-2 ring-pth-blue/30 ring-inset' : 'hover:bg-pth-subtle'}`}
                                                   onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDropTargetId(`act_${act.id}`) }}
                                                   onDragLeave={(e) => { e.stopPropagation(); setDropTargetId(null) }}
                                                   onDrop={(e) => { e.preventDefault(); e.stopPropagation(); handleDropOnTask(act.id) }}
                                                 >
                                                   <div className="flex items-center gap-2.5 min-w-0">
-                                                    <span className={`h-2 w-2 shrink-0 rounded-full ${act.state === 'DONE' ? 'bg-emerald-500' : act.state === 'IN_PROGRESS' ? 'bg-bosch-blue' : 'bg-bosch-border'}`} />
+                                                    <span className={`h-2 w-2 shrink-0 rounded-full ${act.state === 'DONE' ? 'bg-emerald-500' : act.state === 'IN_PROGRESS' ? 'bg-pth-blue' : 'bg-pth-border'}`} />
                                                     <div className="min-w-0">
                                                       <div className="text-sm font-medium truncate">{act.name}</div>
-                                                      <div className="text-[11px] text-bosch-muted">
-                                                        {isTaskDropTarget ? <span className="text-bosch-blue font-medium animate-pulse">Reassign to dropped person</span> : <>{actOwner?.name ?? 'Unknown'} &middot; {formatShortDate(act.startDate)} &middot; {hours}h</>}
+                                                      <div className="text-[11px] text-pth-muted">
+                                                        {isTaskDropTarget ? <span className="text-pth-blue font-medium animate-pulse">Reassign to dropped person</span> : <>{actOwner?.name ?? 'Unknown'} &middot; {formatShortDate(act.startDate)} &middot; {hours}h</>}
                                                       </div>
                                                     </div>
                                                   </div>
                                                   <div className="flex items-center gap-1.5">
-                                                    <button type="button" className="rounded-lg p-1 text-bosch-muted opacity-0 transition-all group-hover/task:opacity-100 hover:bg-bosch-hover hover:text-bosch-text" onClick={() => openEditActivity(act)} title="Edit task">
+                                                    <button type="button" className="rounded-lg p-1 text-pth-muted opacity-0 transition-all group-hover/task:opacity-100 hover:bg-pth-hover hover:text-pth-text" onClick={() => openEditActivity(act)} title="Edit task">
                                                       <Pencil size={12} />
                                                     </button>
                                                     {activityStateBadge(act.state)}
@@ -2769,7 +3145,7 @@ export default function App(): ReactElement {
                                         </div>
                                       )}
                                       <div className="mt-3">
-                                        <button type="button" className="inline-flex items-center gap-1 rounded-lg bg-bosch-blue/10 px-2.5 py-1 text-xs font-medium text-bosch-blue transition-colors hover:bg-bosch-blue/20" onClick={() => openCreateActivity(ms.id)}>
+                                        <button type="button" className="inline-flex items-center gap-1 rounded-lg bg-pth-blue/10 px-2.5 py-1 text-xs font-medium text-pth-blue transition-colors hover:bg-pth-blue/20" onClick={() => openCreateActivity(ms.id)}>
                                           <Plus size={12} /> Add Task
                                         </button>
                                       </div>
@@ -2779,8 +3155,8 @@ export default function App(): ReactElement {
                               })}
                             </div>
                             {pActs.filter((a) => !a.milestoneId).length > 0 && (
-                              <div className="mt-4 rounded-xl border border-bosch-border/20 bg-bosch-subtle/30 p-4">
-                                <h3 className="text-sm font-semibold text-bosch-muted mb-3">Unlinked Activities</h3>
+                              <div className="mt-4 rounded-xl border border-pth-border/20 bg-pth-subtle/30 p-4">
+                                <h3 className="text-sm font-semibold text-pth-muted mb-3">Tasks ({pActs.filter((a) => !a.milestoneId).length})</h3>
                                 <div className="space-y-0.5">
                                   {pActs.filter((a) => !a.milestoneId).map((act) => {
                                     const actOwner = people.find((p) => p.id === act.ownerId)
@@ -2788,22 +3164,22 @@ export default function App(): ReactElement {
                                     return (
                                       <div
                                         key={act.id}
-                                        className={`group/task flex items-center justify-between rounded-lg px-3 py-2 transition-all ${isTaskDropTarget ? 'bg-bosch-blue/10 ring-2 ring-bosch-blue/30 ring-inset' : 'hover:bg-bosch-subtle'}`}
+                                        className={`group/task flex items-center justify-between rounded-lg px-3 py-2 transition-all ${isTaskDropTarget ? 'bg-pth-blue/10 ring-2 ring-pth-blue/30 ring-inset' : 'hover:bg-pth-subtle'}`}
                                         onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDropTargetId(`act_${act.id}`) }}
                                         onDragLeave={(e) => { e.stopPropagation(); setDropTargetId(null) }}
                                         onDrop={(e) => { e.preventDefault(); e.stopPropagation(); handleDropOnTask(act.id) }}
                                       >
                                         <div className="flex items-center gap-2.5 min-w-0">
-                                          <span className={`h-2 w-2 shrink-0 rounded-full ${act.state === 'DONE' ? 'bg-emerald-500' : act.state === 'IN_PROGRESS' ? 'bg-bosch-blue' : 'bg-bosch-border'}`} />
+                                          <span className={`h-2 w-2 shrink-0 rounded-full ${act.state === 'DONE' ? 'bg-emerald-500' : act.state === 'IN_PROGRESS' ? 'bg-pth-blue' : 'bg-pth-border'}`} />
                                           <div className="min-w-0">
                                             <div className="text-sm font-medium truncate">{act.name}</div>
-                                            <div className="text-[11px] text-bosch-muted">
-                                              {isTaskDropTarget ? <span className="text-bosch-blue font-medium animate-pulse">Reassign to dropped person</span> : <>{actOwner?.name ?? 'Unknown'} &middot; {formatShortDate(act.startDate)}</>}
+                                            <div className="text-[11px] text-pth-muted">
+                                              {isTaskDropTarget ? <span className="text-pth-blue font-medium animate-pulse">Reassign to dropped person</span> : <>{actOwner?.name ?? 'Unknown'} &middot; {formatShortDate(act.startDate)}</>}
                                             </div>
                                           </div>
                                         </div>
                                         <div className="flex items-center gap-1.5">
-                                          <button type="button" className="rounded-lg p-1 text-bosch-muted opacity-0 transition-all group-hover/task:opacity-100 hover:bg-bosch-hover hover:text-bosch-text" onClick={() => openEditActivity(act)} title="Edit task">
+                                          <button type="button" className="rounded-lg p-1 text-pth-muted opacity-0 transition-all group-hover/task:opacity-100 hover:bg-pth-hover hover:text-pth-text" onClick={() => openEditActivity(act)} title="Edit task">
                                             <Pencil size={12} />
                                           </button>
                                           {activityStateBadge(act.state)}
@@ -2819,10 +3195,10 @@ export default function App(): ReactElement {
                           {/* Right: Available Resources (sticky sidebar) */}
                           <div className="hidden lg:block">
                             <div className="sticky top-4">
-                              <div className="glass-card rounded-xl border border-bosch-border/20 shadow-card">
-                                <div className="border-b border-bosch-border/15 px-4 py-3">
+                              <div className="glass-card rounded-xl border border-pth-border/20 shadow-card">
+                                <div className="border-b border-pth-border/15 px-4 py-3">
                                   <h3 className="text-sm font-bold">Available Resources</h3>
-                                  <p className="mt-0.5 text-[11px] text-bosch-muted">Drag a person onto a milestone or task</p>
+                                  <p className="mt-0.5 text-[11px] text-pth-muted">Drag a person onto a milestone or task</p>
                                 </div>
                                 <div className="max-h-[60vh] overflow-y-auto p-2 space-y-1">
                                   {(() => {
@@ -2837,19 +3213,19 @@ export default function App(): ReactElement {
                                           draggable
                                           onDragStart={(e) => { e.dataTransfer.effectAllowed = 'copy'; setDragPersonId(row.person.id) }}
                                           onDragEnd={() => { setDragPersonId(null); setDropTargetId(null) }}
-                                          className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 cursor-grab active:cursor-grabbing select-none transition-all hover:bg-bosch-hover ${dragPersonId === row.person.id ? 'opacity-50 ring-2 ring-bosch-blue/30' : ''}`}
+                                          className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 cursor-grab active:cursor-grabbing select-none transition-all hover:bg-pth-hover ${dragPersonId === row.person.id ? 'opacity-50 ring-2 ring-pth-blue/30' : ''}`}
                                         >
-                                          <GripVertical size={12} className="shrink-0 text-bosch-border" />
-                                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-bosch-subtle text-[10px] font-bold">{row.person.initials}</div>
+                                          <GripVertical size={12} className="shrink-0 text-pth-border" />
+                                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-pth-subtle text-[10px] font-bold">{row.person.initials}</div>
                                           <div className="min-w-0 flex-1">
                                             <div className="text-xs font-medium truncate">{row.person.name}</div>
                                             <div className="flex items-center gap-1.5 mt-0.5">
-                                              <div className="h-1 flex-1 rounded-full bg-bosch-border/20 overflow-hidden">
-                                                <div ref={dynRef({ width: `${Math.min(row.utilization, 100)}%` })} className={`h-full rounded-full ${critical ? 'bg-bosch-red' : warning ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                                              <div className="h-1 flex-1 rounded-full bg-pth-border/20 overflow-hidden">
+                                                <div ref={dynRef({ width: `${Math.min(row.utilization, 100)}%` })} className={`h-full rounded-full ${critical ? 'bg-pth-red' : warning ? 'bg-amber-500' : 'bg-emerald-500'}`} />
                                               </div>
-                                              <span className={`text-[10px] font-semibold ${critical ? 'text-bosch-red' : warning ? 'text-amber-600' : 'text-emerald-600'}`}>{row.utilization}%</span>
+                                              <span className={`text-[10px] font-semibold ${critical ? 'text-pth-red' : warning ? 'text-amber-600' : 'text-emerald-600'}`}>{row.utilization}%</span>
                                             </div>
-                                            <div className="text-[10px] text-bosch-muted mt-0.5">{available}h available</div>
+                                            <div className="text-[10px] text-pth-muted mt-0.5">{available}h available</div>
                                           </div>
                                         </div>
                                       )
@@ -2875,15 +3251,20 @@ export default function App(): ReactElement {
                 // compute week end date for display
                 const weekEnd = addDays(currentWeek, 6)
 
-                // filter by search query
+                // filter by search query + site + area
                 const wq = workloadSearch.trim().toLowerCase()
-                const filtered = wq
-                  ? workloadRows.filter((r) =>
-                      r.person.name.toLowerCase().includes(wq) ||
-                      r.person.initials.toLowerCase().includes(wq) ||
-                      (ROLE_LABEL[r.person.role as Role] ?? '').toLowerCase().includes(wq),
-                    )
-                  : workloadRows
+                const wlAreaList = Array.from(new Set(workloadRows.map((r) => r.person.area).filter(Boolean) as string[])).sort()
+                const filtered = workloadRows.filter((r) => {
+                  if (workloadSiteFilter !== 'all' && !(r.person.location ?? []).includes(workloadSiteFilter)) return false
+                  if (workloadAreaFilter !== 'all' && (r.person.area ?? '') !== workloadAreaFilter) return false
+                  if (wq && !(
+                    r.person.name.toLowerCase().includes(wq) ||
+                    r.person.initials.toLowerCase().includes(wq) ||
+                    (r.person.area ?? '').toLowerCase().includes(wq) ||
+                    (ROLE_LABEL[r.person.role as Role] ?? '').toLowerCase().includes(wq)
+                  )) return false
+                  return true
+                })
 
                 // sort: overloaded first, then at-risk, then by descending util
                 const sorted = [...filtered].sort((a, b) => b.utilization - a.utilization)
@@ -2894,42 +3275,61 @@ export default function App(): ReactElement {
                   <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                     <div>
                       <h1 className="text-xl font-bold tracking-tight md:text-2xl">Workload Overview</h1>
-                      <p className="mt-0.5 text-xs text-bosch-muted">Team allocation and capacity analysis</p>
+                      <p className="mt-0.5 text-xs text-pth-muted">Team allocation and capacity analysis</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button type="button" title="Previous week" className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-bosch-muted transition-colors hover:bg-bosch-hover hover:text-bosch-text" onClick={() => setWorkloadWeekOffset((v) => v - 1)}>
+                      <button type="button" title="Previous week" className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-pth-muted transition-colors hover:bg-pth-hover hover:text-pth-text" onClick={() => setWorkloadWeekOffset((v) => v - 1)}>
                         <ChevronLeft size={16} />
                       </button>
-                      <div className="rounded-lg bg-bosch-subtle px-4 py-2 text-xs font-medium">{formatShortDate(currentWeek)} – {formatShortDate(weekEnd)}</div>
-                      <button type="button" title="Next week" className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-bosch-muted transition-colors hover:bg-bosch-hover hover:text-bosch-text" onClick={() => setWorkloadWeekOffset((v) => v + 1)}>
+                      <div className="rounded-lg bg-pth-subtle px-4 py-2 text-xs font-medium">{formatShortDate(currentWeek)} – {formatShortDate(weekEnd)}</div>
+                      <button type="button" title="Next week" className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-pth-muted transition-colors hover:bg-pth-hover hover:text-pth-text" onClick={() => setWorkloadWeekOffset((v) => v + 1)}>
                         <ChevronRight size={16} />
                       </button>
                     </div>
                   </div>
 
-                  {/* ── Search filter ── */}
-                  <div className="relative">
-                    <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-bosch-muted" />
-                    <input
-                      type="text"
-                      placeholder="Search team members..."
-                      value={workloadSearch}
-                      onChange={(e) => setWorkloadSearch(e.target.value)}
-                      className="w-full rounded-lg border border-bosch-border/40 bg-bosch-card py-2 pl-9 pr-3 text-sm outline-none placeholder:text-bosch-muted/60 focus:border-bosch-blue"
-                    />
+                  {/* ── Search + filters + view toggle ── */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative min-w-[200px] flex-1">
+                      <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-pth-muted" />
+                      <input
+                        type="text"
+                        placeholder="Search team members..."
+                        value={workloadSearch}
+                        onChange={(e) => setWorkloadSearch(e.target.value)}
+                        className="w-full rounded-lg border border-pth-border/40 bg-pth-card py-2 pl-9 pr-3 text-sm outline-none placeholder:text-pth-muted/60 focus:border-pth-blue"
+                      />
+                    </div>
+                    <select title="Site" value={workloadSiteFilter} onChange={(e) => setWorkloadSiteFilter(e.target.value as 'all' | 'SlpP' | 'TlP')} className="h-9 rounded-lg border border-pth-border/40 bg-pth-card px-3 text-sm outline-none focus:border-pth-blue">
+                      <option value="all">All sites</option>
+                      <option value="SlpP">SlpP</option>
+                      <option value="TlP">TlP</option>
+                    </select>
+                    <select title="Area" value={workloadAreaFilter} onChange={(e) => setWorkloadAreaFilter(e.target.value)} className="h-9 rounded-lg border border-pth-border/40 bg-pth-card px-3 text-sm outline-none focus:border-pth-blue">
+                      <option value="all">All areas</option>
+                      {wlAreaList.map((a) => <option key={a} value={a}>{a}</option>)}
+                    </select>
+                    <div className="flex items-center rounded-lg border border-pth-border/40 bg-pth-card p-0.5">
+                      <button type="button" title="Card view" onClick={() => setWorkloadView('cards')} className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${workloadView === 'cards' ? 'bg-pth-blue/10 text-pth-blue' : 'text-pth-muted hover:text-pth-text'}`}>
+                        <LayoutGrid size={15} />
+                      </button>
+                      <button type="button" title="List view" onClick={() => setWorkloadView('list')} className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${workloadView === 'list' ? 'bg-pth-blue/10 text-pth-blue' : 'text-pth-muted hover:text-pth-text'}`}>
+                        <List size={15} />
+                      </button>
+                    </div>
                   </div>
 
                   {/* ── KPI Cards ── */}
                   <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                     {[
-                      { label: 'Overloaded (>100%)', value: overloaded, icon: <ShieldAlert size={18} className="text-bosch-red" />, ring: '' },
+                      { label: 'Overloaded (>100%)', value: overloaded, icon: <ShieldAlert size={18} className="text-pth-red" />, ring: '' },
                       { label: 'At Risk (90–100%)', value: atRisk, icon: <Users size={18} className="text-amber-500" />, ring: '' },
                       { label: 'Moderate (50–90%)', value: moderate, icon: <Users size={18} className="text-blue-500" />, ring: '' },
                       { label: 'Low (<50%)', value: low, icon: <Users size={18} className="text-emerald-500" />, ring: '' },
                     ].map((kpi) => (
                       <div key={kpi.label} className={`glass-card rounded-xl p-4 shadow-card ${kpi.ring}`}>
                         <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-semibold uppercase tracking-wider text-bosch-muted">{kpi.label}</span>
+                          <span className="text-[11px] font-semibold uppercase tracking-wider text-pth-muted">{kpi.label}</span>
                           {kpi.icon}
                         </div>
                         <div className="mt-2 text-2xl font-bold">{kpi.value}</div>
@@ -2937,13 +3337,76 @@ export default function App(): ReactElement {
                     ))}
                   </div>
 
+                  {/* ── List view ── */}
+                  {workloadView === 'list' && (
+                    <div className="glass-card overflow-hidden rounded-xl border border-pth-border/20 shadow-card">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-pth-border/15 text-left text-[11px] uppercase tracking-wide text-pth-muted">
+                              <th className="px-4 py-2.5 font-semibold">Member</th>
+                              <th className="px-4 py-2.5 font-semibold">Area</th>
+                              <th className="px-4 py-2.5 font-semibold">Location</th>
+                              <th className="px-4 py-2.5 font-semibold">Manager</th>
+                              <th className="px-4 py-2.5 font-semibold whitespace-nowrap">Hours</th>
+                              <th className="px-4 py-2.5 font-semibold">Utilization</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-pth-border/10">
+                            {sorted.map((row) => {
+                              const lcritical = row.utilization > 100
+                              const lwarning = row.utilization >= 90 && row.utilization <= 100
+                              const lbar = lcritical ? 'bg-pth-red' : lwarning ? 'bg-amber-400' : row.utilization >= 50 ? 'bg-blue-500' : 'bg-emerald-500'
+                              const ltext = lcritical ? 'text-pth-red' : lwarning ? 'text-amber-600 dark:text-amber-400' : row.utilization >= 50 ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400'
+                              const mgrName = row.person.managerId ? (people.find((m) => m.id === row.person.managerId)?.name ?? '—') : '—'
+                              return (
+                                <tr key={row.person.id} className="transition-colors hover:bg-pth-hover/50">
+                                  <td className="px-4 py-2.5">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-pth-subtle text-[10px] font-bold">{row.person.initials}</div>
+                                      <div className="min-w-0">
+                                        <div className="truncate font-medium">{row.person.name}</div>
+                                        <div className="text-[10px] text-pth-muted">{row.person.resourceKind ?? (ROLE_LABEL[row.person.role as Role] ?? 'Resource')}</div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-2.5 text-pth-muted">{row.person.area || '—'}</td>
+                                  <td className="px-4 py-2.5">
+                                    <div className="flex gap-1">
+                                      {(row.person.location ?? []).map((loc) => <span key={loc} className="rounded-full bg-pth-blue/10 px-1.5 py-0.5 text-[10px] font-medium text-pth-blue">{loc}</span>)}
+                                      {(row.person.location?.length ?? 0) === 0 && <span className="text-pth-muted">—</span>}
+                                    </div>
+                                  </td>
+                                  <td className="max-w-[160px] truncate px-4 py-2.5 text-pth-muted">{mgrName}</td>
+                                  <td className="whitespace-nowrap px-4 py-2.5 text-pth-muted">{row.assignedHours}.0 / {row.capacityHours}</td>
+                                  <td className="px-4 py-2.5">
+                                    <div className="flex items-center gap-2">
+                                      <div className="h-1.5 w-20 overflow-hidden rounded-full bg-pth-border/20">
+                                        <div ref={dynRef({ width: `${Math.min(row.utilization, 100)}%` })} className={`h-full rounded-full ${lbar}`} />
+                                      </div>
+                                      <span className={`min-w-[2.5rem] text-right text-xs font-semibold ${ltext}`}>{row.utilization}%</span>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                            {sorted.length === 0 && (
+                              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-pth-muted">No team members match the filters.</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
                   {/* ── Person Cards Grid ── */}
+                  {workloadView === 'cards' && (
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {sorted.map((row) => {
                       const critical = row.utilization > 100
                       const warning = row.utilization >= 90 && row.utilization <= 100
-                      const barColor = critical ? 'bg-bosch-red' : warning ? 'bg-amber-400' : row.utilization >= 50 ? 'bg-blue-500' : 'bg-emerald-500'
-                      const textColor = critical ? 'text-bosch-red' : warning ? 'text-amber-600 dark:text-amber-400' : row.utilization >= 50 ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400'
+                      const barColor = critical ? 'bg-pth-red' : warning ? 'bg-amber-400' : row.utilization >= 50 ? 'bg-blue-500' : 'bg-emerald-500'
+                      const textColor = critical ? 'text-pth-red' : warning ? 'text-amber-600 dark:text-amber-400' : row.utilization >= 50 ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400'
                       const ringClass = ''
                       const roleLabel = ROLE_LABEL[row.person.role as Role] ?? 'Team Member'
 
@@ -2967,10 +3430,19 @@ export default function App(): ReactElement {
                           {/* Header: avatar + name + utilization */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white ${critical ? 'bg-bosch-red' : warning ? 'bg-amber-500' : row.utilization >= 50 ? 'bg-blue-500' : 'bg-emerald-500'}`}>{row.person.initials}</div>
+                              <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white ${critical ? 'bg-pth-red' : warning ? 'bg-amber-500' : row.utilization >= 50 ? 'bg-blue-500' : 'bg-emerald-500'}`}>{row.person.initials}</div>
                               <div>
                                 <div className="text-sm font-semibold">{row.person.name}</div>
-                                <div className="text-[11px] text-bosch-muted">{roleLabel}</div>
+                                <div className="text-[11px] text-pth-muted">
+                                  {row.person.resourceKind ?? roleLabel}{row.person.area ? ` · ${row.person.area}` : ''}
+                                </div>
+                                {(row.person.location?.length ?? 0) > 0 && (
+                                  <div className="mt-1 flex gap-1">
+                                    {row.person.location!.map((loc) => (
+                                      <span key={loc} className="rounded-full bg-pth-blue/10 px-1.5 py-0.5 text-[9px] font-medium text-pth-blue">{loc}</span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             </div>
                             <span className={`text-xl font-bold ${textColor}`}>{row.utilization}%</span>
@@ -2978,11 +3450,11 @@ export default function App(): ReactElement {
 
                           {/* Workload bar */}
                           <div className="mt-4">
-                            <div className="flex items-center justify-between text-[11px] text-bosch-muted mb-1.5">
+                            <div className="flex items-center justify-between text-[11px] text-pth-muted mb-1.5">
                               <span>Workload</span>
                               <span>{row.assignedHours}.0 / {row.capacityHours} hrs</span>
                             </div>
-                            <div className="h-2 w-full overflow-hidden rounded-full bg-bosch-border/15">
+                            <div className="h-2 w-full overflow-hidden rounded-full bg-pth-border/15">
                               <div ref={dynRef({ width: `${Math.min(row.utilization, 100)}%` })} className={`h-full rounded-full ${barColor}`} />
                             </div>
                           </div>
@@ -2990,16 +3462,16 @@ export default function App(): ReactElement {
                           {/* Project breakdown */}
                           {projectBreakdown.length > 0 && (
                             <div className="mt-4">
-                              <div className="text-[11px] font-semibold text-bosch-muted mb-2">Projects</div>
+                              <div className="text-[11px] font-semibold text-pth-muted mb-2">Projects</div>
                               <div className="space-y-1">
                                 {visibleProjects.map((p) => (
                                   <div key={p.name} className="flex items-center justify-between text-xs">
-                                    <span className="truncate pr-3 text-bosch-text">{p.name}</span>
-                                    <span className="shrink-0 text-bosch-muted">{p.hours}.0h</span>
+                                    <span className="truncate pr-3 text-pth-text">{p.name}</span>
+                                    <span className="shrink-0 text-pth-muted">{p.hours}.0h</span>
                                   </div>
                                 ))}
                                 {remaining > 0 && (
-                                  <div className="text-[11px] text-bosch-muted">+{remaining} more</div>
+                                  <div className="text-[11px] text-pth-muted">+{remaining} more</div>
                                 )}
                               </div>
                             </div>
@@ -3008,16 +3480,18 @@ export default function App(): ReactElement {
                       )
                     })}
                   </div>
+                  )}
                 </div>
                 )
               })()}
 
               {navPage === 'reports' && (
-              <div className="glass-card rounded-xl border border-bosch-border/20 shadow-card">
+              <div className="glass-card rounded-xl border border-pth-border/20 shadow-card">
                   {/* Report tab bar */}
-                  <div className="flex items-center gap-1 border-b border-bosch-border/15 px-4 pt-3">
+                  <div className="flex items-center gap-1 border-b border-pth-border/15 px-4 pt-3">
                     {([
                       { key: 'projectsStatus', label: 'Projects Status' },
+                      { key: 'taskTracking', label: 'Task Tracking' },
                       { key: 'prioritization', label: 'Prioritization & Risks' },
                       { key: 'workloadOverview', label: 'Workload Overview' },
                     ] as Array<{ key: ReportTab; label: string }>).map((tab) => (
@@ -3026,14 +3500,14 @@ export default function App(): ReactElement {
                         type="button"
                         className={`relative px-4 py-2.5 text-sm font-medium transition-colors ${
                           reportTab === tab.key
-                            ? 'text-bosch-blue'
-                            : 'text-bosch-muted hover:text-bosch-text'
+                            ? 'text-pth-blue'
+                            : 'text-pth-muted hover:text-pth-text'
                         }`}
                         onClick={() => setReportTab(tab.key)}
                       >
                         {tab.label}
                         {reportTab === tab.key && (
-                          <motion.div layoutId="report-tab-underline" className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-bosch-blue" transition={{ type: 'spring', duration: 0.35, bounce: 0.15 }} />
+                          <motion.div layoutId="report-tab-underline" className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-pth-blue" transition={{ type: 'spring', duration: 0.35, bounce: 0.15 }} />
                         )}
                       </button>
                     ))}
@@ -3046,44 +3520,44 @@ export default function App(): ReactElement {
                         {/* Filter bar */}
                         <div className="flex flex-wrap items-center gap-2">
                           <div className="relative flex-1 min-w-[180px]">
-                            <input type="text" placeholder="Search projects…" className="w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle py-2 pl-9 pr-3 text-sm outline-none placeholder:text-bosch-muted/60 focus:border-bosch-blue focus:ring-2 focus:ring-bosch-blue/20" value={rptSearch} onChange={(e) => setRptSearch(e.target.value)} />
-                            <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-bosch-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+                            <input type="text" placeholder="Search projects…" className="w-full rounded-lg border border-pth-border/40 bg-pth-subtle py-2 pl-9 pr-3 text-sm outline-none placeholder:text-pth-muted/60 focus:border-pth-blue focus:ring-2 focus:ring-pth-blue/20" value={rptSearch} onChange={(e) => setRptSearch(e.target.value)} />
+                            <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-pth-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
                           </div>
-                          <select title="Category" className="h-9 rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm outline-none focus:border-bosch-blue" value={rptCategory} onChange={(e) => setRptCategory(e.target.value)}>
+                          <select title="Category" className="h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm outline-none focus:border-pth-blue" value={rptCategory} onChange={(e) => setRptCategory(e.target.value)}>
                             <option value="all">All Categories</option>
                             {(['ECR', 'CIP', 'Path Forward', 'New Programs'] as ProjectCategory[]).map((c) => <option key={c} value={c}>{c}</option>)}
                           </select>
-                          <select title="Status" className="h-9 rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm outline-none focus:border-bosch-blue" value={rptStatus} onChange={(e) => setRptStatus(e.target.value)}>
+                          <select title="Status" className="h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm outline-none focus:border-pth-blue" value={rptStatus} onChange={(e) => setRptStatus(e.target.value)}>
                             <option value="all">All Status</option>
                             <option value="GREEN">On Track</option>
                             <option value="YELLOW">At Risk</option>
                             <option value="RED">Critical</option>
                           </select>
-                          <select title="Manager" className="h-9 rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm outline-none focus:border-bosch-blue" value={rptManager} onChange={(e) => setRptManager(e.target.value)}>
+                          <select title="Manager" className="h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm outline-none focus:border-pth-blue" value={rptManager} onChange={(e) => setRptManager(e.target.value)}>
                             <option value="all">All Managers</option>
                             {dvConnected && dvUsers.length > 0
                               ? dvUsers.map((u) => <option key={u.id} value={u.id}>{u.fullname}</option>)
                               : people.filter((p) => p.role === 'PROJECT_MANAGER').map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                           </select>
-                          <select title="Site" className="h-9 rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm outline-none focus:border-bosch-blue" value={rptSite} onChange={(e) => setRptSite(e.target.value)}>
+                          <select title="Site" className="h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm outline-none focus:border-pth-blue" value={rptSite} onChange={(e) => setRptSite(e.target.value)}>
                             <option value="all">All Sites</option>
                             {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                           </select>
                           {(rptSearch || rptCategory !== 'all' || rptStatus !== 'all' || rptManager !== 'all' || rptSite !== 'all') && (
-                            <button type="button" className="text-xs text-bosch-muted hover:text-bosch-text transition-colors" onClick={() => { setRptSearch(''); setRptCategory('all'); setRptStatus('all'); setRptManager('all'); setRptSite('all') }}>✕ Clear filters</button>
+                            <button type="button" className="text-xs text-pth-muted hover:text-pth-text transition-colors" onClick={() => { setRptSearch(''); setRptCategory('all'); setRptStatus('all'); setRptManager('all'); setRptSite('all') }}>✕ Clear filters</button>
                           )}
                         </div>
 
                         {/* KPI summary cards */}
                         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
                           {[
-                            { label: 'Total Projects', value: rptKpi.total, color: 'text-bosch-blue' },
+                            { label: 'Total Projects', value: rptKpi.total, color: 'text-pth-blue' },
                             { label: 'On Track', value: rptKpi.onTrack, color: 'text-emerald-600' },
                             { label: 'At Risk', value: rptKpi.atRisk, color: 'text-amber-600' },
-                            { label: 'Critical', value: rptKpi.critical, color: 'text-bosch-red' },
+                            { label: 'Critical', value: rptKpi.critical, color: 'text-pth-red' },
                           ].map((kpi) => (
-                            <div key={kpi.label} className="rounded-xl border border-bosch-border/15 bg-bosch-card p-4 text-center">
-                              <div className="text-[11px] font-semibold uppercase tracking-wider text-bosch-muted">{kpi.label}</div>
+                            <div key={kpi.label} className="rounded-xl border border-pth-border/15 bg-pth-card p-4 text-center">
+                              <div className="text-[11px] font-semibold uppercase tracking-wider text-pth-muted">{kpi.label}</div>
                               <div className={`mt-1 text-2xl font-bold ${kpi.color}`}>{kpi.value}</div>
                             </div>
                           ))}
@@ -3164,12 +3638,12 @@ export default function App(): ReactElement {
                           return (
                             <div className="glass-card rounded-xl p-5 shadow-card">
                               <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-xs font-semibold uppercase tracking-wider text-bosch-muted">Projects Timeline</h2>
-                                <div className="flex items-center gap-4 text-[10px] text-bosch-muted">
+                                <h2 className="text-xs font-semibold uppercase tracking-wider text-pth-muted">Projects Timeline</h2>
+                                <div className="flex items-center gap-4 text-[10px] text-pth-muted">
                                   <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" /> On Track</span>
                                   <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400" /> At Risk</span>
-                                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-bosch-red" /> Critical</span>
-                                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rotate-45 bg-bosch-blue" /> Milestone</span>
+                                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-pth-red" /> Critical</span>
+                                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rotate-45 bg-pth-blue" /> Milestone</span>
                                 </div>
                               </div>
 
@@ -3177,9 +3651,9 @@ export default function App(): ReactElement {
                               <div className="flex">
                                 {/* Fixed left column: project names */}
                                 <div className="w-44 shrink-0 z-10">
-                                  <div className="h-6 border-b border-bosch-border/15" /> {/* spacer for month header */}
+                                  <div className="h-6 border-b border-pth-border/15" /> {/* spacer for month header */}
                                   {bars.map((bar) => {
-                                    const dotColor = bar.status === 'RED' ? 'bg-bosch-red' : bar.status === 'YELLOW' ? 'bg-amber-400' : 'bg-emerald-500'
+                                    const dotColor = bar.status === 'RED' ? 'bg-pth-red' : bar.status === 'YELLOW' ? 'bg-amber-400' : 'bg-emerald-500'
                                     return (
                                       <div
                                         key={`label-${bar.project.id}`}
@@ -3187,20 +3661,20 @@ export default function App(): ReactElement {
                                         onClick={() => { setDetailProjectId(bar.project.id); setSelectedProjectId(bar.project.id) }}
                                       >
                                         <div className={`h-2 w-2 shrink-0 rounded-full ${dotColor}`} />
-                                        <span className="truncate text-xs font-medium group-hover:text-bosch-blue transition-colors">{bar.project.name}</span>
+                                        <span className="truncate text-xs font-medium group-hover:text-pth-blue transition-colors">{bar.project.name}</span>
                                       </div>
                                     )
                                   })}
-                                  <div className="h-7 mt-1 pt-2 border-t border-bosch-border/10 text-[10px] text-bosch-muted">{bars.length} project{bars.length !== 1 ? 's' : ''}</div>
+                                  <div className="h-7 mt-1 pt-2 border-t border-pth-border/10 text-[10px] text-pth-muted">{bars.length} project{bars.length !== 1 ? 's' : ''}</div>
                                 </div>
 
                                 {/* Scrollable right area */}
                                 <div className="flex-1 overflow-x-auto min-w-0" ref={scrollRef}>
                                   <div ref={dynRef({ width: `${innerWidth}px` })} className="relative">
                                     {/* Month header */}
-                                    <div className="relative h-6 border-b border-bosch-border/15">
+                                    <div className="relative h-6 border-b border-pth-border/15">
                                       {monthLabels.map((m, i) => (
-                                        <span key={`${m.label}-${i}`} ref={dynRef({left: `${m.pct}%`})} className={`absolute -translate-x-1/2 text-[10px] whitespace-nowrap ${m.isQuarter ? 'font-bold text-bosch-text' : 'font-medium text-bosch-muted/60'}`}>{m.label}</span>
+                                        <span key={`${m.label}-${i}`} ref={dynRef({left: `${m.pct}%`})} className={`absolute -translate-x-1/2 text-[10px] whitespace-nowrap ${m.isQuarter ? 'font-bold text-pth-text' : 'font-medium text-pth-muted/60'}`}>{m.label}</span>
                                       ))}
                                     </div>
 
@@ -3208,18 +3682,18 @@ export default function App(): ReactElement {
                                     <div className="relative">
                                       {/* Vertical grid — week ticks (light) */}
                                       {weekTicks.map((w, i) => (
-                                        <div key={`wk-${i}`} ref={dynRef({left: `${w.pct}%`})} className="absolute top-0 bottom-0 w-px bg-bosch-border/5" />
+                                        <div key={`wk-${i}`} ref={dynRef({left: `${w.pct}%`})} className="absolute top-0 bottom-0 w-px bg-pth-border/5" />
                                       ))}
                                       {/* Vertical grid — month lines */}
                                       {monthLabels.map((m, i) => (
-                                        <div key={`grid-${i}`} ref={dynRef({left: `${m.pct}%`})} className={`absolute top-0 bottom-0 w-px ${m.isQuarter ? 'bg-bosch-border/25' : 'bg-bosch-border/10'}`} />
+                                        <div key={`grid-${i}`} ref={dynRef({left: `${m.pct}%`})} className={`absolute top-0 bottom-0 w-px ${m.isQuarter ? 'bg-pth-border/25' : 'bg-pth-border/10'}`} />
                                       ))}
 
                                       {/* Today line */}
                                       <div ref={dynRef({left: `${todayPct}%`})} className="absolute top-0 bottom-0 z-20 -translate-x-1/2">
                                         <div className="relative h-full">
-                                          <div className="h-full w-px bg-bosch-blue/50 border-l border-dashed border-bosch-blue/30" />
-                                          <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 rounded bg-bosch-blue px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm whitespace-nowrap">Today</span>
+                                          <div className="h-full w-px bg-pth-blue/50 border-l border-dashed border-pth-blue/30" />
+                                          <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 rounded bg-pth-blue px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm whitespace-nowrap">Today</span>
                                         </div>
                                       </div>
 
@@ -3228,8 +3702,8 @@ export default function App(): ReactElement {
                                         const left = pct(bar.minStart)
                                         const right = pct(bar.maxEnd)
                                         const width = Math.max(right - left, 0.5)
-                                        const barFill = bar.status === 'RED' ? 'bg-bosch-red' : bar.status === 'YELLOW' ? 'bg-amber-400' : 'bg-emerald-500'
-                                        const barBg = bar.status === 'RED' ? 'bg-bosch-red/20' : bar.status === 'YELLOW' ? 'bg-amber-400/20' : 'bg-emerald-500/20'
+                                        const barFill = bar.status === 'RED' ? 'bg-pth-red' : bar.status === 'YELLOW' ? 'bg-amber-400' : 'bg-emerald-500'
+                                        const barBg = bar.status === 'RED' ? 'bg-pth-red/20' : bar.status === 'YELLOW' ? 'bg-amber-400/20' : 'bg-emerald-500/20'
                                         const progressPctVal = Math.round(bar.doneRatio * 100)
                                         return (
                                           <div
@@ -3238,12 +3712,12 @@ export default function App(): ReactElement {
                                             onClick={() => { setDetailProjectId(bar.project.id); setSelectedProjectId(bar.project.id) }}
                                           >
                                             {/* Background bar */}
-                                            <div ref={dynRef({left: `${left}%`, width: `${width}%`})} className={`absolute top-1 bottom-1 overflow-hidden rounded ${barBg} group-hover:ring-1 group-hover:ring-bosch-blue/30 transition-shadow`}>
+                                            <div ref={dynRef({left: `${left}%`, width: `${width}%`})} className={`absolute top-1 bottom-1 overflow-hidden rounded ${barBg} group-hover:ring-1 group-hover:ring-pth-blue/30 transition-shadow`}>
                                               <div ref={dynRef({width: `${progressPctVal}%`})} className={`h-full rounded ${barFill}`} />
                                             </div>
                                             {/* Progress label */}
                                             {(width / 100) * innerWidth > 40 && (
-                                              <span ref={dynRef({left: `${left + width / 2}%`})} className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] font-bold text-bosch-text/70 z-10">{progressPctVal}%</span>
+                                              <span ref={dynRef({left: `${left + width / 2}%`})} className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] font-bold text-pth-text/70 z-10">{progressPctVal}%</span>
                                             )}
                                             {/* Milestone diamonds */}
                                             {bar.milestones.map((ms) => {
@@ -3252,7 +3726,7 @@ export default function App(): ReactElement {
                                               const isLate = !isDone && rygFromDueDate(ms.targetDate, state.settings.warningDaysThreshold) === 'RED'
                                               return (
                                                 <div key={ms.id} ref={dynRef({left: `${msPct}%`})} className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 z-10" title={`${ms.name} — ${formatShortDate(ms.targetDate)}`}>
-                                                  <div className={`h-2.5 w-2.5 rotate-45 border ${isDone ? 'bg-emerald-500 border-emerald-600' : isLate ? 'bg-bosch-red border-bosch-red' : 'bg-bosch-blue border-bosch-blue'} shadow-sm`} />
+                                                  <div className={`h-2.5 w-2.5 rotate-45 border ${isDone ? 'bg-emerald-500 border-emerald-600' : isLate ? 'bg-pth-red border-pth-red' : 'bg-pth-blue border-pth-blue'} shadow-sm`} />
                                                 </div>
                                               )
                                             })}
@@ -3262,7 +3736,7 @@ export default function App(): ReactElement {
                                     </div>
 
                                     {/* Date axis footer with regular tick labels */}
-                                    <div className="relative mt-1 h-5 border-t border-bosch-border/10">
+                                    <div className="relative mt-1 h-5 border-t border-pth-border/10">
                                       {/* Bi-weekly date ticks for fine granularity */}
                                       {(() => {
                                         const ticks: Array<{label: string; pct: number}> = []
@@ -3278,7 +3752,7 @@ export default function App(): ReactElement {
                                           tc.setDate(tc.getDate() + 14) // every 2 weeks
                                         }
                                         return ticks.map((t, i) => (
-                                          <span key={`dtick-${i}`} ref={dynRef({ left: `${t.pct}%` })} className="absolute top-1 -translate-x-1/2 text-[9px] text-bosch-muted whitespace-nowrap">{t.label}</span>
+                                          <span key={`dtick-${i}`} ref={dynRef({ left: `${t.pct}%` })} className="absolute top-1 -translate-x-1/2 text-[9px] text-pth-muted whitespace-nowrap">{t.label}</span>
                                         ))
                                       })()}
                                     </div>
@@ -3290,31 +3764,31 @@ export default function App(): ReactElement {
                         })()}
 
                         {/* All projects status table */}
-                        <div className="overflow-auto rounded-xl border border-bosch-border/20">
+                        <div className="overflow-auto rounded-xl border border-pth-border/20">
                           <table className="w-full text-sm">
                             <thead>
-                              <tr className="border-b border-bosch-border/15 bg-bosch-subtle text-xs font-medium uppercase tracking-wider text-bosch-muted">
+                              <tr className="border-b border-pth-border/15 bg-pth-subtle text-xs font-medium uppercase tracking-wider text-pth-muted">
                                 {['Project', 'Category', 'PM', 'Status', 'Progress', 'Next Milestone'].map((h) => (
                                   <th key={h} className="px-4 py-3 text-left font-medium">{h}</th>
                                 ))}
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-bosch-border/10">
+                            <tbody className="divide-y divide-pth-border/10">
                               {rptRows.map((row) => (
-                                <tr key={row.project.id} className="cursor-pointer transition-colors hover:bg-bosch-hover" onClick={() => setReportProjectId(row.project.id)}>
+                                <tr key={row.project.id} className="cursor-pointer transition-colors hover:bg-pth-hover" onClick={() => setReportProjectId(row.project.id)}>
                                   <td className="px-4 py-3 font-medium">{row.project.name}</td>
-                                  <td className="px-4 py-3 text-bosch-muted">{row.project.category}</td>
-                                  <td className="px-4 py-3 text-bosch-muted">{row.pm}</td>
+                                  <td className="px-4 py-3 text-pth-muted">{row.project.category}</td>
+                                  <td className="px-4 py-3 text-pth-muted">{row.pm}</td>
                                   <td className="px-4 py-3">{statusBadge(row.status)}</td>
                                   <td className="px-4 py-3">
                                     <div className="flex items-center gap-2">
-                                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-bosch-border/20">
-                                        <div ref={dynRef({ width: `${row.progressPct}%` })} className="h-full rounded-full bg-bosch-blue" />
+                                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-pth-border/20">
+                                        <div ref={dynRef({ width: `${row.progressPct}%` })} className="h-full rounded-full bg-pth-blue" />
                                       </div>
-                                      <span className="text-xs text-bosch-muted">{row.progressPct}%</span>
+                                      <span className="text-xs text-pth-muted">{row.progressPct}%</span>
                                     </div>
                                   </td>
-                                  <td className="px-4 py-3 text-xs text-bosch-muted">{row.nextMilestone ? `${row.nextMilestone.name} (${dayDiff(todayISO(), row.nextMilestone.targetDate)}d)` : '—'}</td>
+                                  <td className="px-4 py-3 text-xs text-pth-muted">{row.nextMilestone ? `${row.nextMilestone.name} (${dayDiff(todayISO(), row.nextMilestone.targetDate)}d)` : '—'}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -3323,10 +3797,10 @@ export default function App(): ReactElement {
 
                         {/* ── Project deep-dive selector ── */}
                         <div className="flex items-center gap-3">
-                          <label className="text-xs font-semibold uppercase tracking-wider text-bosch-muted">Deep Dive</label>
+                          <label className="text-xs font-semibold uppercase tracking-wider text-pth-muted">Deep Dive</label>
                           <select
                             title="Select a project to deep-dive"
-                            className="rounded-lg border border-bosch-border/40 bg-bosch-card px-3 py-1.5 text-sm outline-none focus:border-bosch-blue"
+                            className="rounded-lg border border-pth-border/40 bg-pth-card px-3 py-1.5 text-sm outline-none focus:border-pth-blue"
                             value={reportProjectId ?? ''}
                             onChange={(e) => setReportProjectId(e.target.value || null)}
                           >
@@ -3336,7 +3810,7 @@ export default function App(): ReactElement {
                             ))}
                           </select>
                           {reportProject && (
-                            <button type="button" className="text-xs text-bosch-muted hover:text-bosch-text transition-colors" onClick={() => setReportProjectId(null)}>✕ Clear</button>
+                            <button type="button" className="text-xs text-pth-muted hover:text-pth-text transition-colors" onClick={() => setReportProjectId(null)}>✕ Clear</button>
                           )}
                         </div>
 
@@ -3344,29 +3818,29 @@ export default function App(): ReactElement {
                         {reportProject && (
                           <div className="space-y-4">
                             {/* Header card */}
-                            <div className="rounded-xl border border-bosch-border/15 bg-bosch-subtle p-4">
-                              <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-bosch-muted">Project Overview</div>
+                            <div className="rounded-xl border border-pth-border/15 bg-pth-subtle p-4">
+                              <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-pth-muted">Project Overview</div>
                               <div className="grid gap-3 text-sm sm:grid-cols-3 md:grid-cols-5">
-                                <div><div className="text-[11px] text-bosch-muted">Name</div><div className="font-medium">{reportProject.name}</div></div>
-                                <div><div className="text-[11px] text-bosch-muted">Category</div><div className="font-medium">{reportProject.category}</div></div>
-                                <div><div className="text-[11px] text-bosch-muted">PM</div><div className="font-medium">{people.find((p) => p.id === reportProject.projectManagerId)?.name ?? '—'}</div></div>
-                                <div><div className="text-[11px] text-bosch-muted">Site</div><div className="font-medium">{reportProject.siteIds.map((id) => sites.find((s) => s.id === id)?.name ?? id).join(', ') || '—'}</div></div>
-                                <div><div className="text-[11px] text-bosch-muted">Status</div><div className="mt-0.5">{statusBadge(seededProjectStatus(state, reportProject.id))}</div></div>
+                                <div><div className="text-[11px] text-pth-muted">Name</div><div className="font-medium">{reportProject.name}</div></div>
+                                <div><div className="text-[11px] text-pth-muted">Category</div><div className="font-medium">{reportProject.category}</div></div>
+                                <div><div className="text-[11px] text-pth-muted">PM</div><div className="font-medium">{people.find((p) => p.id === reportProject.projectManagerId)?.name ?? '—'}</div></div>
+                                <div><div className="text-[11px] text-pth-muted">Site</div><div className="font-medium">{reportProject.siteIds.map((id) => sites.find((s) => s.id === id)?.name ?? id).join(', ') || '—'}</div></div>
+                                <div><div className="text-[11px] text-pth-muted">Status</div><div className="mt-0.5">{statusBadge(seededProjectStatus(state, reportProject.id))}</div></div>
                               </div>
                             </div>
 
                             {/* Next milestone */}
-                            <div className="rounded-xl border border-bosch-border/15 bg-bosch-card p-4">
-                              <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-bosch-muted">Next Milestone</div>
+                            <div className="rounded-xl border border-pth-border/15 bg-pth-card p-4">
+                              <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-pth-muted">Next Milestone</div>
                               {reportNextMilestone ? (
                                 <div className="flex items-center gap-3 text-sm">
                                   <span className="font-medium">{reportNextMilestone.name}</span>
-                                  <span className="text-bosch-muted">—</span>
-                                  <span className="text-bosch-muted">{formatDate(reportNextMilestone.targetDate)}</span>
-                                  <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${dayDiff(todayISO(), reportNextMilestone.targetDate) < 0 ? 'bg-bosch-red/10 text-bosch-red' : 'bg-bosch-subtle'}`}>{dayDiff(todayISO(), reportNextMilestone.targetDate)}d</span>
+                                  <span className="text-pth-muted">—</span>
+                                  <span className="text-pth-muted">{formatDate(reportNextMilestone.targetDate)}</span>
+                                  <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${dayDiff(todayISO(), reportNextMilestone.targetDate) < 0 ? 'bg-pth-red/10 text-pth-red' : 'bg-pth-subtle'}`}>{dayDiff(todayISO(), reportNextMilestone.targetDate)}d</span>
                                 </div>
                               ) : (
-                                <div className="text-sm text-bosch-muted">No upcoming milestone</div>
+                                <div className="text-sm text-pth-muted">No upcoming milestone</div>
                               )}
                             </div>
 
@@ -3379,12 +3853,12 @@ export default function App(): ReactElement {
                               const pct = (d: string) => `${Math.max(0, Math.min(100, (dayDiff(minDate, d) / totalDays) * 100))}%`
                               const todayPct = `${Math.max(0, Math.min(100, (dayDiff(minDate, todayISO()) / totalDays) * 100))}%`
                               return (
-                                <div className="rounded-xl border border-bosch-border/15 bg-bosch-card p-4">
-                                  <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-bosch-muted">Gantt Chart</div>
+                                <div className="rounded-xl border border-pth-border/15 bg-pth-card p-4">
+                                  <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-pth-muted">Gantt Chart</div>
                                   <div className="relative min-h-[120px]">
                                     {/* Today marker */}
-                                    <div ref={dynRef({ left: todayPct })} className="absolute top-0 bottom-0 w-px bg-bosch-blue/40 z-10">
-                                      <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[9px] font-medium text-bosch-blue">Today</span>
+                                    <div ref={dynRef({ left: todayPct })} className="absolute top-0 bottom-0 w-px bg-pth-blue/40 z-10">
+                                      <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[9px] font-medium text-pth-blue">Today</span>
                                     </div>
                                     {/* Activity bars */}
                                     <div className="space-y-1.5">
@@ -3395,9 +3869,9 @@ export default function App(): ReactElement {
                                         const isDelayed = !isDone && rygFromDueDate(activity.endDate, state.settings.warningDaysThreshold) === 'RED'
                                         return (
                                           <div key={activity.id} className="flex items-center gap-2">
-                                            <div className="w-28 shrink-0 truncate text-[11px] text-bosch-muted">{activity.name}</div>
-                                            <div className="relative h-5 flex-1 rounded-full bg-bosch-subtle">
-                                              <div ref={dynRef({ left, right })} className={`absolute top-0 bottom-0 rounded-full ${isDone ? 'bg-emerald-500/70' : isDelayed ? 'bg-bosch-red/70' : 'bg-bosch-blue/70'}`} />
+                                            <div className="w-28 shrink-0 truncate text-[11px] text-pth-muted">{activity.name}</div>
+                                            <div className="relative h-5 flex-1 rounded-full bg-pth-subtle">
+                                              <div ref={dynRef({ left, right })} className={`absolute top-0 bottom-0 rounded-full ${isDone ? 'bg-emerald-500/70' : isDelayed ? 'bg-pth-red/70' : 'bg-pth-blue/70'}`} />
                                             </div>
                                           </div>
                                         )
@@ -3406,11 +3880,11 @@ export default function App(): ReactElement {
                                     {/* Milestone diamonds */}
                                     {reportMilestones.map((ms) => (
                                       <div key={ms.id} ref={dynRef({ left: pct(ms.targetDate) })} className="absolute -translate-x-1/2" title={`${ms.name} — ${formatDate(ms.targetDate)}`}>
-                                        <div className={`h-3 w-3 rotate-45 ${ms.doneDate ? 'bg-emerald-500' : 'bg-bosch-blue'} border border-white dark:border-bosch-card`} />
+                                        <div className={`h-3 w-3 rotate-45 ${ms.doneDate ? 'bg-emerald-500' : 'bg-pth-blue'} border border-white dark:border-pth-card`} />
                                       </div>
                                     ))}
                                   </div>
-                                  <div className="mt-2 flex justify-between text-[10px] text-bosch-muted">
+                                  <div className="mt-2 flex justify-between text-[10px] text-pth-muted">
                                     <span>{formatShortDate(minDate)}</span>
                                     <span>{formatShortDate(maxDate)}</span>
                                   </div>
@@ -3419,8 +3893,8 @@ export default function App(): ReactElement {
                             })()}
 
                             {/* Activity tabs: upcoming / closed / delayed */}
-                            <div className="rounded-xl border border-bosch-border/15 bg-bosch-card overflow-hidden">
-                              <div className="flex items-center gap-1 border-b border-bosch-border/15 px-4 pt-2">
+                            <div className="rounded-xl border border-pth-border/15 bg-pth-card overflow-hidden">
+                              <div className="flex items-center gap-1 border-b border-pth-border/15 px-4 pt-2">
                                 {([
                                   { key: 'upcoming' as ReportActivityTab, label: 'Upcoming', count: reportUpcoming.length },
                                   { key: 'closed' as ReportActivityTab, label: 'Recently Closed', count: reportClosed.length },
@@ -3429,38 +3903,38 @@ export default function App(): ReactElement {
                                   <button
                                     key={t.key}
                                     type="button"
-                                    className={`relative px-3 py-2 text-xs font-medium transition-colors ${reportActivityTab === t.key ? 'text-bosch-blue' : 'text-bosch-muted hover:text-bosch-text'}`}
+                                    className={`relative px-3 py-2 text-xs font-medium transition-colors ${reportActivityTab === t.key ? 'text-pth-blue' : 'text-pth-muted hover:text-pth-text'}`}
                                     onClick={() => setReportActivityTab(t.key)}
                                   >
                                     {t.label} <span className="ml-1 text-[10px] opacity-60">({t.count})</span>
                                     {reportActivityTab === t.key && (
-                                      <motion.div layoutId="rpt-activity-underline" className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-bosch-blue" transition={{ type: 'spring', duration: 0.35, bounce: 0.15 }} />
+                                      <motion.div layoutId="rpt-activity-underline" className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-pth-blue" transition={{ type: 'spring', duration: 0.35, bounce: 0.15 }} />
                                     )}
                                   </button>
                                 ))}
                               </div>
                               <div className="p-4 space-y-2">
                                 {reportActivityTab === 'upcoming' && (
-                                  reportUpcoming.length === 0 ? <div className="text-xs text-bosch-muted">No upcoming activities</div> : reportUpcoming.map((a) => (
-                                    <div key={a.id} className="flex items-center justify-between rounded-lg bg-bosch-subtle px-3 py-2 text-xs">
+                                  reportUpcoming.length === 0 ? <div className="text-xs text-pth-muted">No upcoming activities</div> : reportUpcoming.map((a) => (
+                                    <div key={a.id} className="flex items-center justify-between rounded-lg bg-pth-subtle px-3 py-2 text-xs">
                                       <span className="font-medium">{a.name}</span>
-                                      <span className="text-bosch-muted">{people.find((p) => p.id === a.ownerId)?.name ?? 'Unknown'}</span>
+                                      <span className="text-pth-muted">{people.find((p) => p.id === a.ownerId)?.name ?? 'Unknown'}</span>
                                     </div>
                                   ))
                                 )}
                                 {reportActivityTab === 'closed' && (
-                                  reportClosed.length === 0 ? <div className="text-xs text-bosch-muted">No recently closed activities</div> : reportClosed.map((a) => (
-                                    <div key={a.id} className="flex items-center justify-between rounded-lg bg-bosch-subtle px-3 py-2 text-xs">
+                                  reportClosed.length === 0 ? <div className="text-xs text-pth-muted">No recently closed activities</div> : reportClosed.map((a) => (
+                                    <div key={a.id} className="flex items-center justify-between rounded-lg bg-pth-subtle px-3 py-2 text-xs">
                                       <span className="font-medium">{a.name}</span>
-                                      <span className="text-bosch-muted">{formatDate(a.doneDate ?? a.endDate)}</span>
+                                      <span className="text-pth-muted">{formatDate(a.doneDate ?? a.endDate)}</span>
                                     </div>
                                   ))
                                 )}
                                 {reportActivityTab === 'delayed' && (
-                                  reportDelayed.length === 0 ? <div className="text-xs text-bosch-muted">No delayed activities</div> : reportDelayed.map((a) => (
-                                    <div key={a.id} className="flex items-center justify-between rounded-lg bg-bosch-card px-3 py-2 text-xs">
+                                  reportDelayed.length === 0 ? <div className="text-xs text-pth-muted">No delayed activities</div> : reportDelayed.map((a) => (
+                                    <div key={a.id} className="flex items-center justify-between rounded-lg bg-pth-card px-3 py-2 text-xs">
                                       <span className="font-medium">{a.name}</span>
-                                      <span className="font-semibold text-bosch-red">{a.delayDays}d late</span>
+                                      <span className="font-semibold text-pth-red">{a.delayDays}d late</span>
                                     </div>
                                   ))
                                 )}
@@ -3471,6 +3945,122 @@ export default function App(): ReactElement {
                       </div>
                     )}
 
+                    {/* ── TASK TRACKING (preventive) TAB ── */}
+                    {reportTab === 'taskTracking' && (() => {
+                      const rows = state.activities.map((a) => {
+                        const proj = state.projects.find((p) => p.id === a.projectId)
+                        const status = rygForActivity(a)
+                        const daysToDue = a.doneDate ? null : dayDiff(todayISO(), a.endDate)
+                        const owner = people.find((p) => p.id === a.ownerId)
+                        const locNames = proj ? proj.siteIds.map((id) => sites.find((s) => s.id === id)?.name ?? id) : []
+                        return { a, proj, status, daysToDue, ownerName: owner?.name ?? 'Unassigned', locNames }
+                      })
+                      const areaTokens = Array.from(new Set(
+                        state.activities.flatMap((a) => (a.responsible ?? '').split(/[+/,]/).map((t) => t.trim()).filter(Boolean)),
+                      )).sort()
+                      const projTypes = Array.from(new Set(state.projects.map((p) => p.projectType).filter(Boolean) as string[])).sort()
+                      const filtered = rows.filter((r) => {
+                        if (ttArea !== 'all' && !(r.a.responsible ?? '').toLowerCase().includes(ttArea.toLowerCase())) return false
+                        if (ttLoc !== 'all' && !r.locNames.includes(ttLoc)) return false
+                        if (ttProjType !== 'all' && (r.proj?.projectType ?? '') !== ttProjType) return false
+                        if (ttRisk !== 'all' && r.a.doneDate) return false
+                        if (ttRisk === 'atrisk' && r.status === 'GREEN') return false
+                        if (ttRisk === 'red' && r.status !== 'RED') return false
+                        if (ttRisk === 'green' && r.status !== 'GREEN') return false
+                        return true
+                      }).sort((x, y) => {
+                        const rank = (s: RygStatus) => (s === 'RED' ? 0 : s === 'YELLOW' ? 1 : 2)
+                        if (rank(x.status) !== rank(y.status)) return rank(x.status) - rank(y.status)
+                        return (x.daysToDue ?? 99999) - (y.daysToDue ?? 99999)
+                      })
+                      const redCount = rows.filter((r) => !r.a.doneDate && r.status === 'RED').length
+                      const yellowCount = rows.filter((r) => !r.a.doneDate && r.status === 'YELLOW').length
+                      const dueSoon = rows.filter((r) => !r.a.doneDate && r.daysToDue !== null && r.daysToDue >= 0 && r.daysToDue <= 14).length
+                      const sel = 'h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm outline-none focus:border-pth-blue'
+                      return (
+                        <div className="space-y-4">
+                          <p className="text-xs text-pth-muted">Preventive view — surfaces tasks at risk of missing their due date (target: finish ≥2 weeks early). Filter by area, location and project type to see what won't be met in time.</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <select title="Area" className={sel} value={ttArea} onChange={(e) => setTtArea(e.target.value)}>
+                              <option value="all">All Areas</option>
+                              {areaTokens.map((t) => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                            <select title="Location" className={sel} value={ttLoc} onChange={(e) => setTtLoc(e.target.value)}>
+                              <option value="all">All Locations</option>
+                              {sites.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
+                            </select>
+                            <select title="Project Type" className={sel} value={ttProjType} onChange={(e) => setTtProjType(e.target.value)}>
+                              <option value="all">All Project Types</option>
+                              {projTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                            <select title="Risk" className={sel} value={ttRisk} onChange={(e) => setTtRisk(e.target.value)}>
+                              <option value="atrisk">At risk (RED + YELLOW)</option>
+                              <option value="red">Will miss (RED)</option>
+                              <option value="green">On track (GREEN)</option>
+                              <option value="all">All tasks</option>
+                            </select>
+                            {(ttArea !== 'all' || ttLoc !== 'all' || ttProjType !== 'all' || ttRisk !== 'atrisk') && (
+                              <button type="button" className="text-xs text-pth-muted hover:text-pth-text" onClick={() => { setTtArea('all'); setTtLoc('all'); setTtProjType('all'); setTtRisk('atrisk') }}>✕ Clear</button>
+                            )}
+                            <span className="ml-auto text-xs text-pth-muted">{filtered.length} tasks</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-3">
+                            <div className="rounded-xl border border-pth-border/15 bg-pth-card p-4 text-center">
+                              <div className="text-[11px] font-semibold uppercase tracking-wider text-pth-muted">Will miss due date</div>
+                              <div className="mt-1 text-2xl font-bold text-pth-red">{redCount}</div>
+                            </div>
+                            <div className="rounded-xl border border-pth-border/15 bg-pth-card p-4 text-center">
+                              <div className="text-[11px] font-semibold uppercase tracking-wider text-pth-muted">At risk (no buffer)</div>
+                              <div className="mt-1 text-2xl font-bold text-amber-600">{yellowCount}</div>
+                            </div>
+                            <div className="rounded-xl border border-pth-border/15 bg-pth-card p-4 text-center">
+                              <div className="text-[11px] font-semibold uppercase tracking-wider text-pth-muted">Due within 2 weeks</div>
+                              <div className="mt-1 text-2xl font-bold text-pth-blue">{dueSoon}</div>
+                            </div>
+                          </div>
+                          <div className="overflow-x-auto rounded-xl border border-pth-border/15">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b border-pth-border/15 text-left text-[11px] uppercase tracking-wide text-pth-muted">
+                                  <th className="px-3 py-2 font-semibold">Status</th>
+                                  <th className="px-3 py-2 font-semibold">Task</th>
+                                  <th className="px-3 py-2 font-semibold">Project</th>
+                                  <th className="px-3 py-2 font-semibold">Type</th>
+                                  <th className="px-3 py-2 font-semibold">Location</th>
+                                  <th className="px-3 py-2 font-semibold">Area</th>
+                                  <th className="px-3 py-2 font-semibold">Owner</th>
+                                  <th className="whitespace-nowrap px-3 py-2 font-semibold">Due</th>
+                                  <th className="whitespace-nowrap px-3 py-2 font-semibold">Days left</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-pth-border/10">
+                                {filtered.map((r) => {
+                                  const dot = r.status === 'RED' ? 'bg-pth-red' : r.status === 'YELLOW' ? 'bg-amber-500' : 'bg-emerald-500'
+                                  const dleft = r.daysToDue
+                                  return (
+                                    <tr key={r.a.id} className="transition-colors hover:bg-pth-hover/40">
+                                      <td className="px-3 py-2"><span className={`inline-block h-2.5 w-2.5 rounded-full ${dot}`} /></td>
+                                      <td className="px-3 py-2 font-medium">{r.a.name}{r.a.criticalPath && <span className="ml-1.5 rounded bg-pth-red/10 px-1 py-0.5 text-[9px] font-semibold text-pth-red">CP</span>}</td>
+                                      <td className="max-w-[180px] truncate px-3 py-2 text-pth-muted" title={r.proj?.name}>{r.proj?.name ?? '—'}</td>
+                                      <td className="px-3 py-2 text-pth-muted">{r.proj?.projectType || '—'}</td>
+                                      <td className="px-3 py-2 text-pth-muted">{r.locNames.join(', ') || '—'}</td>
+                                      <td className="px-3 py-2 text-pth-muted">{r.a.responsible || '—'}</td>
+                                      <td className="px-3 py-2 text-pth-muted">{r.ownerName}</td>
+                                      <td className="whitespace-nowrap px-3 py-2 text-pth-muted">{r.a.doneDate ? 'Done' : formatShortDate(r.a.endDate)}</td>
+                                      <td className={`whitespace-nowrap px-3 py-2 font-medium ${dleft != null && dleft < 0 ? 'text-pth-red' : dleft != null && dleft <= 14 ? 'text-amber-600' : 'text-pth-muted'}`}>
+                                        {r.a.doneDate ? '—' : dleft != null ? (dleft < 0 ? `${-dleft}d overdue` : `${dleft}d`) : '—'}
+                                      </td>
+                                    </tr>
+                                  )
+                                })}
+                                {filtered.length === 0 && <tr><td colSpan={9} className="px-3 py-8 text-center text-pth-muted">No tasks match these filters.</td></tr>}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )
+                    })()}
+
                     {reportTab === 'prioritization' && (
                       <div className="space-y-4">
                         {role !== 'DIRECTOR' && (
@@ -3480,23 +4070,23 @@ export default function App(): ReactElement {
                         )}
 
                         {/* Milestones risk table */}
-                        <div className="overflow-auto rounded-xl border border-bosch-border/20">
+                        <div className="overflow-auto rounded-xl border border-pth-border/20">
                           <table className="w-full text-sm">
                             <thead>
-                              <tr className="border-b border-bosch-border/15 bg-bosch-subtle text-xs font-medium uppercase tracking-wider text-bosch-muted">
+                              <tr className="border-b border-pth-border/15 bg-pth-subtle text-xs font-medium uppercase tracking-wider text-pth-muted">
                                 {['Project', 'Milestone', 'Due Date', 'Days', 'RYG'].map((h) => (
                                   <th key={h} className="px-4 py-3 text-left font-medium">{h}</th>
                                 ))}
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-bosch-border/10">
+                            <tbody className="divide-y divide-pth-border/10">
                               {upcomingMilestonesRisk.map((row) => (
-                                <tr key={row.milestone.id} className="transition-colors hover:bg-bosch-hover">
+                                <tr key={row.milestone.id} className="transition-colors hover:bg-pth-hover">
                                   <td className="px-4 py-3 font-medium">{row.projectName}</td>
-                                  <td className="px-4 py-3 text-bosch-muted">{row.milestone.name}</td>
-                                  <td className="px-4 py-3 text-bosch-muted">{formatDate(row.milestone.targetDate)}</td>
+                                  <td className="px-4 py-3 text-pth-muted">{row.milestone.name}</td>
+                                  <td className="px-4 py-3 text-pth-muted">{formatDate(row.milestone.targetDate)}</td>
                                   <td className="px-4 py-3">
-                                    <span className={`text-xs font-semibold ${row.daysRemaining < 0 ? 'text-bosch-red' : row.daysRemaining <= state.settings.warningDaysThreshold ? 'text-amber-600' : 'text-bosch-muted'}`}>{row.daysRemaining}d</span>
+                                    <span className={`text-xs font-semibold ${row.daysRemaining < 0 ? 'text-pth-red' : row.daysRemaining <= state.settings.warningDaysThreshold ? 'text-amber-600' : 'text-pth-muted'}`}>{row.daysRemaining}d</span>
                                   </td>
                                   <td className="px-4 py-3">{statusBadge(row.status)}</td>
                                 </tr>
@@ -3507,9 +4097,9 @@ export default function App(): ReactElement {
 
                         {/* Delayed activities grouped */}
                         <div className="space-y-3">
-                          <h3 className="text-xs font-semibold uppercase tracking-wider text-bosch-muted">Delayed Activities per Project</h3>
+                          <h3 className="text-xs font-semibold uppercase tracking-wider text-pth-muted">Delayed Activities per Project</h3>
                           {delayedGrouped.map((group) => (
-                            <div key={group.project.id} className="rounded-xl border border-bosch-border/15 bg-bosch-card transition-shadow hover:shadow-sm">
+                            <div key={group.project.id} className="rounded-xl border border-pth-border/15 bg-pth-card transition-shadow hover:shadow-sm">
                               <button
                                 type="button"
                                 className="flex w-full items-center justify-between px-4 py-3"
@@ -3517,22 +4107,22 @@ export default function App(): ReactElement {
                               >
                                 <span className="text-sm font-medium">{group.project.name}</span>
                                 <div className="flex items-center gap-2">
-                                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-bosch-red/10 px-1.5 text-xs font-semibold text-bosch-red">{group.items.length}</span>
-                                  {group.criticalImpact && <ShieldAlert size={14} className="text-bosch-red" />}
-                                  <ChevronDown size={14} className={`text-bosch-muted transition-transform ${expandedRiskProjectId === group.project.id ? 'rotate-180' : ''}`} />
+                                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-pth-red/10 px-1.5 text-xs font-semibold text-pth-red">{group.items.length}</span>
+                                  {group.criticalImpact && <ShieldAlert size={14} className="text-pth-red" />}
+                                  <ChevronDown size={14} className={`text-pth-muted transition-transform ${expandedRiskProjectId === group.project.id ? 'rotate-180' : ''}`} />
                                 </div>
                               </button>
                               <AnimatePresence>
                                 {expandedRiskProjectId === group.project.id && (
                                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                                    <div className="space-y-1.5 border-t border-bosch-border/15 px-4 py-3">
+                                    <div className="space-y-1.5 border-t border-pth-border/15 px-4 py-3">
                                       {group.items.map((activity) => (
-                                        <div key={activity.id} className="flex items-center gap-2 rounded-lg bg-bosch-subtle px-3 py-2 text-xs">
-                                          <span className="h-1.5 w-1.5 rounded-full bg-bosch-red" />
+                                        <div key={activity.id} className="flex items-center gap-2 rounded-lg bg-pth-subtle px-3 py-2 text-xs">
+                                          <span className="h-1.5 w-1.5 rounded-full bg-pth-red" />
                                           <span className="font-medium">{activity.name}</span>
-                                          <span className="text-bosch-muted">•</span>
-                                          <span className="text-bosch-muted">{people.find((p) => p.id === activity.ownerId)?.name ?? 'Unknown'}</span>
-                                          {activity.criticalPath && <span className="ml-auto rounded-md bg-bosch-red/10 px-1.5 py-0.5 text-[10px] font-semibold text-bosch-red">Critical</span>}
+                                          <span className="text-pth-muted">•</span>
+                                          <span className="text-pth-muted">{people.find((p) => p.id === activity.ownerId)?.name ?? 'Unknown'}</span>
+                                          {activity.criticalPath && <span className="ml-auto rounded-md bg-pth-red/10 px-1.5 py-0.5 text-[10px] font-semibold text-pth-red">Critical</span>}
                                         </div>
                                       ))}
                                     </div>
@@ -3548,10 +4138,10 @@ export default function App(): ReactElement {
                     {reportTab === 'workloadOverview' && (
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-bosch-muted">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-pth-muted">
                             {calendarWeek(currentWeek)} &middot; {formatShortDate(currentWeek)} – {formatShortDate(addDays(currentWeek, 6))}
                           </span>
-                          <span className="text-xs text-bosch-muted">{workloadRows.length} resources</span>
+                          <span className="text-xs text-pth-muted">{workloadRows.length} resources</span>
                         </div>
                         {workloadRows.map((row) => {
                           const warning = row.utilization >= state.settings.workloadWarningThreshold && row.utilization <= state.settings.workloadCriticalThreshold
@@ -3571,41 +4161,41 @@ export default function App(): ReactElement {
                           const totalHours = Object.values(projectBreakdown).reduce((s, p) => s + p.hours, 0)
 
                           return (
-                            <div key={row.person.id} className="rounded-xl border border-bosch-border/15 bg-bosch-card transition-shadow hover:shadow-sm">
+                            <div key={row.person.id} className="rounded-xl border border-pth-border/15 bg-pth-card transition-shadow hover:shadow-sm">
                               <button
                                 type="button"
                                 className="flex w-full items-center gap-4 px-4 py-3"
                                 onClick={() => setExpandedWorkloadPersonId((cur) => (cur === row.person.id ? null : row.person.id))}
                               >
-                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-bosch-subtle text-xs font-bold">{row.person.initials}</div>
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pth-subtle text-xs font-bold">{row.person.initials}</div>
                                 <div className="min-w-0 flex-1 text-left">
                                   <div className="text-sm font-medium">{row.person.name}</div>
-                                  <div className="text-[11px] text-bosch-muted">{row.utilization}% allocated</div>
+                                  <div className="text-[11px] text-pth-muted">{row.utilization}% allocated</div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                  <div className="w-24 h-1.5 rounded-full bg-bosch-border/20 overflow-hidden">
-                                    <div ref={dynRef({ width: `${Math.min(row.utilization, 150)}%` })} className={`h-full rounded-full transition-all ${critical ? 'bg-bosch-red' : warning ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                                  <div className="w-24 h-1.5 rounded-full bg-pth-border/20 overflow-hidden">
+                                    <div ref={dynRef({ width: `${Math.min(row.utilization, 150)}%` })} className={`h-full rounded-full transition-all ${critical ? 'bg-pth-red' : warning ? 'bg-amber-500' : 'bg-emerald-500'}`} />
                                   </div>
-                                  <span className={`min-w-[3rem] text-right text-xs font-semibold ${critical ? 'text-bosch-red' : warning ? 'text-amber-600' : 'text-emerald-600'}`}>{row.utilization}%</span>
-                                  <ChevronDown size={14} className={`text-bosch-muted transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                  <span className={`min-w-[3rem] text-right text-xs font-semibold ${critical ? 'text-pth-red' : warning ? 'text-amber-600' : 'text-emerald-600'}`}>{row.utilization}%</span>
+                                  <ChevronDown size={14} className={`text-pth-muted transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                                 </div>
                               </button>
                               <AnimatePresence>
                                 {isExpanded && (
                                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                                    <div className="border-t border-bosch-border/15 px-4 py-3 space-y-1.5">
+                                    <div className="border-t border-pth-border/15 px-4 py-3 space-y-1.5">
                                       {Object.entries(projectBreakdown).length > 0 ? Object.entries(projectBreakdown).map(([projId, info]) => {
                                         const pct = totalHours > 0 ? Math.round((info.hours / Math.max(row.capacityHours, 1)) * 100) : 0
                                         return (
-                                        <div key={projId} className="flex items-center justify-between rounded-lg bg-bosch-subtle px-3 py-2 text-xs">
+                                        <div key={projId} className="flex items-center justify-between rounded-lg bg-pth-subtle px-3 py-2 text-xs">
                                           <div className="flex items-center gap-2 min-w-0">
-                                            <span className="h-1.5 w-1.5 rounded-full bg-bosch-blue" />
+                                            <span className="h-1.5 w-1.5 rounded-full bg-pth-blue" />
                                             <span className="font-medium truncate">{info.name}</span>
                                           </div>
                                           <span className="shrink-0 font-semibold">{pct}%</span>
                                         </div>)
                                       }) : (
-                                        <div className="text-xs text-bosch-muted px-3 py-2">No project assignments for this week</div>
+                                        <div className="text-xs text-pth-muted px-3 py-2">No project assignments for this week</div>
                                       )}
                                     </div>
                                   </motion.div>
@@ -3624,15 +4214,15 @@ export default function App(): ReactElement {
               {navPage === 'alerts' && (
                 <div className="space-y-4">
                   {/* ─── Alert Simulation ─── */}
-                  <div className="glass-card rounded-xl border border-bosch-border/20 shadow-card">
-                    <div className="border-b border-bosch-border/15 px-5 py-4">
+                  <div className="glass-card rounded-xl border border-pth-border/20 shadow-card">
+                    <div className="border-b border-pth-border/15 px-5 py-4">
                       <h2 className="text-base font-semibold tracking-tight">Alert Simulation</h2>
-                      <p className="mt-0.5 text-xs text-bosch-muted">Generate weekly digest notifications based on current data</p>
+                      <p className="mt-0.5 text-xs text-pth-muted">Generate weekly digest notifications based on current data</p>
                     </div>
                     <div className="p-5">
                       <button
                         type="button"
-                        className="inline-flex items-center gap-2 rounded-lg bg-bosch-btn px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-bosch-btn-hover active:scale-[0.98]"
+                        className="inline-flex items-center gap-2 rounded-lg bg-pth-btn px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-pth-btn-hover active:scale-[0.98]"
                         onClick={simulateWeeklyAlerts}
                       >
                         <CalendarClock size={14} /> Simulate Weekly Alerts
@@ -3641,27 +4231,27 @@ export default function App(): ReactElement {
                   </div>
 
                   {/* ─── Power Automate Integration ─── */}
-                  <div className="glass-card rounded-xl border border-bosch-border/20 shadow-card">
-                    <div className="border-b border-bosch-border/15 px-5 py-4">
+                  <div className="glass-card rounded-xl border border-pth-border/20 shadow-card">
+                    <div className="border-b border-pth-border/15 px-5 py-4">
                       <div className="flex items-center gap-2.5">
                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-violet-600 shadow-sm">
                           <Zap size={16} className="text-white" />
                         </div>
                         <div>
                           <h2 className="text-base font-semibold tracking-tight">Power Automate Integration</h2>
-                          <p className="mt-0.5 text-xs text-bosch-muted">Configure automated flows to notify your team via Microsoft Teams, email, and more</p>
+                          <p className="mt-0.5 text-xs text-pth-muted">Configure automated flows to notify your team via Microsoft Teams, email, and more</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Webhook configuration */}
-                    <div className="border-b border-bosch-border/10 px-5 py-4">
+                    <div className="border-b border-pth-border/10 px-5 py-4">
                       <label className="space-y-1.5">
-                        <span className="text-xs font-medium text-bosch-muted">Webhook URL (HTTP trigger endpoint)</span>
+                        <span className="text-xs font-medium text-pth-muted">Webhook URL (HTTP trigger endpoint)</span>
                         <div className="flex gap-2">
                           <input
                             type="text"
-                            className="h-9 flex-1 rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-xs font-mono transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20"
+                            className="h-9 flex-1 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-xs font-mono transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20"
                             value={paWebhookUrl}
                             onChange={(e) => setPaWebhookUrl(e.target.value)}
                             placeholder="https://prod-XX.westus.logic.azure.com:443/workflows/..."
@@ -3670,20 +4260,20 @@ export default function App(): ReactElement {
                             href="https://make.powerautomate.com"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-xs font-medium text-bosch-muted transition-colors hover:bg-bosch-card hover:text-bosch-text"
+                            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-xs font-medium text-pth-muted transition-colors hover:bg-pth-card hover:text-pth-text"
                           >
                             <ExternalLink size={12} /> Open Portal
                           </a>
                         </div>
                       </label>
-                      <div className="mt-2 flex items-center gap-1.5 text-[11px] text-bosch-muted">
+                      <div className="mt-2 flex items-center gap-1.5 text-[11px] text-pth-muted">
                         <span className={`h-1.5 w-1.5 rounded-full ${paWebhookUrl.includes('logic.azure.com') ? 'bg-emerald-500' : 'bg-amber-400'}`} />
                         {paWebhookUrl.includes('logic.azure.com') ? 'Endpoint configured' : 'Provide a valid Power Automate HTTP trigger URL'}
                       </div>
                     </div>
 
                     {/* Flow list */}
-                    <div className="divide-y divide-bosch-border/10">
+                    <div className="divide-y divide-pth-border/10">
                       {paFlows.map((flow) => (
                         <div key={flow.id} className="flex items-center gap-4 px-5 py-3.5">
                           <button
@@ -3693,14 +4283,14 @@ export default function App(): ReactElement {
                             title={flow.enabled ? 'Disable flow' : 'Enable flow'}
                           >
                             {flow.enabled ? (
-                              <ToggleRight size={28} className="text-bosch-blue" />
+                              <ToggleRight size={28} className="text-pth-blue" />
                             ) : (
-                              <ToggleLeft size={28} className="text-bosch-muted/50" />
+                              <ToggleLeft size={28} className="text-pth-muted/50" />
                             )}
                           </button>
                           <div className="min-w-0 flex-1">
-                            <p className={`text-sm font-medium ${flow.enabled ? 'text-bosch-text' : 'text-bosch-muted'}`}>{flow.name}</p>
-                            <p className="mt-0.5 text-[11px] text-bosch-muted">{flow.description}</p>
+                            <p className={`text-sm font-medium ${flow.enabled ? 'text-pth-text' : 'text-pth-muted'}`}>{flow.name}</p>
+                            <p className="mt-0.5 text-[11px] text-pth-muted">{flow.description}</p>
                           </div>
                           <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
                             flow.triggerType === 'overdue_milestones' ? 'bg-red-500/10 text-red-600 dark:text-red-400' :
@@ -3711,12 +4301,12 @@ export default function App(): ReactElement {
                           </span>
                           <button
                             type="button"
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 py-1.5 text-xs font-medium text-bosch-muted transition-colors hover:bg-bosch-card hover:text-bosch-text disabled:opacity-40"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 py-1.5 text-xs font-medium text-pth-muted transition-colors hover:bg-pth-card hover:text-pth-text disabled:opacity-40"
                             onClick={() => testPowerAutomateFlow(flow.id)}
                             disabled={paTestingFlowId !== null}
                           >
                             {paTestingFlowId === flow.id ? (
-                              <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-bosch-blue border-t-transparent" />
+                              <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-pth-blue border-t-transparent" />
                             ) : (
                               <Send size={12} />
                             )}
@@ -3729,12 +4319,12 @@ export default function App(): ReactElement {
 
                   {/* ─── Flow Trigger Log ─── */}
                   {paFlowLog.length > 0 && (
-                    <div className="glass-card rounded-xl border border-bosch-border/20 shadow-card">
-                      <div className="border-b border-bosch-border/15 px-5 py-4">
+                    <div className="glass-card rounded-xl border border-pth-border/20 shadow-card">
+                      <div className="border-b border-pth-border/15 px-5 py-4">
                         <h3 className="text-sm font-semibold">Flow Trigger Log</h3>
-                        <p className="mt-0.5 text-[11px] text-bosch-muted">Recent Power Automate flow executions</p>
+                        <p className="mt-0.5 text-[11px] text-pth-muted">Recent Power Automate flow executions</p>
                       </div>
-                      <div className="divide-y divide-bosch-border/10">
+                      <div className="divide-y divide-pth-border/10">
                         {paFlowLog.slice(0, 15).map((entry) => (
                           <div key={entry.id} className="flex items-center gap-3 px-5 py-2.5">
                             {entry.status === 'success' ? (
@@ -3743,8 +4333,8 @@ export default function App(): ReactElement {
                               <XCircle size={14} className="shrink-0 text-red-500" />
                             )}
                             <div className="min-w-0 flex-1">
-                              <p className="text-xs text-bosch-text">{entry.payload}</p>
-                              <p className="mt-0.5 text-[10px] text-bosch-muted">{entry.flowName} · {new Date(entry.triggeredAt).toLocaleString()}</p>
+                              <p className="text-xs text-pth-text">{entry.payload}</p>
+                              <p className="mt-0.5 text-[10px] text-pth-muted">{entry.flowName} · {new Date(entry.triggeredAt).toLocaleString()}</p>
                             </div>
                             <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${entry.status === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/10 text-red-600 dark:text-red-400'}`}>
                               {entry.status}
@@ -3756,20 +4346,20 @@ export default function App(): ReactElement {
                   )}
 
                   {/* ─── Recent Alerts list ─── */}
-                  <div className="glass-card rounded-xl border border-bosch-border/20 shadow-card">
-                    <div className="border-b border-bosch-border/15 px-5 py-4">
+                  <div className="glass-card rounded-xl border border-pth-border/20 shadow-card">
+                    <div className="border-b border-pth-border/15 px-5 py-4">
                       <h3 className="text-sm font-semibold">Recent Notifications</h3>
                     </div>
-                    <div className="divide-y divide-bosch-border/10">
+                    <div className="divide-y divide-pth-border/10">
                       {state.notifications.length === 0 ? (
-                        <div className="px-5 py-10 text-center text-sm text-bosch-muted">No notifications yet. Run a simulation to generate alerts.</div>
+                        <div className="px-5 py-10 text-center text-sm text-pth-muted">No notifications yet. Run a simulation to generate alerts.</div>
                       ) : (
                         state.notifications.slice(0, 20).map((n) => (
                           <div key={n.id} className="flex items-start gap-3 px-5 py-3">
                             <span className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${n.severity === 'RED' ? 'bg-red-500' : n.severity === 'YELLOW' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
                             <div>
-                              <p className="text-sm text-bosch-text">{n.message}</p>
-                              <p className="mt-0.5 text-[11px] text-bosch-muted">{formatDate(n.createdAt)}</p>
+                              <p className="text-sm text-pth-text">{n.message}</p>
+                              <p className="mt-0.5 text-[11px] text-pth-muted">{formatDate(n.createdAt)}</p>
                             </div>
                           </div>
                         ))
@@ -3782,67 +4372,67 @@ export default function App(): ReactElement {
               {/* ─── ADMIN PAGE ─── */}
               {navPage === 'admin' && (
                 <div className="space-y-4">
-                  <div className="glass-card rounded-xl border border-bosch-border/20 shadow-card">
-                    <div className="border-b border-bosch-border/15 px-5 py-4">
+                  <div className="glass-card rounded-xl border border-pth-border/20 shadow-card">
+                    <div className="border-b border-pth-border/15 px-5 py-4">
                       <h2 className="text-base font-semibold tracking-tight">Configuration</h2>
-                      <p className="mt-0.5 text-xs text-bosch-muted">Adjust thresholds and alert parameters</p>
+                      <p className="mt-0.5 text-xs text-pth-muted">Adjust thresholds and alert parameters</p>
                     </div>
                     <div className="grid gap-4 p-5 md:grid-cols-2 lg:grid-cols-3">
                       <label className="space-y-1.5">
-                        <span className="text-xs font-medium text-bosch-muted">Warning Days Threshold</span>
+                        <span className="text-xs font-medium text-pth-muted">Warning Days Threshold</span>
                         <input
                           type="number"
-                          className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20"
+                          className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20"
                           value={state.settings.warningDaysThreshold}
                           onChange={(event) => setState((prev) => ({ ...prev, settings: { ...prev.settings, warningDaysThreshold: Number(event.target.value) || 0 } }))}
                         />
                       </label>
 
                       <label className="space-y-1.5">
-                        <span className="text-xs font-medium text-bosch-muted">Upcoming Weeks Window</span>
+                        <span className="text-xs font-medium text-pth-muted">Upcoming Weeks Window</span>
                         <input
                           type="number"
-                          className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20"
+                          className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20"
                           value={state.settings.upcomingWeeksWindow}
                           onChange={(event) => setState((prev) => ({ ...prev, settings: { ...prev.settings, upcomingWeeksWindow: Number(event.target.value) || 1 } }))}
                         />
                       </label>
 
                       <label className="space-y-1.5">
-                        <span className="text-xs font-medium text-bosch-muted">Default Weekly Capacity</span>
+                        <span className="text-xs font-medium text-pth-muted">Default Weekly Capacity</span>
                         <input
                           type="number"
-                          className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20"
+                          className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20"
                           value={state.settings.defaultWeeklyCapacity}
                           onChange={(event) => setState((prev) => ({ ...prev, settings: { ...prev.settings, defaultWeeklyCapacity: Number(event.target.value) || 1 } }))}
                         />
                       </label>
 
                       <label className="space-y-1.5">
-                        <span className="text-xs font-medium text-bosch-muted">Workload Warning %</span>
+                        <span className="text-xs font-medium text-pth-muted">Workload Warning %</span>
                         <input
                           type="number"
-                          className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20"
+                          className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20"
                           value={state.settings.workloadWarningThreshold}
                           onChange={(event) => setState((prev) => ({ ...prev, settings: { ...prev.settings, workloadWarningThreshold: Number(event.target.value) || 1 } }))}
                         />
                       </label>
 
                       <label className="space-y-1.5">
-                        <span className="text-xs font-medium text-bosch-muted">Workload Critical %</span>
+                        <span className="text-xs font-medium text-pth-muted">Workload Critical %</span>
                         <input
                           type="number"
-                          className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20"
+                          className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20"
                           value={state.settings.workloadCriticalThreshold}
                           onChange={(event) => setState((prev) => ({ ...prev, settings: { ...prev.settings, workloadCriticalThreshold: Number(event.target.value) || 1 } }))}
                         />
                       </label>
                     </div>
                     {/* Save Settings button */}
-                    <div className="flex justify-end border-t border-bosch-border/15 px-5 py-4">
+                    <div className="flex justify-end border-t border-pth-border/15 px-5 py-4">
                       <button
                         type="button"
-                        className="inline-flex items-center gap-2 rounded-lg bg-bosch-btn px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-bosch-btn-hover active:scale-[0.98]"
+                        className="inline-flex items-center gap-2 rounded-lg bg-pth-btn px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-pth-btn-hover active:scale-[0.98]"
                         onClick={async () => {
                           if (isDataverseConfigured() && state.settings.dvSettingsId) {
                             const ok = await updateSettingsInDataverse(state.settings.dvSettingsId, {
@@ -3876,18 +4466,18 @@ export default function App(): ReactElement {
               {navPage === 'masterData' && (
                 <div className="space-y-4">
                   {/* Tab bar */}
-                  <div className="flex gap-1 rounded-lg bg-bosch-subtle p-1">
-                    {([['people', 'Team'], ['customers', 'Customers'], ['suppliers', 'Suppliers']] as const).map(([key, label]) => (
+                  <div className="flex gap-1 rounded-lg bg-pth-subtle p-1">
+                    {([['people', 'Team'], ['templates', 'Task Templates'], ['customers', 'Customers'], ['suppliers', 'Suppliers']] as const).map(([key, label]) => (
                       <button
                         key={key}
                         type="button"
                         className={`relative flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all ${
-                          masterDataTab === key ? 'text-bosch-blue' : 'text-bosch-muted hover:text-bosch-text'
+                          masterDataTab === key ? 'text-pth-blue' : 'text-pth-muted hover:text-pth-text'
                         }`}
                         onClick={() => setMasterDataTab(key)}
                       >
                         {masterDataTab === key && (
-                          <motion.div layoutId="masterdata-tab" className="absolute inset-0 rounded-md bg-bosch-card shadow-sm" transition={{ type: 'spring', duration: 0.35, bounce: 0.15 }} />
+                          <motion.div layoutId="masterdata-tab" className="absolute inset-0 rounded-md bg-pth-card shadow-sm" transition={{ type: 'spring', duration: 0.35, bounce: 0.15 }} />
                         )}
                         <span className="relative z-10">{label}</span>
                       </button>
@@ -3895,85 +4485,187 @@ export default function App(): ReactElement {
                   </div>
 
                   {/* People / Team Tab */}
-                  {masterDataTab === 'people' && (
-                    <div className="glass-card rounded-xl border border-bosch-border/20 shadow-card">
-                      <div className="flex items-center justify-between border-b border-bosch-border/15 px-5 py-4">
+                  {masterDataTab === 'people' && (() => {
+                    const areaList = Array.from(new Set(people.map((p) => p.area).filter(Boolean) as string[])).sort()
+                    const filtered = people.filter((p) => {
+                      if (teamSiteFilter !== 'all' && !(p.location ?? []).includes(teamSiteFilter)) return false
+                      if (teamAreaFilter !== 'all' && (p.area ?? '') !== teamAreaFilter) return false
+                      return true
+                    })
+                    const grouped = new Map<string, Person[]>()
+                    for (const p of filtered) {
+                      const key = p.area || '—'
+                      if (!grouped.has(key)) grouped.set(key, [])
+                      grouped.get(key)!.push(p)
+                    }
+                    const groups = Array.from(grouped).sort((a, b) =>
+                      a[0] === '—' ? 1 : b[0] === '—' ? -1 : a[0].localeCompare(b[0]))
+                    for (const [, list] of groups) list.sort((a, b) => a.name.localeCompare(b.name))
+                    return (
+                    <div className="glass-card rounded-xl border border-pth-border/20 shadow-card">
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-pth-border/15 px-5 py-4">
                         <div>
                           <h2 className="text-base font-semibold tracking-tight">Team Members</h2>
-                          <p className="mt-0.5 text-xs text-bosch-muted">{people.length} members across the organization</p>
+                          <p className="mt-0.5 text-xs text-pth-muted">{filtered.length} of {people.length} members</p>
                         </div>
-                        <button type="button" onClick={openAddPerson} className="inline-flex items-center gap-1.5 rounded-lg bg-bosch-btn px-3 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-bosch-btn-hover">
-                          <Plus size={14} /> Add Member
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <select value={teamSiteFilter} onChange={(e) => setTeamSiteFilter(e.target.value as 'all' | 'SlpP' | 'TlP')} className="rounded-lg border border-pth-border/30 bg-pth-card px-2.5 py-1.5 text-xs font-medium text-pth-text">
+                            <option value="all">All sites</option>
+                            <option value="SlpP">SlpP</option>
+                            <option value="TlP">TlP</option>
+                          </select>
+                          <select value={teamAreaFilter} onChange={(e) => setTeamAreaFilter(e.target.value)} className="rounded-lg border border-pth-border/30 bg-pth-card px-2.5 py-1.5 text-xs font-medium text-pth-text">
+                            <option value="all">All areas</option>
+                            {areaList.map((a) => <option key={a} value={a}>{a}</option>)}
+                          </select>
+                          <button type="button" onClick={openAddPerson} className="inline-flex items-center gap-1.5 rounded-lg bg-pth-btn px-3 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-pth-btn-hover">
+                            <Plus size={14} /> Add Member
+                          </button>
+                        </div>
                       </div>
-                      <div className="divide-y divide-bosch-border/10">
-                        {people.map((p) => (
-                          <div key={p.id} className="group flex items-center gap-4 px-5 py-3 transition-colors hover:bg-bosch-hover/50">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-bosch-btn/15 text-xs font-bold text-bosch-text">
+                      {groups.map(([area, list]) => (
+                        <div key={area}>
+                          <div className="flex items-center justify-between bg-pth-subtle/60 px-5 py-1.5">
+                            <span className="text-[11px] font-semibold uppercase tracking-wide text-pth-muted">{area === '—' ? 'No area' : area}</span>
+                            <span className="text-[11px] text-pth-muted">{list.length}</span>
+                          </div>
+                          <div className="divide-y divide-pth-border/10">
+                            {list.map((p) => (
+                          <div key={p.id} className="group flex items-center gap-4 px-5 py-3 transition-colors hover:bg-pth-hover/50">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pth-btn/15 text-xs font-bold text-pth-text">
                               {p.initials}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium text-bosch-text truncate">{p.name}</p>
-                              <p className="text-[11px] text-bosch-muted">
-                                {ROLE_LABEL[p.role as Role] ?? 'Resource'}
+                              <p className="text-sm font-medium text-pth-text truncate">{p.name}</p>
+                              <p className="text-[11px] text-pth-muted">
+                                {p.resourceKind ?? ROLE_LABEL[p.role as Role] ?? 'Resource'}
                                 {p.managerId && ` · Reports to ${people.find((m) => m.id === p.managerId)?.name ?? '—'}`}
                               </p>
                             </div>
+                            <div className="hidden shrink-0 items-center gap-1 sm:flex">
+                              {(p.location ?? []).map((loc) => (
+                                <span key={loc} className="rounded-full bg-pth-blue/10 px-2 py-0.5 text-[10px] font-medium text-pth-blue">{loc}</span>
+                              ))}
+                            </div>
                             <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
-                              p.role === 'DIRECTOR' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                              p.resourceKind === 'Manager' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                : p.role === 'DIRECTOR' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
                                 : p.role === 'MANAGER' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
                                 : p.role === 'PROJECT_MANAGER' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300'
                                 : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'
                             }`}>
-                              {p.role === 'DIRECTOR' ? 'Director' : p.role === 'MANAGER' ? 'Manager' : p.role === 'PROJECT_MANAGER' ? 'PM' : 'Resource'}
+                              {p.resourceKind === 'Manager' ? 'Manager' : p.role === 'DIRECTOR' ? 'Director' : p.role === 'MANAGER' ? 'Manager' : p.role === 'PROJECT_MANAGER' ? 'PM' : 'Associate'}
                             </span>
                             <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                              <button type="button" title="Edit member" onClick={() => openEditPerson(p)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-bosch-muted transition-colors hover:bg-bosch-hover hover:text-bosch-blue">
+                              <button type="button" title="Edit member" onClick={() => openEditPerson(p)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-pth-muted transition-colors hover:bg-pth-hover hover:text-pth-blue">
                                 <Pencil size={14} />
                               </button>
-                              <button type="button" title="Delete member" onClick={() => deletePerson(p.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-bosch-muted transition-colors hover:bg-bosch-hover hover:text-bosch-red">
+                              <button type="button" title="Delete member" onClick={() => deletePerson(p.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-pth-muted transition-colors hover:bg-pth-hover hover:text-pth-red">
                                 <Trash2 size={14} />
                               </button>
                             </div>
                           </div>
-                        ))}
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    )
+                  })()}
+
+                  {/* Task Templates Tab */}
+                  {masterDataTab === 'templates' && (() => {
+                    const types = Array.from(new Set(taskTemplates.map((t) => t.projectType))).sort()
+                    const activeType = ttType || types[0] || ''
+                    const rows = taskTemplates.filter((t) => t.projectType === activeType).sort((a, b) => a.sequence - b.sequence)
+                    return (
+                    <div className="space-y-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-medium text-pth-muted">Project type:</span>
+                        <select title="Project type" value={activeType} onChange={(e) => setTtType(e.target.value)} className="h-9 rounded-lg border border-pth-border/40 bg-pth-card px-3 text-sm outline-none focus:border-pth-blue">
+                          {types.map((t) => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                        <button type="button" onClick={openAddTemplate} className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-pth-btn px-3 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-pth-btn-hover">
+                          <Plus size={14} /> Add Task
+                        </button>
+                      </div>
+                      <div className="glass-card overflow-hidden rounded-xl border border-pth-border/20 shadow-card">
+                        <div className="flex items-center justify-between border-b border-pth-border/15 px-5 py-3">
+                          <h2 className="text-base font-semibold tracking-tight">{activeType || 'Task Templates'}</h2>
+                          <span className="text-xs text-pth-muted">{rows.length} tasks</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-pth-border/15 text-left text-[11px] uppercase tracking-wide text-pth-muted">
+                                <th className="w-10 px-3 py-2 font-semibold">#</th>
+                                <th className="px-3 py-2 font-semibold">Task</th>
+                                <th className="px-3 py-2 font-semibold">Responsible</th>
+                                <th className="whitespace-nowrap px-3 py-2 font-semibold">Leadtime (w)</th>
+                                <th className="whitespace-nowrap px-3 py-2 font-semibold">Workload %</th>
+                                <th className="px-3 py-2 font-semibold">Inputs</th>
+                                <th className="w-16 px-3 py-2 font-semibold"></th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-pth-border/10">
+                              {rows.map((t) => (
+                                <tr key={t.id} className="group transition-colors hover:bg-pth-hover/50">
+                                  <td className="px-3 py-2 text-pth-muted">{t.sequence}</td>
+                                  <td className="px-3 py-2 font-medium">{t.task}</td>
+                                  <td className="px-3 py-2 text-pth-muted">{t.responsible || '—'}</td>
+                                  <td className="px-3 py-2 text-pth-muted">{t.leadtimeWeeks ?? '—'}</td>
+                                  <td className="px-3 py-2 text-pth-muted">{t.workloadPct ?? '—'}</td>
+                                  <td className="max-w-[280px] truncate px-3 py-2 text-pth-muted" title={t.inputs}>{t.inputs || '—'}</td>
+                                  <td className="px-3 py-2">
+                                    <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                                      <button type="button" title="Edit task" onClick={() => openEditTemplate(t)} className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-pth-muted hover:bg-pth-hover hover:text-pth-blue"><Pencil size={13} /></button>
+                                      <button type="button" title="Delete task" onClick={() => deleteTemplate(t.id)} className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-pth-muted hover:bg-pth-hover hover:text-pth-red"><Trash2 size={13} /></button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                              {rows.length === 0 && <tr><td colSpan={7} className="px-3 py-8 text-center text-pth-muted">No tasks for this type yet.</td></tr>}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     </div>
-                  )}
+                    )
+                  })()}
 
                   {/* Customers Tab */}
                   {masterDataTab === 'customers' && (
-                    <div className="glass-card rounded-xl border border-bosch-border/20 shadow-card">
-                      <div className="flex items-center justify-between border-b border-bosch-border/15 px-5 py-4">
+                    <div className="glass-card rounded-xl border border-pth-border/20 shadow-card">
+                      <div className="flex items-center justify-between border-b border-pth-border/15 px-5 py-4">
                         <div>
                           <h2 className="text-base font-semibold tracking-tight">Customers</h2>
-                          <p className="mt-0.5 text-xs text-bosch-muted">{clients.length} registered customers</p>
+                          <p className="mt-0.5 text-xs text-pth-muted">{clients.length} registered customers</p>
                         </div>
                         <button type="button" onClick={() => {
                           const name = window.prompt('Customer name:')
                           if (name) addPartner('clients', name)
-                        }} className="inline-flex items-center gap-1.5 rounded-lg bg-bosch-btn px-3 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-bosch-btn-hover">
+                        }} className="inline-flex items-center gap-1.5 rounded-lg bg-pth-btn px-3 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-pth-btn-hover">
                           <Plus size={14} /> Add Customer
                         </button>
                       </div>
-                      <div className="divide-y divide-bosch-border/10">
+                      <div className="divide-y divide-pth-border/10">
                         {clients.map((c) => (
-                          <div key={c.id} className="group flex items-center gap-4 px-5 py-3 transition-colors hover:bg-bosch-hover/50">
+                          <div key={c.id} className="group flex items-center gap-4 px-5 py-3 transition-colors hover:bg-pth-hover/50">
                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
                               {c.name.split(' ').map((w) => w[0]).join('').slice(0, 2)}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium text-bosch-text">{c.name}</p>
-                              <p className="text-[11px] text-bosch-muted">Customer</p>
+                              <p className="text-sm font-medium text-pth-text">{c.name}</p>
+                              <p className="text-[11px] text-pth-muted">Customer</p>
                             </div>
                             <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
                               Customer
                             </span>
                             <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                              <button type="button" title="Edit customer" onClick={() => { const name = window.prompt('Customer name:', c.name); if (name) editPartner('clients', c.id, name) }} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-bosch-muted transition-colors hover:bg-bosch-hover hover:text-bosch-blue">
+                              <button type="button" title="Edit customer" onClick={() => { const name = window.prompt('Customer name:', c.name); if (name) editPartner('clients', c.id, name) }} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-pth-muted transition-colors hover:bg-pth-hover hover:text-pth-blue">
                                 <Pencil size={14} />
                               </button>
-                              <button type="button" title="Delete customer" onClick={() => deletePartner('clients', c.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-bosch-muted transition-colors hover:bg-bosch-hover hover:text-bosch-red">
+                              <button type="button" title="Delete customer" onClick={() => deletePartner('clients', c.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-pth-muted transition-colors hover:bg-pth-hover hover:text-pth-red">
                                 <Trash2 size={14} />
                               </button>
                             </div>
@@ -3985,37 +4677,37 @@ export default function App(): ReactElement {
 
                   {/* Suppliers Tab */}
                   {masterDataTab === 'suppliers' && (
-                    <div className="glass-card rounded-xl border border-bosch-border/20 shadow-card">
-                      <div className="flex items-center justify-between border-b border-bosch-border/15 px-5 py-4">
+                    <div className="glass-card rounded-xl border border-pth-border/20 shadow-card">
+                      <div className="flex items-center justify-between border-b border-pth-border/15 px-5 py-4">
                         <div>
                           <h2 className="text-base font-semibold tracking-tight">Suppliers</h2>
-                          <p className="mt-0.5 text-xs text-bosch-muted">{suppliers.length} registered suppliers</p>
+                          <p className="mt-0.5 text-xs text-pth-muted">{suppliers.length} registered suppliers</p>
                         </div>
                         <button type="button" onClick={() => {
                           const name = window.prompt('Supplier name:')
                           if (name) addPartner('suppliers', name)
-                        }} className="inline-flex items-center gap-1.5 rounded-lg bg-bosch-btn px-3 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-bosch-btn-hover">
+                        }} className="inline-flex items-center gap-1.5 rounded-lg bg-pth-btn px-3 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-pth-btn-hover">
                           <Plus size={14} /> Add Supplier
                         </button>
                       </div>
-                      <div className="divide-y divide-bosch-border/10">
+                      <div className="divide-y divide-pth-border/10">
                         {suppliers.map((s) => (
-                          <div key={s.id} className="group flex items-center gap-4 px-5 py-3 transition-colors hover:bg-bosch-hover/50">
+                          <div key={s.id} className="group flex items-center gap-4 px-5 py-3 transition-colors hover:bg-pth-hover/50">
                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
                               {s.name.split(' ').map((w) => w[0]).join('').slice(0, 2)}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium text-bosch-text">{s.name}</p>
-                              <p className="text-[11px] text-bosch-muted">Supplier</p>
+                              <p className="text-sm font-medium text-pth-text">{s.name}</p>
+                              <p className="text-[11px] text-pth-muted">Supplier</p>
                             </div>
                             <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
                               Supplier
                             </span>
                             <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                              <button type="button" title="Edit supplier" onClick={() => { const name = window.prompt('Supplier name:', s.name); if (name) editPartner('suppliers', s.id, name) }} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-bosch-muted transition-colors hover:bg-bosch-hover hover:text-bosch-blue">
+                              <button type="button" title="Edit supplier" onClick={() => { const name = window.prompt('Supplier name:', s.name); if (name) editPartner('suppliers', s.id, name) }} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-pth-muted transition-colors hover:bg-pth-hover hover:text-pth-blue">
                                 <Pencil size={14} />
                               </button>
-                              <button type="button" title="Delete supplier" onClick={() => deletePartner('suppliers', s.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-bosch-muted transition-colors hover:bg-bosch-hover hover:text-bosch-red">
+                              <button type="button" title="Delete supplier" onClick={() => deletePartner('suppliers', s.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-pth-muted transition-colors hover:bg-pth-hover hover:text-pth-red">
                                 <Trash2 size={14} />
                               </button>
                             </div>
@@ -4032,58 +4724,70 @@ export default function App(): ReactElement {
                 <div className="space-y-6">
                   {/* Header */}
                   <div>
-                    <button type="button" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-bosch-muted transition-colors hover:bg-bosch-hover hover:text-bosch-text" onClick={() => setNavPage('overview')}>
+                    <button type="button" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-pth-muted transition-colors hover:bg-pth-hover hover:text-pth-text" onClick={() => setNavPage('overview')}>
                       <ChevronLeft size={16} /> Back to Dashboard
                     </button>
                     <h1 className="mt-3 text-xl font-bold md:text-2xl">Create New Project</h1>
-                    <p className="mt-1 text-sm text-bosch-muted">Standard milestones will be generated automatically based on category.</p>
+                    <p className="mt-1 text-sm text-pth-muted">Standard milestones will be generated automatically based on category.</p>
                   </div>
 
                   {/* Form card */}
-                  <div className="glass-card rounded-xl border border-bosch-border/20 p-6 shadow-card">
-                    <h2 className="mb-5 text-sm font-semibold uppercase tracking-wider text-bosch-muted">Project Information</h2>
+                  <div className="glass-card rounded-xl border border-pth-border/20 p-6 shadow-card">
+                    <h2 className="mb-5 text-sm font-semibold uppercase tracking-wider text-pth-muted">Project Information</h2>
                     <form className="space-y-5" onSubmit={newProjectForm.handleSubmit(handleCreateProject)}>
-                      {/* Row 1: Name + Bosch Code */}
+                      {/* Row 1: Name + Client Code */}
                       <div className="grid gap-4 md:grid-cols-2">
                         <label className="space-y-1.5">
-                          <span className="text-xs font-medium text-bosch-muted">Project Name <span className="text-bosch-red">*</span></span>
-                          <input className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" placeholder="e.g. Brake Module Redesign" {...newProjectForm.register('name', { required: true })} />
+                          <span className="text-xs font-medium text-pth-muted">Project Name <span className="text-pth-red">*</span></span>
+                          <input className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" placeholder="e.g. Brake Module Redesign" {...newProjectForm.register('name', { required: true })} />
                         </label>
                         <label className="space-y-1.5">
-                          <span className="text-xs font-medium text-bosch-muted">Bosch Code</span>
-                          <input className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" placeholder="e.g. BC-007" {...newProjectForm.register('boschCode')} />
+                          <span className="text-xs font-medium text-pth-muted">Client Code</span>
+                          <input className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" placeholder="e.g. BC-007" {...newProjectForm.register('clientCode')} />
                         </label>
                       </div>
 
                       {/* Row 2: Category + Budget */}
                       <div className="grid gap-4 md:grid-cols-2">
                         <label className="space-y-1.5">
-                          <span className="text-xs font-medium text-bosch-muted">Category <span className="text-bosch-red">*</span></span>
-                          <select className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" {...newProjectForm.register('category')}>
+                          <span className="text-xs font-medium text-pth-muted">Category <span className="text-pth-red">*</span></span>
+                          <select className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...newProjectForm.register('category')}>
                             {(['ECR', 'CIP', 'Path Forward', 'New Programs'] as ProjectCategory[]).map((c) => <option key={c} value={c}>{c}</option>)}
                           </select>
                         </label>
                         <label className="space-y-1.5">
-                          <span className="text-xs font-medium text-bosch-muted">Budget Allocated</span>
-                          <input type="number" min={0} className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" placeholder="0" {...newProjectForm.register('budgetAllocated', { valueAsNumber: true })} />
+                          <span className="text-xs font-medium text-pth-muted">Budget Allocated</span>
+                          <input type="number" min={0} className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" placeholder="0" {...newProjectForm.register('budgetAllocated', { valueAsNumber: true })} />
                         </label>
                       </div>
 
+                      {/* Project Type — drives standard task generation */}
+                      <label className="block space-y-1.5">
+                        <span className="text-xs font-medium text-pth-muted">Project Type <span className="text-[10px] font-normal text-pth-muted">(auto-creates standard tasks)</span></span>
+                        <select className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...newProjectForm.register('projectType')}>
+                          <option value="">— None (no standard tasks) —</option>
+                          {Array.from(new Set(taskTemplates.map((t) => t.projectType))).sort().map((t) => {
+                            const n = taskTemplates.filter((x) => x.projectType === t).length
+                            return <option key={t} value={t}>{t} ({n} tasks)</option>
+                          })}
+                        </select>
+                      </label>
+
                       {/* Project Objective */}
                       <label className="block space-y-1.5">
-                        <span className="text-xs font-medium text-bosch-muted">Project Objective <span className="text-bosch-red">*</span></span>
-                        <textarea className="min-h-[80px] w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 py-2.5 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" placeholder="Describe the project objective…" {...newProjectForm.register('objective', { required: true })} />
+                        <span className="text-xs font-medium text-pth-muted">Project Objective <span className="text-pth-red">*</span></span>
+                        <textarea className="min-h-[80px] w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 py-2.5 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" placeholder="Describe the project objective…" {...newProjectForm.register('objective', { required: true })} />
                       </label>
 
                       {/* Site Locations — checkboxes */}
                       <div className="space-y-2">
-                        <span className="text-xs font-medium text-bosch-muted">Site Locations</span>
+                        <span className="text-xs font-medium text-pth-muted">Site Locations</span>
                         <div className="flex flex-wrap gap-4">
                           {sites.map((s) => {
                             const checked = newProjectForm.watch('siteIds').includes(s.id)
                             return (
                               <label key={s.id} className="flex items-center gap-2 text-sm">
-                                <input type="checkbox" checked={checked} onChange={(e) => { const cur = newProjectForm.getValues('siteIds'); newProjectForm.setValue('siteIds', e.target.checked ? [...cur, s.id] : cur.filter((v) => v !== s.id)) }} className="h-4 w-4 rounded border-bosch-border/40 text-bosch-blue focus:ring-bosch-blue/20" />
+                                <input type="checkbox" checked={checked} onChange={(e) => { const cur = newProjectForm.getValues('siteIds'); newProjectForm.setValue('siteIds', e.target.checked ? [...cur, s.id] : cur.filter((v) => v !== s.id)) }} className="h-4 w-4 rounded border-pth-border/40 text-pth-blue focus:ring-pth-blue/20" />
                                 {s.name}
                               </label>
                             )
@@ -4094,8 +4798,8 @@ export default function App(): ReactElement {
                       {/* Executive Sponsor + Project Manager */}
                       <div className="grid gap-4 md:grid-cols-2">
                         <label className="space-y-1.5">
-                          <span className="text-xs font-medium text-bosch-muted">Executive Sponsor</span>
-                          <select className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" {...newProjectForm.register('sponsorExecutiveId')}>
+                          <span className="text-xs font-medium text-pth-muted">Executive Sponsor</span>
+                          <select className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...newProjectForm.register('sponsorExecutiveId')}>
                             <option value="">Select…</option>
                             {dvConnected && dvUsers.length > 0
                               ? dvUsers.map((u) => <option key={u.id} value={u.id}>{u.fullname}</option>)
@@ -4103,8 +4807,8 @@ export default function App(): ReactElement {
                           </select>
                         </label>
                         <label className="space-y-1.5">
-                          <span className="text-xs font-medium text-bosch-muted">Project Manager</span>
-                          <select className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" {...newProjectForm.register('projectManagerId')}>
+                          <span className="text-xs font-medium text-pth-muted">Project Manager</span>
+                          <select className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...newProjectForm.register('projectManagerId')}>
                             <option value="">Select…</option>
                             {dvConnected && dvUsers.length > 0
                               ? dvUsers.map((u) => <option key={u.id} value={u.id}>{u.fullname}</option>)
@@ -4116,24 +4820,24 @@ export default function App(): ReactElement {
                       {/* Planned Start + End dates */}
                       <div className="grid gap-4 md:grid-cols-2">
                         <label className="space-y-1.5">
-                          <span className="text-xs font-medium text-bosch-muted">Planned Start Date</span>
-                          <input type="date" className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" {...newProjectForm.register('plannedStartDate')} />
+                          <span className="text-xs font-medium text-pth-muted">Planned Start Date</span>
+                          <input type="date" className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...newProjectForm.register('plannedStartDate')} />
                         </label>
                         <label className="space-y-1.5">
-                          <span className="text-xs font-medium text-bosch-muted">Planned End Date</span>
-                          <input type="date" className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" {...newProjectForm.register('plannedEndDate')} />
+                          <span className="text-xs font-medium text-pth-muted">Planned End Date</span>
+                          <input type="date" className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...newProjectForm.register('plannedEndDate')} />
                         </label>
                       </div>
 
                       {/* Customers — checkboxes */}
                       <div className="space-y-2">
-                        <span className="text-xs font-medium text-bosch-muted">Customers</span>
+                        <span className="text-xs font-medium text-pth-muted">Customers</span>
                         <div className="flex flex-wrap gap-4">
                           {clients.map((c) => {
                             const checked = newProjectForm.watch('clientIds').includes(c.id)
                             return (
                               <label key={c.id} className="flex items-center gap-2 text-sm">
-                                <input type="checkbox" checked={checked} onChange={(e) => { const cur = newProjectForm.getValues('clientIds'); newProjectForm.setValue('clientIds', e.target.checked ? [...cur, c.id] : cur.filter((v) => v !== c.id)) }} className="h-4 w-4 rounded border-bosch-border/40 text-bosch-blue focus:ring-bosch-blue/20" />
+                                <input type="checkbox" checked={checked} onChange={(e) => { const cur = newProjectForm.getValues('clientIds'); newProjectForm.setValue('clientIds', e.target.checked ? [...cur, c.id] : cur.filter((v) => v !== c.id)) }} className="h-4 w-4 rounded border-pth-border/40 text-pth-blue focus:ring-pth-blue/20" />
                                 {c.name}
                               </label>
                             )
@@ -4143,13 +4847,13 @@ export default function App(): ReactElement {
 
                       {/* Suppliers — checkboxes */}
                       <div className="space-y-2">
-                        <span className="text-xs font-medium text-bosch-muted">Suppliers</span>
+                        <span className="text-xs font-medium text-pth-muted">Suppliers</span>
                         <div className="flex flex-wrap gap-4">
                           {suppliers.map((s) => {
                             const checked = newProjectForm.watch('supplierIds').includes(s.id)
                             return (
                               <label key={s.id} className="flex items-center gap-2 text-sm">
-                                <input type="checkbox" checked={checked} onChange={(e) => { const cur = newProjectForm.getValues('supplierIds'); newProjectForm.setValue('supplierIds', e.target.checked ? [...cur, s.id] : cur.filter((v) => v !== s.id)) }} className="h-4 w-4 rounded border-bosch-border/40 text-bosch-blue focus:ring-bosch-blue/20" />
+                                <input type="checkbox" checked={checked} onChange={(e) => { const cur = newProjectForm.getValues('supplierIds'); newProjectForm.setValue('supplierIds', e.target.checked ? [...cur, s.id] : cur.filter((v) => v !== s.id)) }} className="h-4 w-4 rounded border-pth-border/40 text-pth-blue focus:ring-pth-blue/20" />
                                 {s.name}
                               </label>
                             )
@@ -4158,15 +4862,15 @@ export default function App(): ReactElement {
                       </div>
 
                       {/* ── Milestones & Tasks (optional, inline) ── */}
-                      <div className="space-y-3 rounded-lg border border-bosch-border/20 bg-bosch-subtle/40 p-4">
+                      <div className="space-y-3 rounded-lg border border-pth-border/20 bg-pth-subtle/40 p-4">
                         <div className="flex items-center justify-between">
                           <div>
-                            <span className="text-xs font-semibold uppercase tracking-wider text-bosch-muted">Milestones & Tasks</span>
-                            <p className="text-[11px] text-bosch-muted">Add milestones and assign tasks now, or do it later after creation.</p>
+                            <span className="text-xs font-semibold uppercase tracking-wider text-pth-muted">Milestones & Tasks</span>
+                            <p className="text-[11px] text-pth-muted">Add milestones and assign tasks now, or do it later after creation.</p>
                           </div>
                           <button
                             type="button"
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-bosch-border/40 bg-bosch-card px-3 py-1.5 text-xs font-medium text-bosch-text shadow-sm transition-colors hover:bg-bosch-hover"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-pth-border/40 bg-pth-card px-3 py-1.5 text-xs font-medium text-pth-text shadow-sm transition-colors hover:bg-pth-hover"
                             onClick={() =>
                               setInlineMilestones((prev) => [
                                 ...prev,
@@ -4179,18 +4883,18 @@ export default function App(): ReactElement {
                         </div>
 
                         {inlineMilestones.length === 0 && (
-                          <p className="text-center text-xs text-bosch-muted py-2">No milestones added yet — standard milestones for the selected category will still be generated automatically.</p>
+                          <p className="text-center text-xs text-pth-muted py-2">No milestones added yet — standard milestones for the selected category will still be generated automatically.</p>
                         )}
 
                         {inlineMilestones.map((im, mIdx) => (
-                          <div key={im._key} className="space-y-2 rounded-lg border border-bosch-border/30 bg-bosch-card p-3">
+                          <div key={im._key} className="space-y-2 rounded-lg border border-pth-border/30 bg-pth-card p-3">
                             {/* Milestone header row */}
                             <div className="flex items-start gap-2">
                               <div className="flex-1 grid gap-2 md:grid-cols-2">
                                 <input
                                   type="text"
                                   placeholder="Milestone name"
-                                  className="h-9 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20"
+                                  className="h-9 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20"
                                   value={im.name}
                                   onChange={(e) =>
                                     setInlineMilestones((prev) =>
@@ -4201,7 +4905,7 @@ export default function App(): ReactElement {
                                 <input
                                   type="date"
                                   title="Target date"
-                                  className="h-9 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20"
+                                  className="h-9 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20"
                                   value={im.targetDate}
                                   onChange={(e) =>
                                     setInlineMilestones((prev) =>
@@ -4213,7 +4917,7 @@ export default function App(): ReactElement {
                               <button
                                 type="button"
                                 title="Remove milestone"
-                                className="mt-1 rounded-lg p-1 text-bosch-muted transition-colors hover:bg-red-50 hover:text-bosch-red dark:hover:bg-red-900/20"
+                                className="mt-1 rounded-lg p-1 text-pth-muted transition-colors hover:bg-red-50 hover:text-pth-red dark:hover:bg-red-900/20"
                                 onClick={() => setInlineMilestones((prev) => prev.filter((_, i) => i !== mIdx))}
                               >
                                 <Trash2 size={14} />
@@ -4222,13 +4926,13 @@ export default function App(): ReactElement {
 
                             {/* Tasks under this milestone */}
                             {im.tasks.length > 0 && (
-                              <div className="ml-4 space-y-1.5 border-l-2 border-bosch-blue/20 pl-3">
+                              <div className="ml-4 space-y-1.5 border-l-2 border-pth-blue/20 pl-3">
                                 {im.tasks.map((t, tIdx) => (
                                   <div key={t._key} className="flex items-center gap-2">
                                     <input
                                       type="text"
                                       placeholder="Task name"
-                                      className="h-8 min-w-0 flex-1 rounded border border-bosch-border/40 bg-bosch-subtle px-2 text-xs transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20"
+                                      className="h-8 min-w-0 flex-1 rounded border border-pth-border/40 bg-pth-subtle px-2 text-xs transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20"
                                       value={t.name}
                                       onChange={(e) =>
                                         setInlineMilestones((prev) =>
@@ -4240,7 +4944,7 @@ export default function App(): ReactElement {
                                     />
                                     <select
                                       title="Owner"
-                                      className="h-8 w-36 rounded border border-bosch-border/40 bg-bosch-subtle px-2 text-xs transition-colors focus:border-bosch-blue focus:outline-none focus:ring-2 focus:ring-bosch-blue/20"
+                                      className="h-8 w-36 rounded border border-pth-border/40 bg-pth-subtle px-2 text-xs transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20"
                                       value={t.ownerId}
                                       onChange={(e) =>
                                         setInlineMilestones((prev) =>
@@ -4258,7 +4962,7 @@ export default function App(): ReactElement {
                                     <input
                                       type="date"
                                       title="Start"
-                                      className="h-8 w-32 rounded border border-bosch-border/40 bg-bosch-subtle px-2 text-xs transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20"
+                                      className="h-8 w-32 rounded border border-pth-border/40 bg-pth-subtle px-2 text-xs transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20"
                                       value={t.startDate}
                                       onChange={(e) =>
                                         setInlineMilestones((prev) =>
@@ -4271,7 +4975,7 @@ export default function App(): ReactElement {
                                     <input
                                       type="date"
                                       title="End"
-                                      className="h-8 w-32 rounded border border-bosch-border/40 bg-bosch-subtle px-2 text-xs transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20"
+                                      className="h-8 w-32 rounded border border-pth-border/40 bg-pth-subtle px-2 text-xs transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20"
                                       value={t.endDate}
                                       onChange={(e) =>
                                         setInlineMilestones((prev) =>
@@ -4284,7 +4988,7 @@ export default function App(): ReactElement {
                                     <button
                                       type="button"
                                       title="Remove task"
-                                      className="rounded p-0.5 text-bosch-muted transition-colors hover:text-bosch-red"
+                                      className="rounded p-0.5 text-pth-muted transition-colors hover:text-pth-red"
                                       onClick={() =>
                                         setInlineMilestones((prev) =>
                                           prev.map((m, mi) =>
@@ -4303,7 +5007,7 @@ export default function App(): ReactElement {
                             {/* Add task button */}
                             <button
                               type="button"
-                              className="ml-4 inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium text-bosch-blue transition-colors hover:bg-bosch-blue/5"
+                              className="ml-4 inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium text-pth-blue transition-colors hover:bg-pth-blue/5"
                               onClick={() =>
                                 setInlineMilestones((prev) =>
                                   prev.map((m, i) =>
@@ -4339,11 +5043,11 @@ export default function App(): ReactElement {
                       )}
 
                       {/* Action buttons */}
-                      <div className="flex items-center justify-end gap-3 border-t border-bosch-border/15 pt-5">
-                        <button type="button" onClick={() => { newProjectForm.reset(); setInlineMilestones([]); setNavPage('overview') }} className="rounded-lg border border-bosch-border/40 bg-bosch-card px-5 py-2.5 text-sm font-medium text-bosch-text shadow-sm transition-colors hover:bg-bosch-hover">
+                      <div className="flex items-center justify-end gap-3 border-t border-pth-border/15 pt-5">
+                        <button type="button" onClick={() => { newProjectForm.reset(); setInlineMilestones([]); setNavPage('overview') }} className="rounded-lg border border-pth-border/40 bg-pth-card px-5 py-2.5 text-sm font-medium text-pth-text shadow-sm transition-colors hover:bg-pth-hover">
                           Cancel
                         </button>
-                        <button type="submit" disabled={creatingSaving} className="rounded-lg bg-bosch-btn px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-bosch-btn-hover active:scale-[0.98] inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+                        <button type="submit" disabled={creatingSaving} className="rounded-lg bg-pth-btn px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-pth-btn-hover active:scale-[0.98] inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
                           {creatingSaving ? (
                             <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> Creating…</>
                           ) : (
@@ -4367,46 +5071,46 @@ export default function App(): ReactElement {
           <>
             <motion.div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setEditingProject(false)} />
             <motion.div
-              className="glass-card fixed left-1/2 top-1/2 z-[60] w-[92vw] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-bosch-border/20 shadow-elevated"
+              className="glass-card fixed left-1/2 top-1/2 z-[60] w-[92vw] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-pth-border/20 shadow-elevated"
               initial={{ opacity: 0, y: 16, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 16, scale: 0.96 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="flex items-center justify-between border-b border-bosch-border/15 px-5 py-4">
+              <div className="flex items-center justify-between border-b border-pth-border/15 px-5 py-4">
                 <h3 className="text-sm font-semibold">Edit Project</h3>
-                <button type="button" title="Close dialog" className="rounded-lg p-1.5 text-bosch-muted transition-colors hover:bg-bosch-hover" onClick={() => setEditingProject(false)}>
+                <button type="button" title="Close dialog" className="rounded-lg p-1.5 text-pth-muted transition-colors hover:bg-pth-hover" onClick={() => setEditingProject(false)}>
                   <X size={16} />
                 </button>
               </div>
               <form className="max-h-[65vh] overflow-y-auto p-5 space-y-4" onSubmit={overviewForm.handleSubmit((v) => { saveOverview(v); setEditingProject(false) })}>
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="space-y-1.5">
-                    <span className="text-xs font-medium text-bosch-muted">Project Name</span>
-                    <input className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" {...overviewForm.register('name', { required: true })} />
+                    <span className="text-xs font-medium text-pth-muted">Project Name</span>
+                    <input className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...overviewForm.register('name', { required: true })} />
                   </label>
                   <label className="space-y-1.5">
-                    <span className="text-xs font-medium text-bosch-muted">Bosch Code</span>
-                    <input className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" {...overviewForm.register('boschCode')} />
+                    <span className="text-xs font-medium text-pth-muted">Client Code</span>
+                    <input className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...overviewForm.register('clientCode')} />
                   </label>
                   <label className="space-y-1.5">
-                    <span className="text-xs font-medium text-bosch-muted">Category</span>
-                    <select className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" {...overviewForm.register('category')}>
+                    <span className="text-xs font-medium text-pth-muted">Category</span>
+                    <select className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...overviewForm.register('category')}>
                       {(['ECR', 'CIP', 'Path Forward', 'New Programs'] as ProjectCategory[]).map((c) => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </label>
                   <label className="space-y-1.5">
-                    <span className="text-xs font-medium text-bosch-muted">Budget Allocated</span>
-                    <input type="number" className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" {...overviewForm.register('budgetAllocated', { valueAsNumber: true })} />
+                    <span className="text-xs font-medium text-pth-muted">Budget Allocated</span>
+                    <input type="number" className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...overviewForm.register('budgetAllocated', { valueAsNumber: true })} />
                   </label>
                   <div className="space-y-1.5 md:col-span-2">
-                    <span className="text-xs font-medium text-bosch-muted">Site Locations</span>
+                    <span className="text-xs font-medium text-pth-muted">Site Locations</span>
                     <div className="flex flex-wrap gap-3">
                       {sites.map((s) => {
                         const checked = overviewForm.watch('siteIds').includes(s.id)
                         return (
                           <label key={s.id} className="flex items-center gap-2 text-sm">
-                            <input type="checkbox" checked={checked} onChange={(e) => { const cur = overviewForm.getValues('siteIds'); overviewForm.setValue('siteIds', e.target.checked ? [...cur, s.id] : cur.filter((v) => v !== s.id)) }} className="h-4 w-4 rounded border-bosch-border/40 text-bosch-blue focus:ring-bosch-blue/20" />
+                            <input type="checkbox" checked={checked} onChange={(e) => { const cur = overviewForm.getValues('siteIds'); overviewForm.setValue('siteIds', e.target.checked ? [...cur, s.id] : cur.filter((v) => v !== s.id)) }} className="h-4 w-4 rounded border-pth-border/40 text-pth-blue focus:ring-pth-blue/20" />
                             {s.name}
                           </label>
                         )
@@ -4414,29 +5118,29 @@ export default function App(): ReactElement {
                     </div>
                   </div>
                   <label className="space-y-1.5">
-                    <span className="text-xs font-medium text-bosch-muted">Project Manager</span>
-                    <select className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" {...overviewForm.register('projectManagerId')}>
+                    <span className="text-xs font-medium text-pth-muted">Project Manager</span>
+                    <select className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...overviewForm.register('projectManagerId')}>
                       {dvConnected && dvUsers.length > 0
                         ? dvUsers.map((u) => <option key={u.id} value={u.id}>{u.fullname}</option>)
                         : people.filter((p) => p.role === 'PROJECT_MANAGER').map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                   </label>
                   <label className="space-y-1.5">
-                    <span className="text-xs font-medium text-bosch-muted">Sponsor Executive</span>
-                    <select className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" {...overviewForm.register('sponsorExecutiveId')}>
+                    <span className="text-xs font-medium text-pth-muted">Sponsor Executive</span>
+                    <select className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...overviewForm.register('sponsorExecutiveId')}>
                       {dvConnected && dvUsers.length > 0
                         ? dvUsers.map((u) => <option key={u.id} value={u.id}>{u.fullname}</option>)
                         : people.filter((p) => p.role === 'DIRECTOR').map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                   </label>
                   <div className="space-y-1.5 md:col-span-2">
-                    <span className="text-xs font-medium text-bosch-muted">Clients</span>
+                    <span className="text-xs font-medium text-pth-muted">Clients</span>
                     <div className="flex flex-wrap gap-3">
                       {clients.map((c) => {
                         const checked = overviewForm.watch('clientIds').includes(c.id)
                         return (
                           <label key={c.id} className="flex items-center gap-2 text-sm">
-                            <input type="checkbox" checked={checked} onChange={(e) => { const cur = overviewForm.getValues('clientIds'); overviewForm.setValue('clientIds', e.target.checked ? [...cur, c.id] : cur.filter((v) => v !== c.id)) }} className="h-4 w-4 rounded border-bosch-border/40 text-bosch-blue focus:ring-bosch-blue/20" />
+                            <input type="checkbox" checked={checked} onChange={(e) => { const cur = overviewForm.getValues('clientIds'); overviewForm.setValue('clientIds', e.target.checked ? [...cur, c.id] : cur.filter((v) => v !== c.id)) }} className="h-4 w-4 rounded border-pth-border/40 text-pth-blue focus:ring-pth-blue/20" />
                             {c.name}
                           </label>
                         )
@@ -4444,13 +5148,13 @@ export default function App(): ReactElement {
                     </div>
                   </div>
                   <div className="space-y-1.5 md:col-span-2">
-                    <span className="text-xs font-medium text-bosch-muted">Suppliers</span>
+                    <span className="text-xs font-medium text-pth-muted">Suppliers</span>
                     <div className="flex flex-wrap gap-3">
                       {suppliers.map((s) => {
                         const checked = overviewForm.watch('supplierIds').includes(s.id)
                         return (
                           <label key={s.id} className="flex items-center gap-2 text-sm">
-                            <input type="checkbox" checked={checked} onChange={(e) => { const cur = overviewForm.getValues('supplierIds'); overviewForm.setValue('supplierIds', e.target.checked ? [...cur, s.id] : cur.filter((v) => v !== s.id)) }} className="h-4 w-4 rounded border-bosch-border/40 text-bosch-blue focus:ring-bosch-blue/20" />
+                            <input type="checkbox" checked={checked} onChange={(e) => { const cur = overviewForm.getValues('supplierIds'); overviewForm.setValue('supplierIds', e.target.checked ? [...cur, s.id] : cur.filter((v) => v !== s.id)) }} className="h-4 w-4 rounded border-pth-border/40 text-pth-blue focus:ring-pth-blue/20" />
                             {s.name}
                           </label>
                         )
@@ -4459,10 +5163,10 @@ export default function App(): ReactElement {
                   </div>
                 </div>
                 <label className="block space-y-1.5">
-                  <span className="text-xs font-medium text-bosch-muted">Objective</span>
-                  <textarea className="min-h-[80px] w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 py-2.5 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" {...overviewForm.register('objective', { required: true })} />
+                  <span className="text-xs font-medium text-pth-muted">Objective</span>
+                  <textarea className="min-h-[80px] w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 py-2.5 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...overviewForm.register('objective', { required: true })} />
                 </label>
-                <button type="submit" className="w-full rounded-lg bg-bosch-btn py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-bosch-btn-hover active:scale-[0.98] inline-flex items-center justify-center gap-2">
+                <button type="submit" className="w-full rounded-lg bg-pth-btn py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-pth-btn-hover active:scale-[0.98] inline-flex items-center justify-center gap-2">
                   <Save size={14} /> Save Changes
                 </button>
               </form>
@@ -4477,28 +5181,28 @@ export default function App(): ReactElement {
           <>
             <motion.div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setMilestoneDialogOpen(false)} />
             <motion.div
-              className="glass-card fixed left-1/2 top-1/2 z-[60] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-bosch-border/20 shadow-elevated"
+              className="glass-card fixed left-1/2 top-1/2 z-[60] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-pth-border/20 shadow-elevated"
               initial={{ opacity: 0, y: 16, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 16, scale: 0.96 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="flex items-center justify-between border-b border-bosch-border/15 px-5 py-4">
+              <div className="flex items-center justify-between border-b border-pth-border/15 px-5 py-4">
                 <h3 className="text-sm font-semibold">{milestoneEditId ? 'Edit Milestone' : 'Create Milestone'}</h3>
-                <button type="button" title="Close dialog" className="rounded-lg p-1.5 text-bosch-muted transition-colors hover:bg-bosch-hover" onClick={() => setMilestoneDialogOpen(false)}>
+                <button type="button" title="Close dialog" className="rounded-lg p-1.5 text-pth-muted transition-colors hover:bg-pth-hover" onClick={() => setMilestoneDialogOpen(false)}>
                   <X size={16} />
                 </button>
               </div>
               <form className="space-y-4 p-5" onSubmit={milestoneForm.handleSubmit(submitMilestone)}>
                 <label className="block space-y-1.5">
-                  <span className="text-xs font-medium text-bosch-muted">Name</span>
-                  <input className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" {...milestoneForm.register('name', { required: true })} />
+                  <span className="text-xs font-medium text-pth-muted">Name</span>
+                  <input className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...milestoneForm.register('name', { required: true })} />
                 </label>
                 <label className="block space-y-1.5">
-                  <span className="text-xs font-medium text-bosch-muted">Target Date</span>
-                  <input type="date" className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" {...milestoneForm.register('targetDate', { required: true })} />
+                  <span className="text-xs font-medium text-pth-muted">Target Date</span>
+                  <input type="date" className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...milestoneForm.register('targetDate', { required: true })} />
                 </label>
-                <button type="submit" className="w-full rounded-lg bg-bosch-btn py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-bosch-btn-hover active:scale-[0.98]">
+                <button type="submit" className="w-full rounded-lg bg-pth-btn py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-pth-btn-hover active:scale-[0.98]">
                   {milestoneEditId ? 'Update' : 'Create'} Milestone
                 </button>
               </form>
@@ -4513,40 +5217,40 @@ export default function App(): ReactElement {
           <>
             <motion.div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setActivityDialogOpen(false)} />
             <motion.div
-              className="glass-card fixed left-1/2 top-1/2 z-[60] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-bosch-border/20 shadow-elevated"
+              className="glass-card fixed left-1/2 top-1/2 z-[60] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-pth-border/20 shadow-elevated"
               initial={{ opacity: 0, y: 16, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 16, scale: 0.96 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="flex items-center justify-between border-b border-bosch-border/15 px-5 py-4">
+              <div className="flex items-center justify-between border-b border-pth-border/15 px-5 py-4">
                 <h3 className="text-sm font-semibold">{activityEditMode === 'edit' ? 'Edit Task' : 'Add Task'}</h3>
-                <button type="button" title="Close dialog" className="rounded-lg p-1.5 text-bosch-muted transition-colors hover:bg-bosch-hover" onClick={() => setActivityDialogOpen(false)}>
+                <button type="button" title="Close dialog" className="rounded-lg p-1.5 text-pth-muted transition-colors hover:bg-pth-hover" onClick={() => setActivityDialogOpen(false)}>
                   <X size={16} />
                 </button>
               </div>
               <form className="space-y-4 p-5" onSubmit={activityForm.handleSubmit(submitActivity)}>
                 <label className="block space-y-1.5">
-                  <span className="text-xs font-medium text-bosch-muted">Task Name</span>
-                  <input className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" {...activityForm.register('name', { required: true })} />
+                  <span className="text-xs font-medium text-pth-muted">Task Name</span>
+                  <input className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...activityForm.register('name', { required: true })} />
                 </label>
                 <label className="block space-y-1.5">
-                  <span className="text-xs font-medium text-bosch-muted">Owner</span>
-                  <select className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" {...activityForm.register('ownerId', { required: true })}>
+                  <span className="text-xs font-medium text-pth-muted">Owner</span>
+                  <select className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...activityForm.register('ownerId', { required: true })}>
                     {people.filter((p) => p.role === 'RESOURCE').map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-medium text-bosch-muted">Start Date</span>
-                    <input type="date" className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" {...activityForm.register('startDate', { required: true })} />
+                    <span className="text-xs font-medium text-pth-muted">Start Date</span>
+                    <input type="date" className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...activityForm.register('startDate', { required: true })} />
                   </label>
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-medium text-bosch-muted">End Date</span>
-                    <input type="date" className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" {...activityForm.register('endDate', { required: true })} />
+                    <span className="text-xs font-medium text-pth-muted">End Date</span>
+                    <input type="date" className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...activityForm.register('endDate', { required: true })} />
                   </label>
                 </div>
-                <button type="submit" className="w-full rounded-lg bg-bosch-btn py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-bosch-btn-hover active:scale-[0.98]">
+                <button type="submit" className="w-full rounded-lg bg-pth-btn py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-pth-btn-hover active:scale-[0.98]">
                   {activityEditMode === 'edit' ? 'Save Changes' : 'Add Task'}
                 </button>
               </form>
@@ -4561,23 +5265,23 @@ export default function App(): ReactElement {
           <>
             <motion.div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setMdDialogOpen(false)} />
             <motion.div
-              className="glass-card fixed left-1/2 top-1/2 z-[60] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-bosch-border/20 shadow-elevated"
+              className="glass-card fixed left-1/2 top-1/2 z-[60] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-pth-border/20 shadow-elevated"
               initial={{ opacity: 0, y: 16, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 16, scale: 0.96 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="flex items-center justify-between border-b border-bosch-border/15 px-5 py-4">
+              <div className="flex items-center justify-between border-b border-pth-border/15 px-5 py-4">
                 <h3 className="text-sm font-semibold">{mdEditId ? 'Edit Team Member' : 'Add Team Member'}</h3>
-                <button type="button" title="Close" onClick={() => setMdDialogOpen(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-bosch-muted hover:bg-bosch-hover hover:text-bosch-text"><X size={16} /></button>
+                <button type="button" title="Close" onClick={() => setMdDialogOpen(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-pth-muted hover:bg-pth-hover hover:text-pth-text"><X size={16} /></button>
               </div>
               <div className="space-y-4 p-5">
                 {/* ── Full Name: AAD autocomplete when creating, plain input when editing ── */}
                 <div className="relative block space-y-1.5">
-                  <span className="text-xs font-medium text-bosch-muted">Full Name</span>
+                  <span className="text-xs font-medium text-pth-muted">Full Name</span>
                   <input
                     type="text"
-                    className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20"
+                    className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20"
                     value={mdEditId ? mdForm.name : aadQuery}
                     onChange={(e) => {
                       if (mdEditId) { setMdForm((f) => ({ ...f, name: e.target.value })) }
@@ -4587,13 +5291,13 @@ export default function App(): ReactElement {
                   />
                   {/* AAD suggestions dropdown (only for create mode) */}
                   {!mdEditId && aadQuery.length >= 2 && (aadLoading || aadResults.length > 0) && (
-                    <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto rounded-lg border border-bosch-border/30 bg-bosch-card shadow-lg">
-                      {aadLoading && <div className="px-3 py-2 text-xs text-bosch-muted">Searching Azure AD...</div>}
+                    <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto rounded-lg border border-pth-border/30 bg-pth-card shadow-lg">
+                      {aadLoading && <div className="px-3 py-2 text-xs text-pth-muted">Searching Azure AD...</div>}
                       {!aadLoading && aadResults.map((user) => (
                         <button
                           key={user.id}
                           type="button"
-                          className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-bosch-hover"
+                          className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-pth-hover"
                           onClick={() => {
                             setMdForm((f) => ({
                               ...f,
@@ -4604,45 +5308,131 @@ export default function App(): ReactElement {
                             setAadResults([])
                           }}
                         >
-                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-bosch-btn/15 text-[10px] font-bold text-bosch-text">
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-pth-btn/15 text-[10px] font-bold text-pth-text">
                             {user.displayName.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2)}
                           </div>
                           <div className="min-w-0">
-                            <div className="truncate text-sm font-medium text-bosch-text">{user.displayName}</div>
-                            <div className="truncate text-[11px] text-bosch-muted">{[user.jobTitle, user.department, user.mail].filter(Boolean).join(' · ')}</div>
+                            <div className="truncate text-sm font-medium text-pth-text">{user.displayName}</div>
+                            <div className="truncate text-[11px] text-pth-muted">{[user.jobTitle, user.department, user.mail].filter(Boolean).join(' · ')}</div>
                           </div>
                         </button>
                       ))}
                       {!aadLoading && aadResults.length === 0 && aadQuery.length >= 2 && (
-                        <div className="px-3 py-2 text-xs text-bosch-muted">No users found — name will be used as-is</div>
+                        <div className="px-3 py-2 text-xs text-pth-muted">No users found — name will be used as-is</div>
                       )}
                     </div>
                   )}
                 </div>
                 <label className="block space-y-1.5">
-                  <span className="text-xs font-medium text-bosch-muted">Initials</span>
-                  <input type="text" maxLength={3} className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm uppercase transition-colors focus:border-bosch-blue focus:bg-bosch-card focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" value={mdForm.initials} onChange={(e) => setMdForm((f) => ({ ...f, initials: e.target.value.toUpperCase() }))} placeholder="Auto-generated if blank" />
+                  <span className="text-xs font-medium text-pth-muted">Initials</span>
+                  <input type="text" maxLength={3} className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm uppercase transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" value={mdForm.initials} onChange={(e) => setMdForm((f) => ({ ...f, initials: e.target.value.toUpperCase() }))} placeholder="Auto-generated if blank" />
                 </label>
                 <label className="block space-y-1.5">
-                  <span className="text-xs font-medium text-bosch-muted">Role</span>
-                  <select title="Role" className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" value={mdForm.role} onChange={(e) => setMdForm((f) => ({ ...f, role: e.target.value as Person['role'] }))}>
+                  <span className="text-xs font-medium text-pth-muted">Role</span>
+                  <select title="Role" className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" value={mdForm.role} onChange={(e) => setMdForm((f) => ({ ...f, role: e.target.value as Person['role'] }))}>
                     <option value="RESOURCE">Resource</option>
                     <option value="PROJECT_MANAGER">Project Manager</option>
                     <option value="MANAGER">Manager</option>
                     <option value="DIRECTOR">Director</option>
                   </select>
                 </label>
+                {mdForm.role === 'RESOURCE' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="block space-y-1.5">
+                        <span className="text-xs font-medium text-pth-muted">Kind</span>
+                        <select title="Kind" className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" value={mdForm.kind} onChange={(e) => setMdForm((f) => ({ ...f, kind: e.target.value }))}>
+                          <option value="Associate">Associate</option>
+                          <option value="Manager">Manager</option>
+                        </select>
+                      </label>
+                      <label className="block space-y-1.5">
+                        <span className="text-xs font-medium text-pth-muted">Area</span>
+                        <select title="Area" className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" value={mdForm.area} onChange={(e) => setMdForm((f) => ({ ...f, area: e.target.value }))}>
+                          <option value="">—</option>
+                          {['PPS', 'ENG', 'QMM', 'LOD', 'LOP', 'LOP4', 'LOP5', 'MSE', 'CTG', 'PUQ1', 'PUQ2'].map((a) => <option key={a} value={a}>{a}</option>)}
+                        </select>
+                      </label>
+                    </div>
+                    <div className="space-y-1.5">
+                      <span className="text-xs font-medium text-pth-muted">Location</span>
+                      <div className="flex gap-2">
+                        {['SlpP', 'TlP'].map((loc) => {
+                          const on = mdForm.location.includes(loc)
+                          return (
+                            <button key={loc} type="button" onClick={() => setMdForm((f) => ({ ...f, location: on ? f.location.filter((l) => l !== loc) : [...f.location, loc] }))}
+                              className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${on ? 'border-pth-blue bg-pth-blue/10 text-pth-blue' : 'border-pth-border/40 bg-pth-subtle text-pth-muted hover:text-pth-text'}`}>
+                              {loc}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                    <label className="block space-y-1.5">
+                      <span className="text-xs font-medium text-pth-muted">Weekly Capacity (hours)</span>
+                      <input type="number" min={0} max={168} className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" value={mdForm.capacity} onChange={(e) => setMdForm((f) => ({ ...f, capacity: Number(e.target.value) }))} />
+                    </label>
+                  </>
+                )}
                 <label className="block space-y-1.5">
-                  <span className="text-xs font-medium text-bosch-muted">Reports To</span>
-                  <select title="Reports To" className="h-10 w-full rounded-lg border border-bosch-border/40 bg-bosch-subtle px-3 text-sm transition-colors focus:border-bosch-blue focus:outline-none focus:ring-2 focus:ring-bosch-blue/20" value={mdForm.managerId} onChange={(e) => setMdForm((f) => ({ ...f, managerId: e.target.value }))}>
+                  <span className="text-xs font-medium text-pth-muted">{mdForm.role === 'RESOURCE' ? 'Manager' : 'Reports To'}</span>
+                  <select title="Reports To" className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" value={mdForm.managerId} onChange={(e) => setMdForm((f) => ({ ...f, managerId: e.target.value }))}>
                     <option value="">None</option>
-                    {people.filter((p) => p.role === 'DIRECTOR' || p.role === 'MANAGER').map((p) => (
-                      <option key={p.id} value={p.id}>{p.name} ({ROLE_LABEL[p.role as Role] ?? p.role})</option>
+                    {people.filter((p) => p.role === 'DIRECTOR' || p.role === 'MANAGER' || p.resourceKind === 'Manager').map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}{p.area ? ` (${p.area})` : ` (${ROLE_LABEL[p.role as Role] ?? p.role})`}</option>
                     ))}
                   </select>
                 </label>
-                <button type="button" onClick={submitPerson} className="w-full rounded-lg bg-bosch-btn py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-bosch-btn-hover active:scale-[0.98]">
+                <button type="button" onClick={submitPerson} className="w-full rounded-lg bg-pth-btn py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-pth-btn-hover active:scale-[0.98]">
                   {mdEditId ? 'Save Changes' : 'Add Member'}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ─── TASK TEMPLATE ADD/EDIT DIALOG ─── */}
+      <AnimatePresence>
+        {ttDialogOpen && (
+          <>
+            <motion.div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setTtDialogOpen(false)} />
+            <motion.div className="glass-card fixed left-1/2 top-1/2 z-[60] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-pth-border/20 shadow-elevated" initial={{ opacity: 0, y: 16, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.96 }} transition={{ duration: 0.2 }}>
+              <div className="flex items-center justify-between border-b border-pth-border/15 px-5 py-4">
+                <h3 className="text-sm font-semibold">{ttEditId ? 'Edit Task' : 'Add Task'} — {ttType}</h3>
+                <button type="button" title="Close" onClick={() => setTtDialogOpen(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-pth-muted hover:bg-pth-hover hover:text-pth-text"><X size={16} /></button>
+              </div>
+              <div className="space-y-4 p-5">
+                <label className="block space-y-1.5">
+                  <span className="text-xs font-medium text-pth-muted">Task</span>
+                  <input type="text" className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" value={ttForm.task} onChange={(e) => setTtForm((f) => ({ ...f, task: e.target.value }))} placeholder="e.g. KO meeting" />
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-medium text-pth-muted">Sequence</span>
+                    <input type="number" className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" value={ttForm.sequence} onChange={(e) => setTtForm((f) => ({ ...f, sequence: Number(e.target.value) }))} />
+                  </label>
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-medium text-pth-muted">Responsible</span>
+                    <input type="text" className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" value={ttForm.responsible} onChange={(e) => setTtForm((f) => ({ ...f, responsible: e.target.value }))} placeholder="e.g. ENG / QMM" />
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-medium text-pth-muted">Leadtime (weeks)</span>
+                    <input type="number" className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" value={ttForm.leadtimeWeeks} onChange={(e) => setTtForm((f) => ({ ...f, leadtimeWeeks: e.target.value }))} placeholder="—" />
+                  </label>
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-medium text-pth-muted">Workload %</span>
+                    <input type="number" className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" value={ttForm.workloadPct} onChange={(e) => setTtForm((f) => ({ ...f, workloadPct: e.target.value }))} placeholder="—" />
+                  </label>
+                </div>
+                <label className="block space-y-1.5">
+                  <span className="text-xs font-medium text-pth-muted">Inputs</span>
+                  <textarea rows={3} className="w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 py-2 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" value={ttForm.inputs} onChange={(e) => setTtForm((f) => ({ ...f, inputs: e.target.value }))} placeholder="Required inputs / deliverables" />
+                </label>
+                <button type="button" onClick={submitTemplate} className="w-full rounded-lg bg-pth-btn py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-pth-btn-hover active:scale-[0.98]">
+                  {ttEditId ? 'Save Changes' : 'Add Task'}
                 </button>
               </div>
             </motion.div>
@@ -4656,30 +5446,30 @@ export default function App(): ReactElement {
           <>
             <motion.div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { if (!deletingProject) setDeleteProjectDialogOpen(false) }} />
             <motion.div
-              className="glass-card fixed left-1/2 top-1/2 z-[60] w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-bosch-border/20 shadow-elevated"
+              className="glass-card fixed left-1/2 top-1/2 z-[60] w-[92vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-pth-border/20 shadow-elevated"
               initial={{ opacity: 0, y: 16, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 16, scale: 0.96 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="flex items-center gap-3 border-b border-bosch-border/15 px-5 py-4">
+              <div className="flex items-center gap-3 border-b border-pth-border/15 px-5 py-4">
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
-                  <Trash2 size={16} className="text-bosch-red" />
+                  <Trash2 size={16} className="text-pth-red" />
                 </div>
                 <h3 className="text-sm font-semibold">Delete Project</h3>
               </div>
               <div className="space-y-3 p-5">
-                <p className="text-sm text-bosch-muted">
-                  Are you sure you want to delete <span className="font-semibold text-bosch-text">{selectedProject.name}</span>?
+                <p className="text-sm text-pth-muted">
+                  Are you sure you want to delete <span className="font-semibold text-pth-text">{selectedProject.name}</span>?
                 </p>
-                <p className="text-xs text-bosch-muted/80">
+                <p className="text-xs text-pth-muted/80">
                   This will permanently remove the project and all its milestones, activities, and assignments. This action cannot be undone.
                 </p>
                 <div className="flex items-center gap-3 pt-2">
-                  <button type="button" disabled={deletingProject} className="flex-1 rounded-lg border border-bosch-border/40 bg-bosch-card py-2.5 text-sm font-medium text-bosch-text shadow-sm transition-colors hover:bg-bosch-hover disabled:opacity-50" onClick={() => setDeleteProjectDialogOpen(false)}>
+                  <button type="button" disabled={deletingProject} className="flex-1 rounded-lg border border-pth-border/40 bg-pth-card py-2.5 text-sm font-medium text-pth-text shadow-sm transition-colors hover:bg-pth-hover disabled:opacity-50" onClick={() => setDeleteProjectDialogOpen(false)}>
                     Cancel
                   </button>
-                  <button type="button" disabled={deletingProject} className="flex-1 rounded-lg bg-bosch-red py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-red-700 active:scale-[0.98] disabled:opacity-50" onClick={handleDeleteProject}>
+                  <button type="button" disabled={deletingProject} className="flex-1 rounded-lg bg-pth-red py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-red-700 active:scale-[0.98] disabled:opacity-50" onClick={handleDeleteProject}>
                     {deletingProject ? 'Deleting…' : 'Delete'}
                   </button>
                 </div>

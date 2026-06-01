@@ -11,7 +11,7 @@ import { writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { resolveToken } from './dataverse/auth.mjs'
 
-const DV_URL = process.env.DATAVERSE_URL || 'https://org2d99840c.crm.dynamics.com'
+const DV_URL = process.env.DATAVERSE_URL || 'https://org91869c7b.crm4.dynamics.com'
 
 const token = await resolveToken(DV_URL)
 if (!token) {

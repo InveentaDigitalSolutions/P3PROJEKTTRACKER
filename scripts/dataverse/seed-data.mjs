@@ -59,7 +59,7 @@ function weekStart(iso) {
   return d.toISOString().slice(0, 10)
 }
 
-// ─── Static reference data (matches src/App.tsx INITIAL_PEOPLE) ────────
+// ─── Static reference data ───────────────────────────────────────────────
 const CATEGORY_VALUE = { ECR: 100000000, 'Path Forward': 100000001, CIP: 100000002, 'New Programs': 100000003 }
 const TIME_STATUS_VALUE = { RED: 100000000, YELLOW: 100000001, GREEN: 100000002 }
 const MILESTONE_STATUS_VALUE = { OPEN: 100000000, IN_PROGRESS: 100000001, CLOSED: 100000002, DELAYED: 100000003 }
@@ -89,7 +89,14 @@ const CATEGORY_MILESTONES = {
   ],
 }
 
-// ─── 1. Resources (matches INITIAL_PEOPLE who have role RESOURCE) ──────
+const ACTIVITY_TEMPLATES = [
+  'Requirements Gathering', 'Technical Design Review', 'Prototype Build',
+  'Validation Testing', 'Process FMEA Update', 'Tooling Procurement',
+  'Pilot Run Coordination', 'Supplier Qualification', 'Documentation Package',
+  'Customer Sample Submission',
+]
+
+// ─── 1. Resources ────────────────────────────────────────────────────────
 const resources = [
   { extId: 'u_res_1', name: 'Nina Becker', role: 'Engineer', department: 'Assembly', capacity: 40 },
   { extId: 'u_res_2', name: 'Viktor Hahn', role: 'Engineer', department: 'Assembly', capacity: 40 },
@@ -97,39 +104,85 @@ const resources = [
   { extId: 'u_res_4', name: 'Pablo Diaz', role: 'Process Engineer', department: 'Manufacturing', capacity: 40 },
   { extId: 'u_res_5', name: 'Elena Costa', role: 'Design Engineer', department: 'R&D', capacity: 40 },
   { extId: 'u_res_6', name: 'Marco Lenz', role: 'Supply Chain Lead', department: 'Logistics', capacity: 40 },
+  { extId: 'u_res_7', name: 'Annika Braun', role: 'Quality Engineer', department: 'Quality', capacity: 40 },
+  { extId: 'u_res_8', name: 'Felix Hartmann', role: 'Mechanical Engineer', department: 'R&D', capacity: 40 },
+  { extId: 'u_res_9', name: 'Sofia Martín', role: 'Process Engineer', department: 'Manufacturing', capacity: 40 },
+  { extId: 'u_res_10', name: 'Lukas Richter', role: 'Test Engineer', department: 'Quality', capacity: 40 },
 ]
 
-// ─── 2. Projects (matches generateInitialState in App.tsx) ─────────────
+// ─── 2. Projects ─────────────────────────────────────────────────────────
 const projects = [
   {
     extId: 'p_1', name: 'Assembly Line CIP – TCA Station 12', category: 'CIP',
     siteLocation: 100000000, sponsor: 'Laura Schneider', pm: 'Rafael Gomez',
     objective: 'Reduce cycle time in final assembly by 8% without quality drift.',
+    startOffset: -30, endOffset: 60,
   },
   {
     extId: 'p_2', name: 'ESC Sensor New Program', category: 'New Programs',
     siteLocation: 100000001, sponsor: 'Laura Schneider', pm: 'Sven Maurer',
     objective: 'Prepare ESC sensor manufacturing and validation readiness for SOP.',
+    startOffset: -14, endOffset: 90,
   },
   {
     extId: 'p_3', name: 'Brake Caliper Path Forward', category: 'Path Forward',
     siteLocation: 100000000, sponsor: 'Laura Schneider', pm: 'Clara Rossi',
     objective: 'Stabilize backlog and phase-in process controls in brake caliper line.',
+    startOffset: -21, endOffset: 45,
   },
   {
     extId: 'p_4', name: 'ABS Module ECR', category: 'ECR',
     siteLocation: 100000001, sponsor: 'Laura Schneider', pm: 'Rafael Gomez',
     objective: 'Implement ABS module engineering change with contained launch.',
+    startOffset: -7, endOffset: 42,
   },
   {
     extId: 'p_5', name: 'Sparkplugs Manufacturing CIP', category: 'CIP',
     siteLocation: 100000000, sponsor: 'Laura Schneider', pm: 'Sven Maurer',
     objective: 'Improve scrap reduction and process capability in sparkplug production.',
+    startOffset: -10, endOffset: 50,
   },
   {
     extId: 'p_6', name: 'ADAS Path Forward – Radar Cell', category: 'Path Forward',
     siteLocation: 100000001, sponsor: 'Laura Schneider', pm: 'Clara Rossi',
     objective: 'Recover ADAS radar cell throughput and delivery adherence.',
+    startOffset: -28, endOffset: 70,
+  },
+  {
+    extId: 'p_7', name: 'Steering Column ECR – Phase 2', category: 'ECR',
+    siteLocation: 100000000, sponsor: 'Laura Schneider', pm: 'Jan Krüger',
+    objective: 'Implement revised steering column per updated BMW specification.',
+    startOffset: -5, endOffset: 55,
+  },
+  {
+    extId: 'p_8', name: 'Battery Pack New Program – Gen2', category: 'New Programs',
+    siteLocation: 100000001, sponsor: 'Laura Schneider', pm: 'Rafael Gomez',
+    objective: 'Launch Gen2 battery pack assembly for Stellantis EV platform.',
+    startOffset: -35, endOffset: 120,
+  },
+  {
+    extId: 'p_9', name: 'Wiring Harness CIP – Defect Reduction', category: 'CIP',
+    siteLocation: 100000000, sponsor: 'Laura Schneider', pm: 'Sven Maurer',
+    objective: 'Reduce wiring harness defect rate from 3.2% to <1% via poke-yoke.',
+    startOffset: -18, endOffset: 40,
+  },
+  {
+    extId: 'p_10', name: 'EV Drivetrain Path Forward', category: 'Path Forward',
+    siteLocation: 100000000, sponsor: 'Laura Schneider', pm: 'Clara Rossi',
+    objective: 'Stabilize EV drivetrain test throughput and reduce rework loops.',
+    startOffset: -42, endOffset: 85,
+  },
+  {
+    extId: 'p_11', name: 'Fuel Injector ECR – Emission Compliance', category: 'ECR',
+    siteLocation: 100000001, sponsor: 'Laura Schneider', pm: 'Jan Krüger',
+    objective: 'Re-engineer fuel injector nozzle to meet Euro 7 emission limits.',
+    startOffset: -12, endOffset: 65,
+  },
+  {
+    extId: 'p_12', name: 'Paint Shop CIP – VOC Reduction', category: 'CIP',
+    siteLocation: 100000000, sponsor: 'Laura Schneider', pm: 'Rafael Gomez',
+    objective: 'Cut VOC emissions in paint shop by 25% while maintaining finish quality.',
+    startOffset: -20, endOffset: 75,
   },
 ]
 
@@ -158,7 +211,7 @@ async function run() {
   for (const p of projects) {
     const row = await post('pth_projects', {
       pth_projectidexternal: p.extId,
-      pth_projectname: p.name,                // <-- primary name column
+      pth_projectname: p.name,
       pth_category: CATEGORY_VALUE[p.category],
       pth_sitelocation: p.siteLocation,
       pth_projectobjective: p.objective,
@@ -185,12 +238,11 @@ async function run() {
 
       const row = await post('pth_milestones', {
         pth_milestoneidexternal: `ms_${p.extId}_${tIdx}`,
-        pth_name: tmpl.name,                  // <-- primary name column
+        pth_name: tmpl.name,
         pth_planneddate: targetDate,
         pth_status: MILESTONE_STATUS_VALUE[status],
         pth_ryg: RYG_VALUE[ryg],
         pth_iscriticalpath: tIdx === 1,
-        // Lookup: bind to project
         'pth_Project@odata.bind': `/pth_projects(${projectMap[p.extId]})`,
       })
       milestoneRows.push({ ...row, _projectExtId: p.extId, _tIdx: tIdx })
@@ -201,13 +253,13 @@ async function run() {
   // ── Activities ─────────────────────────────────────────────────────────
   console.log('Creating activities…')
   const activityRows = []
-  const activityOwnerIds = resources.map((r) => r.extId)
 
   for (const [pIdx, p] of projects.entries()) {
     const pMilestones = milestoneRows.filter((m) => m._projectExtId === p.extId)
-    const doneThreshold = [2, 4, 3, 1, 5, 3][pIdx % 6]
+    const doneThreshold = [2, 4, 3, 1, 5, 3, 4, 2, 3, 5, 1, 4][pIdx % 12]
+    const actCount = 6 + (pIdx % 4) // 6-9 activities per project
 
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < actCount; i++) {
       const start = addDays(today, -18 + i * 8 - pIdx * 2)
       const baseEnd = addDays(start, 7 + (i % 3))
       const isDone = i < doneThreshold
@@ -223,18 +275,19 @@ async function run() {
       const ryg = isDone ? 'GREEN' : overdue ? 'RED' : dueSoon ? 'YELLOW' : 'GREEN'
 
       const ms = pMilestones[i % pMilestones.length]
+      const activityName = ACTIVITY_TEMPLATES[(pIdx + i) % ACTIVITY_TEMPLATES.length]
+      const ownerIdx = (pIdx + i) % resources.length
 
       const body = {
         pth_activityidexternal: `act_${p.extId}_${i}`,
-        pth_name: `${p.name.split(' ')[0]} Activity ${i + 1}`,
-        pth_owner: resources[(pIdx + i) % activityOwnerIds.length].name,
+        pth_name: activityName,
+        pth_owner: resources[ownerIdx].name,
         pth_startdate: start,
         pth_enddate: endDate,
         pth_plannedenddate: baseEnd,
         pth_status: ACTIVITY_STATUS_VALUE[statusKey],
         pth_ryg: RYG_VALUE[ryg],
         pth_iscriticalpath: i === 2 || i === 3,
-        // Lookups
         'pth_Project@odata.bind': `/pth_projects(${projectMap[p.extId]})`,
       }
 
@@ -242,8 +295,8 @@ async function run() {
       if (ms) body['pth_Milestone@odata.bind'] = `/pth_milestones(${ms.pth_milestoneid})`
 
       const row = await post('pth_activities', body)
-      activityRows.push({ ...row, _projectExtId: p.extId, _idx: i, _ownerExtId: activityOwnerIds[(pIdx + i) % activityOwnerIds.length] })
-      console.log(`  Activity: ${body.pth_name} (${p.name})  →  ${row.pth_activityid}`)
+      activityRows.push({ ...row, _projectExtId: p.extId, _idx: i, _ownerExtId: resources[ownerIdx].extId })
+      console.log(`  Activity: ${activityName} (${p.name})  →  ${row.pth_activityid}`)
     }
   }
 
@@ -259,6 +312,8 @@ async function run() {
       const base = 22 + ((pIndex + wIndex) % 3) * 8
       const loadBump = res.extId === 'u_res_2' && wIndex % 3 === 0 ? 16
         : res.extId === 'u_res_4' && wIndex % 4 === 1 ? 11
+        : res.extId === 'u_res_7' && wIndex % 2 === 0 ? 14
+        : res.extId === 'u_res_10' && wIndex % 3 === 2 ? 10
         : 0
 
       await post('pth_assignments', {
