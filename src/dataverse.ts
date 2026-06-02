@@ -716,13 +716,19 @@ export async function updateActivityInDataverse(id: string, a: ActivityPayload):
   const body: Record<string, unknown> = {
     pth_name: a.name,
     pth_owner: a.ownerName,
-    pth_startdate: a.startDate,
-    pth_enddate: a.endDate,
-    pth_plannedenddate: a.endDate,
     pth_status: ACTIVITY_STATE_TO_DV[a.state],
     pth_iscriticalpath: a.criticalPath,
     'pth_project@odata.bind': `/pth_projects(${a.projectId})`,
   }
+  // Only send date fields when present — empty strings make Dataverse reject the
+  // whole PATCH (0x80040239), which silently dropped owner/other changes on
+  // N/A and dateless tasks.
+  if (a.startDate) body.pth_startdate = a.startDate
+  if (a.endDate) { body.pth_enddate = a.endDate; body.pth_plannedenddate = a.endDate }
+  if (a.responsible !== undefined) body.pth_responsible = a.responsible || null
+  if (a.leadtimeWeeks != null) body.pth_leadtimeweeks = a.leadtimeWeeks
+  if (a.workloadPct != null) body.pth_workloadpct = a.workloadPct
+  if (a.inputs) body.pth_inputs = a.inputs.slice(0, 2000)
   if (a.doneDate) body.pth_closeddate = a.doneDate
   if (a.milestoneId) body['pth_milestone@odata.bind'] = `/pth_milestones(${a.milestoneId})`
   if (preferDirectWrite()) return dvPatch('pth_activities', id, body)

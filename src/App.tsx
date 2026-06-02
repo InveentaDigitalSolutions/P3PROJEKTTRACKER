@@ -229,6 +229,7 @@ type ActivityForm = {
   endDate: string
   workloadPct: number
   responsible: string
+  state: ActivityState
 }
 
 type ActivityEditMode = 'create' | 'edit'
@@ -1067,8 +1068,12 @@ export default function App(): ReactElement {
   const [ttLoc, setTtLoc] = useState<string>('all')
   const [ttProjType, setTtProjType] = useState<string>('all')
   const [ttRisk, setTtRisk] = useState<string>('atrisk')
-  const [ttView, setTtView] = useState<'tasks' | 'area' | 'project'>('tasks')
+  const [ttView, setTtView] = useState<'tasks' | 'area' | 'project' | 'owner'>('tasks')
+  const [ttOwner, setTtOwner] = useState<string>('all')
+  const [ganttLabelWidth, setGanttLabelWidth] = useState(176) // px, user-resizable
   const [taskNaFilter, setTaskNaFilter] = useState<'active' | 'na' | 'all'>('active')
+  const [resourcePaneSearch, setResourcePaneSearch] = useState('')
+  const [resourcePaneArea, setResourcePaneArea] = useState<string>('all')
   const [ttExpanded, setTtExpanded] = useState<Set<string>>(new Set())
   const [dragPersonId, setDragPersonId] = useState<string | null>(null)
   const [dropTargetId, setDropTargetId] = useState<string | null>(null)
@@ -1481,8 +1486,12 @@ export default function App(): ReactElement {
       const nextMilestone = projectNextMilestone(state, project.id)
       const delayedCount = state.activities.filter((a) => a.projectId === project.id && !a.doneDate && rygFromDueDate(a.endDate, state.settings.warningDaysThreshold) === 'RED').length
       const pActs = state.activities.filter((a) => a.projectId === project.id)
+      // Next task: earliest-due, not-done, dated, in-scope (skip N/A) task.
+      const nextTask = pActs
+        .filter((a) => a.state !== 'NOT_APPLICABLE' && a.state !== 'DONE' && a.endDate)
+        .sort((a, b) => (a.endDate < b.endDate ? -1 : 1))[0]
       const progressPct = pActs.length > 0 ? Math.round((pActs.filter((a) => a.state === 'DONE').length / pActs.length) * 100) : 0
-      return { project, pm, site, status, nextMilestone, delayedCount, progressPct }
+      return { project, pm, site, status, nextMilestone, nextTask, delayedCount, progressPct }
     })
   }, [rptFiltered, state])
 
@@ -1619,6 +1628,43 @@ export default function App(): ReactElement {
       })
   }, [currentUserId, currentWeek, role, people, state.activities, state.assignments, state.projects, state.settings.defaultWeeklyCapacity])
 
+  // Peak weekly utilization per resource across ALL their owned active tasks.
+  // hours/week for a task = workloadPct% × weekly capacity, applied to every
+  // week the task spans. The "peak" week is the busiest → the overbooking
+  // signal shown in the project-detail Available Resources sidebar (which has
+  // no week selector, unlike the Workload page).
+  const peakUtilByPerson = useMemo(() => {
+    const out = new Map<string, { peakUtil: number; peakHours: number; capacity: number; taskCount: number }>()
+    for (const person of people) {
+      if (person.role !== 'RESOURCE') continue
+      const capacity = person.weeklyCapacity ?? state.settings.defaultWeeklyCapacity
+      const owned = state.activities.filter((a) =>
+        a.ownerId === person.id && a.state !== 'NOT_APPLICABLE' && a.state !== 'DONE' &&
+        a.startDate && a.endDate && a.startDate <= a.endDate,
+      )
+      const weekHours = new Map<string, number>()
+      for (const a of owned) {
+        const hours = ((a.workloadPct ?? 0) / 100) * capacity
+        if (hours <= 0) continue
+        let wk = weekStartISO(a.startDate)
+        const lastWk = weekStartISO(a.endDate)
+        let guard = 0
+        while (wk <= lastWk && guard < 520) {
+          weekHours.set(wk, (weekHours.get(wk) ?? 0) + hours)
+          wk = addDays(wk, 7); guard++
+        }
+      }
+      const peakHours = weekHours.size ? Math.max(...weekHours.values()) : 0
+      out.set(person.id, {
+        peakHours,
+        capacity,
+        peakUtil: Math.round((peakHours / Math.max(capacity, 1)) * 100),
+        taskCount: owned.length,
+      })
+    }
+    return out
+  }, [people, state.activities, state.settings.defaultWeeklyCapacity])
+
   const overviewForm = useForm<ProjectOverviewForm>({
     values: {
       name: selectedProject?.name ?? '',
@@ -1651,6 +1697,7 @@ export default function App(): ReactElement {
       endDate: addDays(todayISO(), 7),
       workloadPct: 0,
       responsible: '',
+      state: 'NOT_STARTED',
     },
   })
 
@@ -2073,6 +2120,7 @@ export default function App(): ReactElement {
       endDate: addDays(todayISO(), 7),
       workloadPct: 0,
       responsible: '',
+      state: 'NOT_STARTED',
     })
     setActivityDialogOpen(true)
   }
@@ -2088,6 +2136,7 @@ export default function App(): ReactElement {
       endDate: activity.endDate,
       workloadPct: activity.workloadPct ?? 0,
       responsible: activity.responsible ?? '',
+      state: activity.state,
     })
     setActivityDialogOpen(true)
   }
@@ -2097,12 +2146,15 @@ export default function App(): ReactElement {
     const ownerName = people.find((p) => p.id === values.ownerId)?.name ?? ''
     const workloadPct = Number(values.workloadPct) || 0
     const responsible = values.responsible.trim()
+    const newState = values.state
     if (activityEditMode === 'edit' && editingActivityId) {
       const existing = state.activities.find((a) => a.id === editingActivityId)
+      // When marking DONE, stamp a completion date (end date, or today); clear it otherwise.
+      const doneDate = newState === 'DONE' ? (existing?.doneDate ?? values.endDate ?? todayISO()) : undefined
       if (isDataverseConfigured() && existing) {
         await updateActivityInDataverse(editingActivityId, {
           name: values.name, ownerName, startDate: values.startDate, endDate: values.endDate,
-          doneDate: existing.doneDate, state: existing.state, criticalPath: existing.criticalPath,
+          doneDate, state: newState, criticalPath: existing.criticalPath,
           projectId: existing.projectId, milestoneId: existing.milestoneId,
           workloadPct, responsible,
         })
@@ -2111,16 +2163,17 @@ export default function App(): ReactElement {
         ...prev,
         activities: prev.activities.map((a) =>
           a.id === editingActivityId
-            ? { ...a, name: values.name, ownerId: values.ownerId, startDate: values.startDate, endDate: values.endDate, workloadPct, responsible }
+            ? { ...a, name: values.name, ownerId: values.ownerId, startDate: values.startDate, endDate: values.endDate, workloadPct, responsible, state: newState, doneDate }
             : a,
         ),
       }))
     } else {
+      const doneDate = newState === 'DONE' ? (values.endDate || todayISO()) : undefined
       let dvId: string | null = null
       if (isDataverseConfigured()) {
         dvId = await createActivityInDataverse({
           name: values.name, ownerName, startDate: values.startDate, endDate: values.endDate,
-          state: 'NOT_STARTED', criticalPath: false, projectId: selectedProject.id,
+          doneDate, state: newState, criticalPath: false, projectId: selectedProject.id,
           milestoneId: activityMilestoneId ?? undefined,
           workloadPct, responsible,
         })
@@ -2138,7 +2191,8 @@ export default function App(): ReactElement {
             ownerId: values.ownerId,
             startDate: values.startDate,
             endDate: values.endDate,
-            state: 'NOT_STARTED' as ActivityState,
+            state: newState,
+            doneDate,
             criticalPath: false,
             workloadPct,
             responsible,
@@ -2168,12 +2222,33 @@ export default function App(): ReactElement {
 
   function handleDropOnTask(activityId: string): void {
     if (!dragPersonId) return
-    setState((prev) => ({
-      ...prev,
-      activities: prev.activities.map((a) => (a.id === activityId ? { ...a, ownerId: dragPersonId } : a)),
-    }))
+    const personId = dragPersonId
+    const act = state.activities.find((a) => a.id === activityId)
     setDragPersonId(null)
     setDropTargetId(null)
+    if (!act) return
+
+    // If the task has no workload yet, open the edit dialog pre-filled with the
+    // owner so the user must supply a workload % (prompt-on-assign).
+    if (act.workloadPct == null || act.workloadPct === 0) {
+      openEditActivity({ ...act, ownerId: personId })
+      return
+    }
+
+    // Otherwise assign directly + persist owner to Dataverse.
+    const ownerName = people.find((p) => p.id === personId)?.name ?? ''
+    setState((prev) => ({
+      ...prev,
+      activities: prev.activities.map((a) => (a.id === activityId ? { ...a, ownerId: personId } : a)),
+    }))
+    if (isDataverseConfigured()) {
+      updateActivityInDataverse(activityId, {
+        name: act.name, ownerName, startDate: act.startDate, endDate: act.endDate,
+        doneDate: act.doneDate, state: act.state, criticalPath: act.criticalPath,
+        projectId: act.projectId, milestoneId: act.milestoneId,
+        workloadPct: act.workloadPct, responsible: act.responsible,
+      })
+    }
   }
 
   function simulateWeeklyAlerts(): void {
@@ -2391,9 +2466,9 @@ export default function App(): ReactElement {
     const allDates = [
       ...activities.flatMap((activity) => [activity.startDate, activity.endDate]),
       ...selectedProjectMilestones.map((milestone) => milestone.targetDate),
-    ]
-    const minDate = allDates.sort()[0] ?? todayISO()
-    const maxDate = allDates.sort().slice(-1)[0] ?? addDays(todayISO(), 1)
+    ].filter((d): d is string => !!d).sort()   // drop blanks (N/A tasks carry no dates)
+    const minDate = allDates[0] ?? todayISO()
+    const maxDate = allDates[allDates.length - 1] ?? addDays(todayISO(), 1)
     return { minDate, maxDate, activities, milestones: selectedProjectMilestones }
   }, [selectedProject, selectedProjectActivities, selectedProjectMilestones])
 
@@ -3086,9 +3161,50 @@ export default function App(): ReactElement {
                             </div>
                           </div>
                           <div className="mt-24 flex items-center justify-between text-xs text-pth-muted">
-                            <span>{plannedStart ? formatDate(plannedStart) : formatDate(tlMin)}</span>
-                            <span>{plannedEnd ? formatDate(plannedEnd) : formatDate(tlMax)}</span>
+                            <span>{formatDate(tlMin)}</span>
+                            <span>{formatDate(tlMax)}</span>
                           </div>
+
+                          {/* ── Task bars (each dated task across the timeline) ── */}
+                          {(() => {
+                            const dated = pActs.filter((a) => a.startDate && a.endDate).sort((a, b) => (a.startDate < b.startDate ? -1 : 1))
+                            if (dated.length === 0) return null
+                            const colorFor = (a: Activity) =>
+                              a.state === 'DONE' ? 'bg-emerald-500'
+                                : a.state === 'IN_PROGRESS' ? 'bg-pth-blue'
+                                : rygForActivity(a) === 'RED' ? 'bg-pth-red'
+                                : rygForActivity(a) === 'YELLOW' ? 'bg-amber-500'
+                                : 'bg-pth-border'
+                            return (
+                              <div className="mt-6 border-t border-pth-border/15 pt-4">
+                                <div className="mb-2 flex items-center justify-between">
+                                  <h3 className="text-xs font-semibold uppercase tracking-wider text-pth-muted">Tasks ({dated.length})</h3>
+                                  <div className="flex items-center gap-3 text-[10px] text-pth-muted">
+                                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" />Done</span>
+                                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-pth-blue" />In progress</span>
+                                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-500" />At risk</span>
+                                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-pth-red" />Late</span>
+                                  </div>
+                                </div>
+                                <div className="max-h-[340px] space-y-1 overflow-y-auto pr-1">
+                                  {dated.map((a) => {
+                                    const left = Math.min(Math.max((dayDiff(tlMin, a.startDate) / tlRange) * 100, 0), 100)
+                                    const rawW = (dayDiff(a.startDate, a.endDate) / tlRange) * 100
+                                    const width = Math.min(Math.max(rawW, 1.5), 100 - left)
+                                    return (
+                                      <div key={a.id} className="group flex items-center gap-2">
+                                        <span className="w-40 shrink-0 truncate text-[11px] text-pth-text" title={a.name}>{a.name}</span>
+                                        <div className="relative h-4 flex-1 rounded bg-pth-border/10">
+                                          <div ref={dynRef({ left: `${left}%`, width: `${width}%` })} className={`absolute top-0 h-4 rounded ${colorFor(a)} opacity-80`} title={`${formatShortDate(a.startDate)} – ${formatShortDate(a.endDate)}`} />
+                                        </div>
+                                        <span className="w-28 shrink-0 text-right text-[10px] text-pth-muted">{formatShortDate(a.startDate)}–{formatShortDate(a.endDate)}</span>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )
+                          })()}
                         </div>
 
                         {/* ── Milestones + Available Resources ── */}
@@ -3265,14 +3381,49 @@ export default function App(): ReactElement {
                                 <div className="border-b border-pth-border/15 px-4 py-3">
                                   <h3 className="text-sm font-bold">Available Resources</h3>
                                   <p className="mt-0.5 text-[11px] text-pth-muted">Drag a person onto a milestone or task</p>
+                                  <div className="relative mt-2">
+                                    <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-pth-muted" />
+                                    <input
+                                      type="text"
+                                      placeholder="Search name or area…"
+                                      value={resourcePaneSearch}
+                                      onChange={(e) => setResourcePaneSearch(e.target.value)}
+                                      className="h-8 w-full rounded-lg border border-pth-border/40 bg-pth-subtle py-1 pl-8 pr-7 text-xs outline-none placeholder:text-pth-muted/60 focus:border-pth-blue focus:bg-pth-card"
+                                    />
+                                    {resourcePaneSearch && (
+                                      <button type="button" title="Clear" onClick={() => setResourcePaneSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-pth-muted hover:text-pth-text"><X size={12} /></button>
+                                    )}
+                                  </div>
+                                  {/* Area filter chips */}
+                                  {(() => {
+                                    const areas = Array.from(new Set(workloadRows.map((r) => r.person.area).filter(Boolean) as string[])).sort()
+                                    if (areas.length === 0) return null
+                                    return (
+                                      <div className="mt-2 flex flex-wrap gap-1">
+                                        {['all', ...areas].map((ar) => (
+                                          <button key={ar} type="button" onClick={() => setResourcePaneArea(ar)}
+                                            className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors ${resourcePaneArea === ar ? 'bg-pth-blue text-white' : 'bg-pth-subtle text-pth-muted hover:text-pth-text'}`}>
+                                            {ar === 'all' ? 'All' : ar}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )
+                                  })()}
                                 </div>
                                 <div className="max-h-[60vh] overflow-y-auto p-2 space-y-1">
                                   {(() => {
-                                    const sorted = [...workloadRows].sort((a, b) => a.utilization - b.utilization)
+                                    const rq = resourcePaneSearch.trim().toLowerCase()
+                                    const sorted = [...workloadRows]
+                                      .filter((r) => resourcePaneArea === 'all' || (r.person.area ?? '') === resourcePaneArea)
+                                      .filter((r) => !rq || r.person.name.toLowerCase().includes(rq) || (r.person.area ?? '').toLowerCase().includes(rq) || r.person.initials.toLowerCase().includes(rq))
+                                      .sort((a, b) => (peakUtilByPerson.get(a.person.id)?.peakUtil ?? 0) - (peakUtilByPerson.get(b.person.id)?.peakUtil ?? 0))
+                                    if (sorted.length === 0) return <div className="px-3 py-6 text-center text-[11px] text-pth-muted">No resources match{resourcePaneArea !== 'all' ? ` ${resourcePaneArea}` : ''}{resourcePaneSearch ? ` “${resourcePaneSearch}”` : ''}.</div>
                                     return sorted.map((row) => {
-                                      const available = Math.max(row.capacityHours - row.assignedHours, 0)
-                                      const critical = row.utilization > state.settings.workloadCriticalThreshold
-                                      const warning = row.utilization >= state.settings.workloadWarningThreshold && row.utilization <= state.settings.workloadCriticalThreshold
+                                      const peak = peakUtilByPerson.get(row.person.id) ?? { peakUtil: 0, peakHours: 0, capacity: row.capacityHours, taskCount: 0 }
+                                      const utilization = peak.peakUtil
+                                      const available = Math.max(peak.capacity - peak.peakHours, 0)
+                                      const critical = utilization > state.settings.workloadCriticalThreshold
+                                      const warning = utilization >= state.settings.workloadWarningThreshold && utilization <= state.settings.workloadCriticalThreshold
                                       return (
                                         <div
                                           key={row.person.id}
@@ -3287,11 +3438,11 @@ export default function App(): ReactElement {
                                             <div className="text-xs font-medium truncate">{row.person.name}</div>
                                             <div className="flex items-center gap-1.5 mt-0.5">
                                               <div className="h-1 flex-1 rounded-full bg-pth-border/20 overflow-hidden">
-                                                <div ref={dynRef({ width: `${Math.min(row.utilization, 100)}%` })} className={`h-full rounded-full ${critical ? 'bg-pth-red' : warning ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                                                <div ref={dynRef({ width: `${Math.min(utilization, 100)}%` })} className={`h-full rounded-full ${critical ? 'bg-pth-red' : warning ? 'bg-amber-500' : 'bg-emerald-500'}`} />
                                               </div>
-                                              <span className={`text-[10px] font-semibold ${critical ? 'text-pth-red' : warning ? 'text-amber-600' : 'text-emerald-600'}`}>{row.utilization}%</span>
+                                              <span className={`text-[10px] font-semibold ${critical ? 'text-pth-red' : warning ? 'text-amber-600' : 'text-emerald-600'}`}>{utilization}%</span>
                                             </div>
-                                            <div className="text-[10px] text-pth-muted mt-0.5">{available}h available</div>
+                                            <div className="text-[10px] text-pth-muted mt-0.5">{peak.peakHours.toFixed(0)}h peak · {available}h free{peak.taskCount ? ` · ${peak.taskCount} tasks` : ''}</div>
                                           </div>
                                         </div>
                                       )
@@ -3634,8 +3785,10 @@ export default function App(): ReactElement {
                           const bars = rptFiltered.map((project) => {
                             const pActs = state.activities.filter((a) => a.projectId === project.id)
                             if (pActs.length === 0) return null
-                            const starts = pActs.map((a) => a.startDate).sort()
-                            const ends = pActs.map((a) => a.endDate).sort()
+                            // Only dated tasks define the bar span (N/A tasks have no dates).
+                            const starts = pActs.map((a) => a.startDate).filter(Boolean).sort()
+                            const ends = pActs.map((a) => a.endDate).filter(Boolean).sort()
+                            if (starts.length === 0 || ends.length === 0) return null
                             const minStart = starts[0]
                             const maxEnd = ends[ends.length - 1]
                             const doneCount = pActs.filter((a) => a.state === 'DONE').length
@@ -3651,9 +3804,9 @@ export default function App(): ReactElement {
                           const allStarts = bars.map((b) => b.minStart)
                           const allEnds = bars.map((b) => b.maxEnd)
                           const allMsDates = bars.flatMap((b) => b.milestones.map((m) => m.targetDate))
-                          const allDates = [...allStarts, ...allEnds, ...allMsDates, todayISO()].sort()
-                          const dataMin = allDates[0]
-                          const dataMax = allDates[allDates.length - 1]
+                          const allDates = [...allStarts, ...allEnds, ...allMsDates, todayISO()].filter(Boolean).sort()
+                          const dataMin = allDates[0] ?? todayISO()
+                          const dataMax = allDates[allDates.length - 1] ?? addDays(todayISO(), 30)
 
                           // Pad by 7 days on each side
                           const globalMin = addDays(dataMin, -7)
@@ -3715,8 +3868,8 @@ export default function App(): ReactElement {
 
                               {/* Scrollable Gantt area */}
                               <div className="flex">
-                                {/* Fixed left column: project names */}
-                                <div className="w-44 shrink-0 z-10">
+                                {/* Resizable left column: project names */}
+                                <div ref={dynRef({ width: `${ganttLabelWidth}px` })} className="relative shrink-0 z-10">
                                   <div className="h-6 border-b border-pth-border/15" /> {/* spacer for month header */}
                                   {bars.map((bar) => {
                                     const dotColor = bar.status === 'RED' ? 'bg-pth-red' : bar.status === 'YELLOW' ? 'bg-amber-400' : 'bg-emerald-500'
@@ -3725,13 +3878,28 @@ export default function App(): ReactElement {
                                         key={`label-${bar.project.id}`}
                                         className="flex items-center h-7 pr-3 gap-2 cursor-pointer group"
                                         onClick={() => { setDetailProjectId(bar.project.id); setSelectedProjectId(bar.project.id) }}
+                                        title={bar.project.name}
                                       >
                                         <div className={`h-2 w-2 shrink-0 rounded-full ${dotColor}`} />
                                         <span className="truncate text-xs font-medium group-hover:text-pth-blue transition-colors">{bar.project.name}</span>
+                                        <span className="ml-auto shrink-0 text-[10px] font-semibold tabular-nums text-pth-muted">{Math.round(bar.doneRatio * 100)}%</span>
                                       </div>
                                     )
                                   })}
                                   <div className="h-7 mt-1 pt-2 border-t border-pth-border/10 text-[10px] text-pth-muted">{bars.length} project{bars.length !== 1 ? 's' : ''}</div>
+                                  {/* Drag handle to resize the name column */}
+                                  <div
+                                    role="separator"
+                                    title="Drag to resize"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault()
+                                      const startX = e.clientX; const startW = ganttLabelWidth
+                                      const onMove = (ev: MouseEvent) => setGanttLabelWidth(Math.min(Math.max(startW + (ev.clientX - startX), 120), 520))
+                                      const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+                                      window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp)
+                                    }}
+                                    className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize bg-transparent hover:bg-pth-blue/30"
+                                  />
                                 </div>
 
                                 {/* Scrollable right area */}
@@ -3834,7 +4002,7 @@ export default function App(): ReactElement {
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="border-b border-pth-border/15 bg-pth-subtle text-xs font-medium uppercase tracking-wider text-pth-muted">
-                                {['Project', 'Category', 'PM', 'Status', 'Progress', 'Next Milestone'].map((h) => (
+                                {['Project', 'Category', 'PM', 'Status', 'Progress', 'Next Task'].map((h) => (
                                   <th key={h} className="px-4 py-3 text-left font-medium">{h}</th>
                                 ))}
                               </tr>
@@ -3854,7 +4022,7 @@ export default function App(): ReactElement {
                                       <span className="text-xs text-pth-muted">{row.progressPct}%</span>
                                     </div>
                                   </td>
-                                  <td className="px-4 py-3 text-xs text-pth-muted">{row.nextMilestone ? `${row.nextMilestone.name} (${dayDiff(todayISO(), row.nextMilestone.targetDate)}d)` : '—'}</td>
+                                  <td className="px-4 py-3 text-xs text-pth-muted">{row.nextTask ? `${row.nextTask.name} (${dayDiff(todayISO(), row.nextTask.endDate)}d)` : '—'}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -4026,10 +4194,12 @@ export default function App(): ReactElement {
                         state.activities.flatMap((a) => (a.responsible ?? '').split(/[+/,]/).map((t) => t.trim()).filter(Boolean)),
                       )).sort()
                       const projTypes = Array.from(new Set(state.projects.map((p) => p.projectType).filter(Boolean) as string[])).sort()
+                      const ownerNames = Array.from(new Set(rows.map((r) => r.ownerName))).sort((a, b) => (a === 'Unassigned' ? 1 : b === 'Unassigned' ? -1 : a.localeCompare(b)))
                       const filtered = rows.filter((r) => {
                         if (ttArea !== 'all' && !(r.a.responsible ?? '').toLowerCase().includes(ttArea.toLowerCase())) return false
                         if (ttLoc !== 'all' && !r.locNames.includes(ttLoc)) return false
                         if (ttProjType !== 'all' && (r.proj?.projectType ?? '') !== ttProjType) return false
+                        if (ttOwner !== 'all' && r.ownerName !== ttOwner) return false
                         if (ttRisk !== 'all' && r.a.doneDate) return false
                         if (ttRisk === 'atrisk' && r.status === 'GREEN') return false
                         if (ttRisk === 'red' && r.status !== 'RED') return false
@@ -4055,6 +4225,8 @@ export default function App(): ReactElement {
                       }
                       const groupKeys = (r: TtRow): string[] => ttView === 'area'
                         ? ((r.a.responsible ?? '').split(/[+/,]/).map((t) => t.trim()).filter(Boolean) || ['—'])
+                        : ttView === 'owner'
+                        ? [r.ownerName || 'Unassigned']
                         : [r.proj?.name ?? '—']
                       const groupMap = new Map<string, TtRow[]>()
                       if (ttView !== 'tasks') {
@@ -4097,17 +4269,21 @@ export default function App(): ReactElement {
                               <option value="all">All Project Types</option>
                               {projTypes.map((t) => <option key={t} value={t}>{t}</option>)}
                             </select>
+                            <select title="Owner" className={sel} value={ttOwner} onChange={(e) => setTtOwner(e.target.value)}>
+                              <option value="all">All Owners</option>
+                              {ownerNames.map((o) => <option key={o} value={o}>{o}</option>)}
+                            </select>
                             <select title="Risk" className={sel} value={ttRisk} onChange={(e) => setTtRisk(e.target.value)}>
                               <option value="atrisk">At risk (RED + YELLOW)</option>
                               <option value="red">Will miss (RED)</option>
                               <option value="green">On track (GREEN)</option>
                               <option value="all">All tasks</option>
                             </select>
-                            {(ttArea !== 'all' || ttLoc !== 'all' || ttProjType !== 'all' || ttRisk !== 'atrisk') && (
-                              <button type="button" className="text-xs text-pth-muted hover:text-pth-text" onClick={() => { setTtArea('all'); setTtLoc('all'); setTtProjType('all'); setTtRisk('atrisk') }}>✕ Clear</button>
+                            {(ttArea !== 'all' || ttLoc !== 'all' || ttProjType !== 'all' || ttOwner !== 'all' || ttRisk !== 'atrisk') && (
+                              <button type="button" className="text-xs text-pth-muted hover:text-pth-text" onClick={() => { setTtArea('all'); setTtLoc('all'); setTtProjType('all'); setTtOwner('all'); setTtRisk('atrisk') }}>✕ Clear</button>
                             )}
                             <div className="ml-auto flex items-center rounded-lg border border-pth-border/40 bg-pth-subtle p-0.5 text-xs">
-                              {([['tasks', 'Tasks'], ['area', 'By Area'], ['project', 'By Project']] as const).map(([k, lbl]) => (
+                              {([['tasks', 'Tasks'], ['area', 'By Area'], ['project', 'By Project'], ['owner', 'By Owner']] as const).map(([k, lbl]) => (
                                 <button key={k} type="button" onClick={() => setTtView(k)} className={`rounded-md px-2.5 py-1 font-medium transition-colors ${ttView === k ? 'bg-pth-card text-pth-blue shadow-sm' : 'text-pth-muted hover:text-pth-text'}`}>{lbl}</button>
                               ))}
                             </div>
@@ -5403,13 +5579,24 @@ export default function App(): ReactElement {
                   <span className="text-xs font-medium text-pth-muted">Task Name</span>
                   <input className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...activityForm.register('name', { required: true })} />
                 </label>
-                <label className="block space-y-1.5">
-                  <span className="text-xs font-medium text-pth-muted">Owner</span>
-                  <select className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...activityForm.register('ownerId')}>
-                    <option value="">Unassigned</option>
-                    {people.filter((p) => p.role === 'RESOURCE').map((p) => <option key={p.id} value={p.id}>{p.name}{p.area ? ` (${p.area})` : ''}</option>)}
-                  </select>
-                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-medium text-pth-muted">Owner</span>
+                    <select className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...activityForm.register('ownerId')}>
+                      <option value="">Unassigned</option>
+                      {people.filter((p) => p.role === 'RESOURCE').map((p) => <option key={p.id} value={p.id}>{p.name}{p.area ? ` (${p.area})` : ''}</option>)}
+                    </select>
+                  </label>
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-medium text-pth-muted">Status</span>
+                    <select className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...activityForm.register('state')}>
+                      <option value="NOT_STARTED">Not started</option>
+                      <option value="IN_PROGRESS">In progress</option>
+                      <option value="DONE">Done</option>
+                      <option value="NOT_APPLICABLE">N/A (not applicable)</option>
+                    </select>
+                  </label>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <label className="block space-y-1.5">
                     <span className="text-xs font-medium text-pth-muted">Responsible (Area)</span>
