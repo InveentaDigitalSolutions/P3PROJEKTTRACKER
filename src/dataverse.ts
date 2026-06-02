@@ -51,15 +51,17 @@ const ACTIVITY_STATUS_MAP: Record<number, ActivityState> = {
 
 // ── Direct Web API fetch helpers (standalone / dev mode) ─────────────────
 
-const DV_URL = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_DATAVERSE_URL as string) || ''
-const DV_TOKEN = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_DATAVERSE_TOKEN as string) || ''
-
-// In dev mode (Vite), route through the Vite proxy to avoid CORS.
-// In production (Power Apps), use the full Dataverse URL.
+// Whether we're running under the Vite dev server. The direct-Web-API path
+// (with a local token) is DEV-ONLY — in a production build these stay empty so
+// the app ALWAYS uses the Power Apps SDK (automatic auth). This prevents a
+// build-time .env.local token from being baked into the deployed bundle and
+// shadowing the SDK (which previously left the hosted app showing 0 records).
 const isDev = (typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV) || false
-const API_BASE = DV_URL
-  ? (isDev ? '/api/data/v9.2' : `${DV_URL.replace(/\/+$/, '')}/api/data/v9.2`)
-  : ''
+const DV_URL = isDev ? ((typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_DATAVERSE_URL as string) || '') : ''
+const DV_TOKEN = isDev ? ((typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_DATAVERSE_TOKEN as string) || '') : ''
+
+// In dev mode route through the Vite proxy to avoid CORS.
+const API_BASE = DV_URL ? '/api/data/v9.2' : ''
 
 /**
  * True when we should write straight to the Web API instead of the Power Apps
