@@ -323,8 +323,8 @@ const CATEGORY_MILESTONES: Record<ProjectCategory, Array<{ name: string; offset:
   ) as Record<ProjectCategory, Array<{ name: string; offset: number }>>
 
 const sites: Site[] = [
-  { id: 'site_tca', name: 'TCA' },
-  { id: 'site_slp', name: 'SLP' },
+  { id: 'site_tca', name: 'SlpP' },
+  { id: 'site_slp', name: 'TlP' },
 ]
 
 /** Auto-increment counter for generating project codes */

@@ -1,0 +1,28 @@
+PROJECTS: 22   TASKS: 558
+By area: ENG=9, MSE=3, PPS=6, PjM=4
+By location: SlpP=14, TlP=8
+By category: CIP Project=1, CO ECR=1, ECR Standard=16, MSE Line Project=1, New Program=1, Relocation=1, Subassembly Consolidation=1
+Task status values: N/A=249, Plan=157, Done=136, On going=16
+
+  [PPS/SlpP] ECR Standard   28t (1 done)  3E10171456 - T4EVO Cap
+  [PPS/SlpP] ECR Standard   28t (1 done)  3E10148721 T6 Tube (Scherdel)
+  [PPS/SlpP] ECR Standard   28t (4 done)  3E10153365 (STLA)
+  [PPS/SlpP] ECR Standard   28t (1 done)  3E10153559 (VW)
+  [PPS/SlpP] ECR Standard   28t (1 done)  3E10153553 (Ford)
+  [PPS/SlpP] ECR Standard   28t (2 done)  3E10153663 (Rotax 46mm)
+  [ENG/SlpP] CIP Project     7t (3 done)  Ford MPC OEE Optimization
+  [ENG/SlpP] ECR Standard   27t (2 done)  T6 - NLP Airflow, stopper design change
+  [ENG/SlpP] ECR Standard   40t (3 done)  ECR: 3E10180125: Housing Order specification u
+  [ENG/SlpP] ECR Standard   27t (3 done)  ECR: 3E10134551: DV-E 5NC Overview List + Hous
+  [MSE/SlpP] MSE Line Project 36t (13 done)  Flexline Deployment
+  [MSE/SlpP] Relocation     11t (2 done)  5NC relocation
+  [MSE/SlpP] Subassembly Consolidation  8t (3 done)  Subassembly Consolidation
+  [ENG/TlP] ECR Standard   27t (16 done)  ECR: 3E10128035 BASF material discontinuation 
+  [ENG/TlP] ECR Standard   27t (9 done)  ECR: 3E10141881 002KP0363 change to 158742000F
+  [ENG/TlP] ECR Standard   27t (6 done)  ECR: 3E10155743 Cancellation of Part numbers F
+  [ENG/TlP] ECR Standard   27t (9 done)  Project / ECR: 3E10175353 BRP Sea/Doo FSMs /Up
+  [ENG/TlP] CO ECR          6t (6 done)  NO NAME
+  [PjM/SlpP] New Program    30t (6 done)  DVE BRP 54mm NC
+  [PjM/TlP] ECR Standard   30t (19 done)  ECR 3E10144732 – Pump para 2154 -> 0580.454.00
+  [PjM/TlP] ECR Standard   30t (19 done)  RACE FXRC126580 – Pump para 1895 & RACE FXRC12
+  [PjM/TlP] ECR Standard   30t (7 done)  3E10165605 – Nissan & STLA Reservoir – 2026
