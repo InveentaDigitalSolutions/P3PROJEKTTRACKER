@@ -26,7 +26,7 @@ import { Pth_ppmsettingsService } from './generated/services/Pth_ppmsettingsServ
 
 export type ProjectCategory = 'ECR' | 'CIP' | 'Path Forward' | 'New Programs'
 export type RygStatus = 'RED' | 'YELLOW' | 'GREEN'
-export type ActivityState = 'NOT_STARTED' | 'IN_PROGRESS' | 'DONE'
+export type ActivityState = 'NOT_STARTED' | 'IN_PROGRESS' | 'DONE' | 'NOT_APPLICABLE'
 
 /* Choice → label maps for Dataverse option-set values */
 const CATEGORY_MAP: Record<number, ProjectCategory> = {
@@ -43,8 +43,9 @@ const RYG_MAP: Record<number, RygStatus> = {
 const ACTIVITY_STATUS_MAP: Record<number, ActivityState> = {
   100000000: 'NOT_STARTED',
   100000001: 'IN_PROGRESS',
-  100000002: 'NOT_STARTED', // BLOCKED → treat as not started in the app
-  100000003: 'DONE',        // CLOSED → DONE
+  100000002: 'NOT_STARTED',     // BLOCKED → treat as not started in the app
+  100000003: 'DONE',            // CLOSED → DONE
+  100000004: 'NOT_APPLICABLE',  // N/A → not applicable (won't be done)
 }
 
 // ── Direct Web API fetch helpers (standalone / dev mode) ─────────────────
@@ -430,7 +431,8 @@ const RYG_TO_DV: Record<RygStatus, number> = {
 const ACTIVITY_STATE_TO_DV: Record<ActivityState, number> = {
   NOT_STARTED: 100000000,
   IN_PROGRESS: 100000001,
-  DONE: 100000003,   // maps to CLOSED in Dataverse
+  DONE: 100000003,            // maps to CLOSED in Dataverse
+  NOT_APPLICABLE: 100000004,  // N/A
 }
 
 // ── Generic direct Web API write helpers ──────────────────────────────────

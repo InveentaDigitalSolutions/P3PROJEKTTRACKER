@@ -79,7 +79,7 @@ type ReportActivityTab = 'upcoming' | 'closed' | 'delayed'
 type ProjectCategory = 'ECR' | 'CIP' | 'Path Forward' | 'New Programs'
 type RygStatus = 'RED' | 'YELLOW' | 'GREEN'
 type ReportTab = 'projectsStatus' | 'taskTracking' | 'prioritization' | 'workloadOverview'
-type ActivityState = 'NOT_STARTED' | 'IN_PROGRESS' | 'DONE'
+type ActivityState = 'NOT_STARTED' | 'IN_PROGRESS' | 'DONE' | 'NOT_APPLICABLE'
 
 type Site = { id: string; name: string }
 type Partner = { id: string; name: string }
@@ -227,6 +227,8 @@ type ActivityForm = {
   ownerId: string
   startDate: string
   endDate: string
+  workloadPct: number
+  responsible: string
 }
 
 type ActivityEditMode = 'create' | 'edit'
@@ -399,8 +401,9 @@ function toDate(iso: string): Date {
 }
 
 function dayDiff(fromISO: string, toISO: string): number {
-  const delta = toDate(toISO).getTime() - toDate(fromISO).getTime()
-  return Math.ceil(delta / (1000 * 60 * 60 * 24))
+  const a = toDate(toISO).getTime(); const b = toDate(fromISO).getTime()
+  if (isNaN(a) || isNaN(b)) return 0   // missing date → no delta (e.g. N/A tasks)
+  return Math.ceil((a - b) / (1000 * 60 * 60 * 24))
 }
 
 function weekStartISO(iso: string): string {
@@ -442,11 +445,15 @@ function cwsInMonth(ym: string): number[] {
 }
 
 function formatDate(iso: string): string {
-  return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(toDate(iso))
+  const d = toDate(iso)
+  if (isNaN(d.getTime())) return '—'
+  return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(d)
 }
 
 function formatShortDate(iso: string): string {
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(toDate(iso))
+  const d = toDate(iso)
+  if (isNaN(d.getTime())) return '—'   // blank/invalid (e.g. N/A tasks have no dates)
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(d)
 }
 
 function calendarWeek(iso: string): string {
@@ -881,7 +888,8 @@ function generateInitialState(): AppState {
  * A task is rated by whether it's (projected to be) done a buffer ahead of due.
  */
 function seededProjectStatus(state: AppState, projectId: string): RygStatus {
-  const projectActivities = state.activities.filter((a) => a.projectId === projectId)
+  // Exclude N/A tasks — they won't be done, so they don't affect project health.
+  const projectActivities = state.activities.filter((a) => a.projectId === projectId && a.state !== 'NOT_APPLICABLE')
   if (projectActivities.length === 0) return 'GREEN'
 
   const statuses = projectActivities.map((activity) => rygForActivity(activity))
@@ -952,6 +960,8 @@ function activityStateBadge(actState: ActivityState): ReactElement {
     return <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/8 px-2.5 py-1 text-[11px] font-medium text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">Complete</span>
   if (actState === 'IN_PROGRESS')
     return <span className="inline-flex items-center gap-1.5 rounded-lg bg-pth-blue/8 px-2.5 py-1 text-[11px] font-medium text-pth-blue dark:bg-pth-blue/15">In Progress</span>
+  if (actState === 'NOT_APPLICABLE')
+    return <span className="inline-flex items-center gap-1.5 rounded-lg bg-pth-muted/8 px-2.5 py-1 text-[11px] font-medium text-pth-muted/70 dark:bg-pth-muted/10">N/A</span>
   return <span className="inline-flex items-center gap-1.5 rounded-lg bg-pth-muted/8 px-2.5 py-1 text-[11px] font-medium text-pth-muted dark:bg-pth-muted/15">Open</span>
 }
 
@@ -1058,6 +1068,7 @@ export default function App(): ReactElement {
   const [ttProjType, setTtProjType] = useState<string>('all')
   const [ttRisk, setTtRisk] = useState<string>('atrisk')
   const [ttView, setTtView] = useState<'tasks' | 'area' | 'project'>('tasks')
+  const [taskNaFilter, setTaskNaFilter] = useState<'active' | 'na' | 'all'>('active')
   const [ttExpanded, setTtExpanded] = useState<Set<string>>(new Set())
   const [dragPersonId, setDragPersonId] = useState<string | null>(null)
   const [dropTargetId, setDropTargetId] = useState<string | null>(null)
@@ -1565,13 +1576,32 @@ export default function App(): ReactElement {
       .filter((person) => person.role === 'RESOURCE' && visibleResources.has(person.id))
       .map((person) => {
         const personAssignments = state.assignments.filter((assignment) => assignment.personId === person.id && assignment.weekStart === currentWeek)
-        const assignedHours = personAssignments.reduce((sum, row) => sum + row.assignedHours, 0)
-        const capacityHours = personAssignments[0]?.capacityHours ?? state.settings.defaultWeeklyCapacity
+        const capacityHours = personAssignments[0]?.capacityHours ?? person.weeklyCapacity ?? state.settings.defaultWeeklyCapacity
+        const assignedHoursFromAssignments = personAssignments.reduce((sum, row) => sum + row.assignedHours, 0)
+
+        // ── Load from owned tasks active this week ──
+        // A task the person owns contributes its workloadPct (as % of weekly
+        // capacity) for every week between its start and end. Skip N/A, Done,
+        // and dateless tasks. This is what makes drag-drop AND combo-box
+        // assignment update the person's utilization immediately.
+        const weekEnd = addDays(currentWeek, 6)
+        const ownedTasks = state.activities.filter((a) =>
+          a.ownerId === person.id &&
+          a.state !== 'NOT_APPLICABLE' && a.state !== 'DONE' &&
+          a.startDate && a.endDate &&
+          a.startDate <= weekEnd && a.endDate >= currentWeek,
+        )
+        const ownedLoadPct = ownedTasks.reduce((sum, a) => sum + (a.workloadPct ?? 0), 0)
+        const ownedHours = (ownedLoadPct / 100) * capacityHours
+
+        const assignedHours = assignedHoursFromAssignments + ownedHours
         const utilization = Math.round((assignedHours / Math.max(capacityHours, 1)) * 100)
         const relatedProjects = Array.from(
           new Set(
-            personAssignments
-              .map((assignment) => state.activities.find((activity) => activity.id === assignment.activityId)?.projectId)
+            [
+              ...personAssignments.map((assignment) => state.activities.find((activity) => activity.id === assignment.activityId)?.projectId),
+              ...ownedTasks.map((a) => a.projectId),
+            ]
               .filter((value): value is string => !!value)
               .map((projectId) => state.projects.find((project) => project.id === projectId)?.name)
               .filter((name): name is string => !!name),
@@ -1587,7 +1617,7 @@ export default function App(): ReactElement {
           relatedProjects,
         }
       })
-  }, [currentUserId, currentWeek, role, state.activities, state.assignments, state.projects, state.settings.defaultWeeklyCapacity])
+  }, [currentUserId, currentWeek, role, people, state.activities, state.assignments, state.projects, state.settings.defaultWeeklyCapacity])
 
   const overviewForm = useForm<ProjectOverviewForm>({
     values: {
@@ -1619,6 +1649,8 @@ export default function App(): ReactElement {
       ownerId: people.filter((p) => p.role === 'RESOURCE')[0]?.id ?? '',
       startDate: todayISO(),
       endDate: addDays(todayISO(), 7),
+      workloadPct: 0,
+      responsible: '',
     },
   })
 
@@ -2030,15 +2062,17 @@ export default function App(): ReactElement {
     }))
   }
 
-  function openCreateActivity(milestoneId: string): void {
+  function openCreateActivity(milestoneId: string | null): void {
     setActivityMilestoneId(milestoneId)
     setActivityEditMode('create')
     setEditingActivityId(null)
     activityForm.reset({
       name: '',
-      ownerId: people.filter((p) => p.role === 'RESOURCE')[0]?.id ?? '',
+      ownerId: '',
       startDate: todayISO(),
       endDate: addDays(todayISO(), 7),
+      workloadPct: 0,
+      responsible: '',
     })
     setActivityDialogOpen(true)
   }
@@ -2052,6 +2086,8 @@ export default function App(): ReactElement {
       ownerId: activity.ownerId,
       startDate: activity.startDate,
       endDate: activity.endDate,
+      workloadPct: activity.workloadPct ?? 0,
+      responsible: activity.responsible ?? '',
     })
     setActivityDialogOpen(true)
   }
@@ -2059,6 +2095,8 @@ export default function App(): ReactElement {
   async function submitActivity(values: ActivityForm): Promise<void> {
     if (!selectedProject) return
     const ownerName = people.find((p) => p.id === values.ownerId)?.name ?? ''
+    const workloadPct = Number(values.workloadPct) || 0
+    const responsible = values.responsible.trim()
     if (activityEditMode === 'edit' && editingActivityId) {
       const existing = state.activities.find((a) => a.id === editingActivityId)
       if (isDataverseConfigured() && existing) {
@@ -2066,23 +2104,25 @@ export default function App(): ReactElement {
           name: values.name, ownerName, startDate: values.startDate, endDate: values.endDate,
           doneDate: existing.doneDate, state: existing.state, criticalPath: existing.criticalPath,
           projectId: existing.projectId, milestoneId: existing.milestoneId,
+          workloadPct, responsible,
         })
       }
       setState((prev) => ({
         ...prev,
         activities: prev.activities.map((a) =>
           a.id === editingActivityId
-            ? { ...a, name: values.name, ownerId: values.ownerId, startDate: values.startDate, endDate: values.endDate }
+            ? { ...a, name: values.name, ownerId: values.ownerId, startDate: values.startDate, endDate: values.endDate, workloadPct, responsible }
             : a,
         ),
       }))
     } else {
-      if (!activityMilestoneId) return
       let dvId: string | null = null
       if (isDataverseConfigured()) {
         dvId = await createActivityInDataverse({
           name: values.name, ownerName, startDate: values.startDate, endDate: values.endDate,
-          state: 'NOT_STARTED', criticalPath: false, projectId: selectedProject.id, milestoneId: activityMilestoneId,
+          state: 'NOT_STARTED', criticalPath: false, projectId: selectedProject.id,
+          milestoneId: activityMilestoneId ?? undefined,
+          workloadPct, responsible,
         })
       }
       const newId = dvId ?? uid('act')
@@ -2093,13 +2133,15 @@ export default function App(): ReactElement {
           {
             id: newId,
             projectId: selectedProject.id,
-            milestoneId: activityMilestoneId,
+            milestoneId: activityMilestoneId ?? undefined,
             name: values.name,
             ownerId: values.ownerId,
             startDate: values.startDate,
             endDate: values.endDate,
             state: 'NOT_STARTED' as ActivityState,
             criticalPath: false,
+            workloadPct,
+            responsible,
           },
         ],
       }))
@@ -3156,17 +3198,38 @@ export default function App(): ReactElement {
                                 )
                               })}
                             </div>
-                            {pActs.filter((a) => !a.milestoneId).length > 0 && (
+                            {(() => {
+                              const allTasks = pActs.filter((a) => !a.milestoneId)
+                              const naCount = allTasks.filter((a) => a.state === 'NOT_APPLICABLE').length
+                              const activeCount = allTasks.length - naCount
+                              const shownTasks = allTasks.filter((a) =>
+                                taskNaFilter === 'all' ? true
+                                  : taskNaFilter === 'na' ? a.state === 'NOT_APPLICABLE'
+                                  : a.state !== 'NOT_APPLICABLE',
+                              )
+                              return (
                               <div className="mt-4 rounded-xl border border-pth-border/20 bg-pth-subtle/30 p-4">
-                                <h3 className="text-sm font-semibold text-pth-muted mb-3">Tasks ({pActs.filter((a) => !a.milestoneId).length})</h3>
+                                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                  <h3 className="text-sm font-semibold text-pth-muted">Tasks ({shownTasks.length})</h3>
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex items-center rounded-lg border border-pth-border/40 bg-pth-card p-0.5 text-xs">
+                                      {([['active', `To assign (${activeCount})`], ['na', `N/A (${naCount})`], ['all', 'All']] as const).map(([k, lbl]) => (
+                                        <button key={k} type="button" onClick={() => setTaskNaFilter(k)} className={`rounded-md px-2.5 py-1 font-medium transition-colors ${taskNaFilter === k ? 'bg-pth-blue/10 text-pth-blue' : 'text-pth-muted hover:text-pth-text'}`}>{lbl}</button>
+                                      ))}
+                                    </div>
+                                    <button type="button" onClick={() => openCreateActivity(null)} className="inline-flex items-center gap-1 rounded-lg bg-pth-btn px-2.5 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-pth-btn-hover">
+                                      <Plus size={13} /> Add Task
+                                    </button>
+                                  </div>
+                                </div>
                                 <div className="space-y-0.5">
-                                  {pActs.filter((a) => !a.milestoneId).map((act) => {
+                                  {shownTasks.map((act) => {
                                     const actOwner = people.find((p) => p.id === act.ownerId)
                                     const isTaskDropTarget = dropTargetId === `act_${act.id}`
                                     return (
                                       <div
                                         key={act.id}
-                                        className={`group/task flex items-center justify-between rounded-lg px-3 py-2 transition-all ${isTaskDropTarget ? 'bg-pth-blue/10 ring-2 ring-pth-blue/30 ring-inset' : 'hover:bg-pth-subtle'}`}
+                                        className={`group/task flex items-center justify-between rounded-lg px-3 py-2 transition-all ${act.state === 'NOT_APPLICABLE' ? 'opacity-45' : ''} ${isTaskDropTarget ? 'bg-pth-blue/10 ring-2 ring-pth-blue/30 ring-inset' : 'hover:bg-pth-subtle'}`}
                                         onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDropTargetId(`act_${act.id}`) }}
                                         onDragLeave={(e) => { e.stopPropagation(); setDropTargetId(null) }}
                                         onDrop={(e) => { e.preventDefault(); e.stopPropagation(); handleDropOnTask(act.id) }}
@@ -3174,9 +3237,9 @@ export default function App(): ReactElement {
                                         <div className="flex items-center gap-2.5 min-w-0">
                                           <span className={`h-2 w-2 shrink-0 rounded-full ${act.state === 'DONE' ? 'bg-emerald-500' : act.state === 'IN_PROGRESS' ? 'bg-pth-blue' : 'bg-pth-border'}`} />
                                           <div className="min-w-0">
-                                            <div className="text-sm font-medium truncate">{act.name}</div>
+                                            <div className={`text-sm font-medium truncate ${act.state === 'NOT_APPLICABLE' ? 'line-through' : ''}`}>{act.name}</div>
                                             <div className="text-[11px] text-pth-muted">
-                                              {isTaskDropTarget ? <span className="text-pth-blue font-medium animate-pulse">Reassign to dropped person</span> : <>{actOwner?.name ?? 'Unknown'} &middot; {formatShortDate(act.startDate)}</>}
+                                              {act.state === 'NOT_APPLICABLE' ? 'Not applicable for this project' : isTaskDropTarget ? <span className="text-pth-blue font-medium animate-pulse">Reassign to dropped person</span> : <>{actOwner?.name ?? 'Unknown'}{act.startDate ? <> &middot; {formatShortDate(act.startDate)}</> : ''}</>}
                                             </div>
                                           </div>
                                         </div>
@@ -3191,7 +3254,8 @@ export default function App(): ReactElement {
                                   })}
                                 </div>
                               </div>
-                            )}
+                              )
+                            })()}
                           </div>
 
                           {/* Right: Available Resources (sticky sidebar) */}
@@ -3949,7 +4013,8 @@ export default function App(): ReactElement {
 
                     {/* ── TASK TRACKING (preventive) TAB ── */}
                     {reportTab === 'taskTracking' && (() => {
-                      const rows = state.activities.map((a) => {
+                      // N/A tasks won't be done — exclude from this preventive tracking view entirely.
+                      const rows = state.activities.filter((a) => a.state !== 'NOT_APPLICABLE').map((a) => {
                         const proj = state.projects.find((p) => p.id === a.projectId)
                         const status = rygForActivity(a)
                         const daysToDue = a.doneDate ? null : dayDiff(todayISO(), a.endDate)
@@ -5340,10 +5405,21 @@ export default function App(): ReactElement {
                 </label>
                 <label className="block space-y-1.5">
                   <span className="text-xs font-medium text-pth-muted">Owner</span>
-                  <select className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...activityForm.register('ownerId', { required: true })}>
-                    {people.filter((p) => p.role === 'RESOURCE').map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  <select className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" {...activityForm.register('ownerId')}>
+                    <option value="">Unassigned</option>
+                    {people.filter((p) => p.role === 'RESOURCE').map((p) => <option key={p.id} value={p.id}>{p.name}{p.area ? ` (${p.area})` : ''}</option>)}
                   </select>
                 </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-medium text-pth-muted">Responsible (Area)</span>
+                    <input className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" placeholder="e.g. ENG / QMM" {...activityForm.register('responsible')} />
+                  </label>
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-medium text-pth-muted">Workload %</span>
+                    <input type="number" min={0} max={100000} className="h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20" placeholder="0" {...activityForm.register('workloadPct', { valueAsNumber: true })} />
+                  </label>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <label className="block space-y-1.5">
                     <span className="text-xs font-medium text-pth-muted">Start Date</span>
