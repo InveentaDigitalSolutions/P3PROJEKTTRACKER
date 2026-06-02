@@ -21,6 +21,7 @@ import { Pth_activitiesService }  from './generated/services/Pth_activitiesServi
 import { Pth_resourcesService }   from './generated/services/Pth_resourcesService'
 import { Pth_assignmentsService } from './generated/services/Pth_assignmentsService'
 import { Pth_ppmsettingsService } from './generated/services/Pth_ppmsettingsService'
+import { Pth_tasktemplatesService } from './generated/services/Pth_tasktemplatesService'
 
 // ── Types mirroring App.tsx ──────────────────────────────────────────────
 
@@ -961,21 +962,48 @@ function buildTaskTemplateBody(p: TaskTemplatePayload): Record<string, unknown> 
   }
 }
 
-/** Fetch all task-template rows (no generated SDK service — direct Web API only). */
+/** Fetch all task-template rows. SDK first (works in the hosted Power Apps app),
+ *  direct Web API fallback for standalone dev. */
 export async function fetchTaskTemplates(): Promise<TaskTemplateRow[]> {
+  if (!preferDirectWrite()) {
+    try {
+      const res = await Pth_tasktemplatesService.getAll({ orderBy: ['pth_projecttype asc', 'pth_sequence asc'], top: 1000 })
+      const rows = extractArray<Row>(res)
+      if (rows.length || !DV_TOKEN) return rows.map(mapTaskTemplate)
+    } catch (err) { console.warn('[DV] SDK task templates failed, falling back:', err) }
+  }
   const rows = await dvGet<Row>('pth_tasktemplates', '$orderby=pth_projecttype,pth_sequence&$top=1000')
   return rows.map(mapTaskTemplate)
 }
 
 export async function createTaskTemplate(p: TaskTemplatePayload): Promise<string | null> {
-  return dvPost('pth_tasktemplates', buildTaskTemplateBody(p))
+  const body = buildTaskTemplateBody(p)
+  if (preferDirectWrite()) return dvPost('pth_tasktemplates', body)
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await Pth_tasktemplatesService.create(body as any)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const record = (result as any).data ?? result
+    const id = record?.pth_tasktemplateid as string | undefined
+    if (id) return id
+  } catch (err) { console.error('[DV] SDK create task template failed:', err) }
+  return dvPost('pth_tasktemplates', body)
 }
 
 export async function updateTaskTemplate(id: string, p: TaskTemplatePayload): Promise<boolean> {
-  return dvPatch('pth_tasktemplates', id, buildTaskTemplateBody(p))
+  const body = buildTaskTemplateBody(p)
+  if (preferDirectWrite()) return dvPatch('pth_tasktemplates', id, body)
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await Pth_tasktemplatesService.update(id, body as any)
+    return true
+  } catch (err) { console.error('[DV] SDK update task template failed:', err) }
+  return dvPatch('pth_tasktemplates', id, body)
 }
 
 export async function deleteTaskTemplate(id: string): Promise<boolean> {
+  if (preferDirectWrite()) return dvDelete('pth_tasktemplates', id)
+  try { await Pth_tasktemplatesService.delete(id); return true } catch (err) { console.warn('[DV] SDK delete task template failed:', err) }
   return dvDelete('pth_tasktemplates', id)
 }
 

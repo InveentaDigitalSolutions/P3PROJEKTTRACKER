@@ -46,5 +46,12 @@ export const dataSourcesInfo = {
     "primaryKey": "pth_resourceid",
     "dataSourceType": "Dataverse",
     "apis": {}
+  },
+  "pth_tasktemplates": {
+    "tableId": "",
+    "version": "",
+    "primaryKey": "pth_tasktemplateid",
+    "dataSourceType": "Dataverse",
+    "apis": {}
   }
 };

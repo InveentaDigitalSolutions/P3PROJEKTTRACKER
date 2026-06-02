@@ -51,6 +51,7 @@ export interface Pth_projectsBase {
   pth_projectobjective: string;
   pth_site: string;
   pth_sponsorexecutive: string;
+  pth_projecttype?: string;
   pth_timestatus: Pth_projectspth_timestatus;
   statecode: Pth_projectsstatecode;
   statuscode?: Pth_projectsstatuscode;

@@ -11,6 +11,7 @@ export * as Pth_milestonesModel from './models/Pth_milestonesModel';
 export * as Pth_ppmsettingsModel from './models/Pth_ppmsettingsModel';
 export * as Pth_projectsModel from './models/Pth_projectsModel';
 export * as Pth_resourcesModel from './models/Pth_resourcesModel';
+export * as Pth_tasktemplatesModel from './models/Pth_tasktemplatesModel';
 
 // Services
 export * from './services/Pth_activitiesService';
@@ -19,3 +20,4 @@ export * from './services/Pth_milestonesService';
 export * from './services/Pth_ppmsettingsService';
 export * from './services/Pth_projectsService';
 export * from './services/Pth_resourcesService';
+export * from './services/Pth_tasktemplatesService';

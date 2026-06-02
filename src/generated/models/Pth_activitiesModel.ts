@@ -17,7 +17,8 @@ export const Pth_activitiespth_status = {
   100000000: 'NOT_STARTED',
   100000001: 'IN_PROGRESS',
   100000002: 'BLOCKED',
-  100000003: 'CLOSED'
+  100000003: 'CLOSED',
+  100000004: 'N/A'
 } as const;
 export type Pth_activitiespth_status = keyof typeof Pth_activitiespth_status;
 export const Pth_activitiesstatecode = {
@@ -49,6 +50,10 @@ export interface Pth_activitiesBase {
   pth_ryg: Pth_activitiespth_ryg;
   pth_startdate: string;
   pth_status: Pth_activitiespth_status;
+  pth_responsible?: string;
+  pth_leadtimeweeks?: number;
+  pth_inputs?: string;
+  pth_workloadpct?: number;
   statecode: Pth_activitiesstatecode;
   statuscode?: Pth_activitiesstatuscode;
   timezoneruleversionnumber?: string;

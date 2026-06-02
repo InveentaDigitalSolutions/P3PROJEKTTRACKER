@@ -60,6 +60,14 @@
         "ppmsettings": {
           "entitySetName": "pth_ppmsettings",
           "logicalName": "pth_ppmsetting"
+        },
+        "TaskTemplate": {
+          "entitySetName": "pth_tasktemplates",
+          "logicalName": "pth_tasktemplate"
+        },
+        "tasktemplates": {
+          "entitySetName": "pth_tasktemplates",
+          "logicalName": "pth_tasktemplate"
         }
       },
       "environmentVariableName": ""

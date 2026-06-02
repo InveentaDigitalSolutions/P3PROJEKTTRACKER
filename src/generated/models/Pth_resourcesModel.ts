@@ -24,6 +24,10 @@ export interface Pth_resourcesBase {
   pth_resourceid: string;
   pth_role: string;
   pth_weeklycapacityhours: string;
+  pth_area?: number;
+  pth_location?: string;
+  pth_orgcode?: string;
+  "pth_Manager@odata.bind"?: string;
   statecode: Pth_resourcesstatecode;
   statuscode?: Pth_resourcesstatuscode;
   timezoneruleversionnumber?: string;
