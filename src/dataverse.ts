@@ -1033,6 +1033,80 @@ export async function deleteTaskTemplate(id: string): Promise<boolean> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// ── CHANGE LOG (project & task history) ───────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface ChangeLogEntry {
+  id: string
+  summary: string
+  changeType: string
+  field: string
+  oldValue: string
+  newValue: string
+  changedBy: string
+  changedOn: string
+  entityKind: string       // 'Project' | 'Task'
+  projectId: string
+  activityId?: string
+}
+
+export interface ChangeLogPayload {
+  summary: string
+  changeType: string        // Created | Updated | Deleted | Assigned | StatusChanged
+  field?: string
+  oldValue?: string
+  newValue?: string
+  changedBy: string
+  entityKind: 'Project' | 'Task'
+  projectId: string
+  activityId?: string
+  changedOnISO: string
+}
+
+function mapChangeLog(r: Row): ChangeLogEntry {
+  return {
+    id: r.pth_changelogid as string,
+    summary: (r.pth_name ?? '') as string,
+    changeType: (r.pth_changetype ?? '') as string,
+    field: (r.pth_field ?? '') as string,
+    oldValue: (r.pth_oldvalue ?? '') as string,
+    newValue: (r.pth_newvalue ?? '') as string,
+    changedBy: (r.pth_changedby ?? '') as string,
+    changedOn: (r.pth_changedon ?? '') as string,
+    entityKind: (r.pth_entitykind ?? '') as string,
+    projectId: (r._pth_project_value ?? '') as string,
+    activityId: (r._pth_activity_value ?? undefined) as string | undefined,
+  }
+}
+
+/** Fetch the change log for one project (newest first). Direct Web API. */
+export async function fetchProjectChangeLog(projectId: string): Promise<ChangeLogEntry[]> {
+  const rows = await dvGet<Row>('pth_changelogs', `$filter=_pth_project_value eq ${projectId}&$orderby=pth_changedon desc&$top=500`)
+  return rows.map(mapChangeLog)
+}
+
+/** Write a change-log entry. Fire-and-forget; never blocks the UI. */
+export async function logChange(p: ChangeLogPayload): Promise<void> {
+  const body: Record<string, unknown> = {
+    pth_name: p.summary.slice(0, 300),
+    pth_changetype: p.changeType,
+    pth_changedby: p.changedBy.slice(0, 200),
+    pth_entitykind: p.entityKind,
+    pth_changedon: p.changedOnISO,
+    'pth_Project@odata.bind': `/pth_projects(${p.projectId})`,
+  }
+  if (p.field) body.pth_field = p.field.slice(0, 200)
+  if (p.oldValue !== undefined) body.pth_oldvalue = String(p.oldValue).slice(0, 4000)
+  if (p.newValue !== undefined) body.pth_newvalue = String(p.newValue).slice(0, 4000)
+  if (p.activityId) body['pth_Activity@odata.bind'] = `/pth_activities(${p.activityId})`
+  try {
+    await dvPost('pth_changelogs', body)
+  } catch (err) {
+    console.warn('[DV] logChange failed (non-blocking):', err)
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // ── AAD / Microsoft Graph People Lookup ───────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════
 

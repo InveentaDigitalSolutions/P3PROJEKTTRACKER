@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactElement } from 're
 import { AnimatePresence, motion } from 'framer-motion'
 import { getContext, type IContext } from '@microsoft/power-apps/app'
 import logoImg from '/logo.png?inline'
-import { fetchAllFromDataverse, fetchDataverseUsers, isDataverseConfigured, createProjectInDataverse, deleteProjectInDataverse, updateProjectInDataverse, createMilestoneInDataverse, updateMilestoneInDataverse, deleteMilestoneInDataverse, createActivityInDataverse, updateActivityInDataverse, deleteActivityInDataverse, createResourceInDataverse, updateResourceInDataverse, deleteResourceInDataverse, updateSettingsInDataverse, updateProjectStatusOverview, searchAadUsers, fetchCurrentUserProfile, sendProjectCreationEmail, sendProjectCreationViaFunction, fetchTaskTemplates, createTaskTemplate, updateTaskTemplate, deleteTaskTemplate, type TaskTemplateRow, type AadUser, type DataverseUser } from './dataverse'
+import { fetchAllFromDataverse, fetchDataverseUsers, isDataverseConfigured, createProjectInDataverse, deleteProjectInDataverse, updateProjectInDataverse, createMilestoneInDataverse, updateMilestoneInDataverse, deleteMilestoneInDataverse, createActivityInDataverse, updateActivityInDataverse, deleteActivityInDataverse, createResourceInDataverse, updateResourceInDataverse, deleteResourceInDataverse, updateSettingsInDataverse, updateProjectStatusOverview, searchAadUsers, fetchCurrentUserProfile, sendProjectCreationEmail, sendProjectCreationViaFunction, fetchTaskTemplates, createTaskTemplate, updateTaskTemplate, deleteTaskTemplate, logChange, fetchProjectChangeLog, type TaskTemplateRow, type ChangeLogEntry, type AadUser, type DataverseUser } from './dataverse'
 import {
   Bell,
   BellRing,
@@ -78,7 +78,7 @@ type MasterDataTab = 'people' | 'customers' | 'suppliers' | 'templates'
 type ReportActivityTab = 'upcoming' | 'closed' | 'delayed'
 type ProjectCategory = 'ECR' | 'CIP' | 'Path Forward' | 'New Programs'
 type RygStatus = 'RED' | 'YELLOW' | 'GREEN'
-type ReportTab = 'projectsStatus' | 'taskTracking' | 'prioritization' | 'workloadOverview'
+type ReportTab = 'projectsStatus' | 'taskTracking' | 'prioritization'
 type ActivityState = 'NOT_STARTED' | 'IN_PROGRESS' | 'DONE' | 'NOT_APPLICABLE'
 
 type Site = { id: string; name: string }
@@ -460,13 +460,6 @@ function formatShortDate(iso: string): string {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(d)
 }
 
-function calendarWeek(iso: string): string {
-  const d = new Date(toDate(iso).getTime())
-  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7))
-  const week1 = new Date(d.getFullYear(), 0, 4)
-  const weekNum = Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7) + 1
-  return `CW ${String(weekNum).padStart(2, '0')}`
-}
 
 function rygFromDueDate(dueISO: string, warningDays: number): RygStatus {
   const days = dayDiff(todayISO(), dueISO)
@@ -902,6 +895,18 @@ function seededProjectStatus(state: AppState, projectId: string): RygStatus {
   return 'GREEN'
 }
 
+/** Last completed, current, and upcoming task for a project's activity list. */
+function projectTaskHighlights(activities: Activity[]): { lastClosed?: Activity; current?: Activity; upcoming?: Activity } {
+  const today = todayISO()
+  const trackable = activities.filter((a) => a.state !== 'NOT_APPLICABLE')
+  const lastClosed = trackable.filter((a) => a.state === 'DONE' && a.endDate).sort((a, b) => (a.endDate < b.endDate ? 1 : -1))[0]
+  const current = trackable.filter((a) => a.state === 'IN_PROGRESS').sort((a, b) => (a.endDate < b.endDate ? -1 : 1))[0]
+    ?? trackable.filter((a) => a.state !== 'DONE' && a.startDate && a.startDate <= today && (!a.endDate || a.endDate >= today)).sort((a, b) => (a.endDate < b.endDate ? -1 : 1))[0]
+  const upcoming = trackable.filter((a) => a.state !== 'DONE' && a.startDate && a.startDate > today).sort((a, b) => (a.startDate < b.startDate ? -1 : 1))[0]
+    ?? trackable.filter((a) => a.state !== 'DONE' && a.endDate && a.endDate >= today && a.id !== current?.id).sort((a, b) => (a.endDate < b.endDate ? -1 : 1))[0]
+  return { lastClosed, current, upcoming }
+}
+
 function projectNextMilestone(state: AppState, projectId: string): Milestone | undefined {
   return state.milestones
     .filter((ms) => ms.projectId === projectId && !ms.doneDate)
@@ -1049,10 +1054,12 @@ export default function App(): ReactElement {
   const [activityMilestoneId, setActivityMilestoneId] = useState<string | null>(null)
   const [activityEditMode, setActivityEditMode] = useState<ActivityEditMode>('create')
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null)
-  const [expandedWorkloadPersonId, setExpandedWorkloadPersonId] = useState<string | null>(null)
   const [masterDataTab, setMasterDataTab] = useState<MasterDataTab>('people')
   const [teamSiteFilter, setTeamSiteFilter] = useState<'all' | 'SlpP' | 'TlP'>('all')
   const [teamAreaFilter, setTeamAreaFilter] = useState<string>('all')
+  // ── Change log / history ──
+  const [projectHistory, setProjectHistory] = useState<ChangeLogEntry[]>([])
+  const [historyExpanded, setHistoryExpanded] = useState(false)
   // ── Task template editor ──
   const [taskTemplates, setTaskTemplates] = useState<TaskTemplateRow[]>([])
   const [ttType, setTtType] = useState<string>('')
@@ -1369,6 +1376,35 @@ export default function App(): ReactElement {
   const displayInitials = (paContext?.user.fullName ?? '').trim()
     ? paContext!.user.fullName!.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2)
     : currentUser.initials
+
+  // ── Change-log recorder: writes a history entry + refreshes the panel ──
+  const recordChange = useCallback((entry: {
+    summary: string; changeType: string; field?: string; oldValue?: string; newValue?: string
+    entityKind: 'Project' | 'Task'; projectId: string; activityId?: string
+  }) => {
+    const changedBy = paContext?.user.fullName || currentUser.name || 'Unknown'
+    const changedOnISO = new Date().toISOString()
+    const optimistic: ChangeLogEntry = {
+      id: uid('cl'), summary: entry.summary, changeType: entry.changeType, field: entry.field ?? '',
+      oldValue: entry.oldValue ?? '', newValue: entry.newValue ?? '', changedBy, changedOn: changedOnISO,
+      entityKind: entry.entityKind, projectId: entry.projectId, activityId: entry.activityId,
+    }
+    // Show immediately if viewing this project
+    setProjectHistory((prev) => (entry.projectId === selectedProjectId ? [optimistic, ...prev] : prev))
+    if (isDataverseConfigured()) {
+      void logChange({ ...entry, changedBy, changedOnISO })
+    }
+  }, [paContext, currentUser.name, selectedProjectId])
+
+  // Load the change log when a project detail is opened
+  useEffect(() => {
+    if (!detailProjectId) { setProjectHistory([]); return }
+    let cancelled = false
+    fetchProjectChangeLog(detailProjectId)
+      .then((rows) => { if (!cancelled) setProjectHistory(rows) })
+      .catch(() => { if (!cancelled) setProjectHistory([]) })
+    return () => { cancelled = true }
+  }, [detailProjectId])
 
   const scopedProjectIds = useMemo(() => getScopeProjectIds(role, currentUserId, state.projects, people), [role, currentUserId, state.projects, people])
   const scopedProjects = useMemo(() => state.projects.filter((project) => scopedProjectIds.has(project.id)), [state.projects, scopedProjectIds])
@@ -2067,11 +2103,6 @@ export default function App(): ReactElement {
     setSelectedProjectId(null)
   }
 
-  function openCreateMilestone(): void {
-    setMilestoneEditId(null)
-    milestoneForm.reset({ name: '', targetDate: addDays(todayISO(), 7) })
-    setMilestoneDialogOpen(true)
-  }
 
   function openEditMilestone(ms: Milestone): void {
     setMilestoneEditId(ms.id)
@@ -2167,6 +2198,22 @@ export default function App(): ReactElement {
           workloadPct, responsible,
         })
       }
+      // ── Log field-level changes ──
+      if (existing) {
+        const STATE_LABEL: Record<string, string> = { NOT_STARTED: 'Not started', IN_PROGRESS: 'In progress', DONE: 'Done', NOT_APPLICABLE: 'N/A' }
+        const oldOwner = people.find((p) => p.id === existing.ownerId)?.name || 'Unassigned'
+        const diffs: Array<[string, string, string]> = []
+        if (existing.name !== values.name) diffs.push(['Name', existing.name, values.name])
+        if (existing.state !== newState) diffs.push(['Status', STATE_LABEL[existing.state] ?? existing.state, STATE_LABEL[newState] ?? newState])
+        if (existing.ownerId !== values.ownerId) diffs.push(['Owner', oldOwner, ownerName || 'Unassigned'])
+        if (existing.startDate !== values.startDate) diffs.push(['Start date', existing.startDate || '—', values.startDate || '—'])
+        if (existing.endDate !== values.endDate) diffs.push(['End date', existing.endDate || '—', values.endDate || '—'])
+        if ((existing.workloadPct ?? 0) !== workloadPct) diffs.push(['Workload %', String(existing.workloadPct ?? 0), String(workloadPct)])
+        if ((existing.responsible ?? '') !== responsible) diffs.push(['Responsible', existing.responsible ?? '—', responsible || '—'])
+        for (const [field, oldV, newV] of diffs) {
+          recordChange({ summary: `Task "${values.name}" — ${field} changed`, changeType: field === 'Status' ? 'StatusChanged' : field === 'Owner' ? 'Assigned' : 'Updated', field, oldValue: oldV, newValue: newV, entityKind: 'Task', projectId: existing.projectId, activityId: editingActivityId })
+        }
+      }
       setState((prev) => ({
         ...prev,
         activities: prev.activities.map((a) =>
@@ -2207,6 +2254,7 @@ export default function App(): ReactElement {
           },
         ],
       }))
+      recordChange({ summary: `Task "${values.name}" created`, changeType: 'Created', field: 'Task', newValue: values.name, entityKind: 'Task', projectId: selectedProject.id, activityId: newId })
     }
     setActivityDialogOpen(false)
     setEditingActivityId(null)
@@ -2229,11 +2277,13 @@ export default function App(): ReactElement {
   }
 
   function setProjectStatusOverview(projectId: string, status: RygStatus): void {
+    const prevStatus = state.projects.find((p) => p.id === projectId)?.statusOverview
     setState((prev) => ({
       ...prev,
       projects: prev.projects.map((p) => (p.id === projectId ? { ...p, statusOverview: status } : p)),
     }))
     if (isDataverseConfigured()) updateProjectStatusOverview(projectId, status)
+    recordChange({ summary: `Project status overview → ${status}`, changeType: 'StatusChanged', field: 'Status Overview', oldValue: prevStatus ?? '—', newValue: status, entityKind: 'Project', projectId })
   }
 
   function handleDropOnTask(activityId: string): void {
@@ -2253,10 +2303,12 @@ export default function App(): ReactElement {
 
     // Otherwise assign directly + persist owner to Dataverse.
     const ownerName = people.find((p) => p.id === personId)?.name ?? ''
+    const prevOwner = people.find((p) => p.id === act.ownerId)?.name || 'Unassigned'
     setState((prev) => ({
       ...prev,
       activities: prev.activities.map((a) => (a.id === activityId ? { ...a, ownerId: personId } : a)),
     }))
+    recordChange({ summary: `Task "${act.name}" assigned to ${ownerName}`, changeType: 'Assigned', field: 'Owner', oldValue: prevOwner, newValue: ownerName, entityKind: 'Task', projectId: act.projectId, activityId })
     if (isDataverseConfigured()) {
       updateActivityInDataverse(activityId, {
         name: act.name, ownerName, startDate: act.startDate, endDate: act.endDate,
@@ -2465,9 +2517,9 @@ export default function App(): ReactElement {
   }
 
   const navItems: Array<{ key: NavPage; label: string; icon: ReactElement }> = [
-    { key: 'overview', label: 'Dashboard', icon: <LayoutDashboard size={16} /> },
+    { key: 'overview', label: 'Projects', icon: <FolderKanban size={16} /> },
+    { key: 'reports', label: 'Dashboard', icon: <LayoutDashboard size={16} /> },
     { key: 'workload', label: 'Workload', icon: <Users size={16} /> },
-    { key: 'reports', label: 'Reports', icon: <FolderKanban size={16} /> },
   ]
 
   const setupItems: Array<{ key: NavPage; label: string; icon: ReactElement }> = [
@@ -2778,7 +2830,7 @@ export default function App(): ReactElement {
                   <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                     <div>
                       <p className="text-xs font-medium uppercase tracking-wider text-pth-muted">PROJECT TRACKER HUB</p>
-                      <h1 className="text-xl font-bold tracking-tight md:text-2xl">Project Dashboard</h1>
+                      <h1 className="text-xl font-bold tracking-tight md:text-2xl">Projects</h1>
                     </div>
                     <div className="flex items-center gap-2">
                       <select title="Month" className="h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-xs transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" value={filterMonth} onChange={(e) => { setFilterMonth(e.target.value); setFilterCW('all') }}>
@@ -3241,12 +3293,6 @@ export default function App(): ReactElement {
                         <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
                           {/* Left: Milestones */}
                           <div>
-                            <div className="flex items-center justify-between mb-5">
-                              <h2 className="text-base font-semibold tracking-tight">Milestones</h2>
-                              <button type="button" className="inline-flex items-center gap-1.5 rounded-lg bg-pth-btn px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-pth-btn-hover active:scale-[0.98]" onClick={openCreateMilestone}>
-                                <Plus size={14} /> Add Milestone
-                              </button>
-                            </div>
                             <div className="space-y-0">
                               {pMss.map((ms, msIdx) => {
                                 const msRyg = rygFromDueDate(ms.targetDate, state.settings.warningDaysThreshold)
@@ -3402,6 +3448,52 @@ export default function App(): ReactElement {
                               </div>
                               )
                             })()}
+
+                            {/* ── History (change log) ── */}
+                            <div className="mt-4 rounded-xl border border-pth-border/20 bg-pth-subtle/30">
+                              <button type="button" onClick={() => setHistoryExpanded((v) => !v)} className="flex w-full items-center gap-2 px-4 py-3 text-left">
+                                <ChevronDown size={15} className={`shrink-0 text-pth-muted transition-transform ${historyExpanded ? '' : '-rotate-90'}`} />
+                                <Clock3 size={14} className="shrink-0 text-pth-muted" />
+                                <h3 className="text-sm font-semibold text-pth-text">History</h3>
+                                <span className="rounded-full bg-pth-border/20 px-2 py-0.5 text-[11px] font-medium text-pth-muted">{projectHistory.length}</span>
+                              </button>
+                              {historyExpanded && (
+                                <div className="border-t border-pth-border/15 px-4 py-3">
+                                  {projectHistory.length === 0 ? (
+                                    <p className="py-4 text-center text-xs text-pth-muted">No changes recorded yet. Edits, assignments and status changes will appear here.</p>
+                                  ) : (
+                                    <div className="space-y-2 max-h-[420px] overflow-y-auto">
+                                      {projectHistory.map((h) => {
+                                        const tone = h.changeType === 'StatusChanged' ? 'bg-amber-500' : h.changeType === 'Assigned' ? 'bg-pth-blue' : h.changeType === 'Created' ? 'bg-emerald-500' : h.changeType === 'Deleted' ? 'bg-pth-red' : 'bg-pth-border'
+                                        return (
+                                          <div key={h.id} className="flex gap-2.5">
+                                            <div className="flex flex-col items-center">
+                                              <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${tone}`} />
+                                              <span className="mt-0.5 w-px flex-1 bg-pth-border/20" />
+                                            </div>
+                                            <div className="min-w-0 flex-1 pb-1">
+                                              <div className="flex items-baseline justify-between gap-2">
+                                                <span className="text-xs font-medium text-pth-text">{h.summary}</span>
+                                                <span className="shrink-0 text-[10px] text-pth-muted">{h.changedOn ? new Date(h.changedOn).toLocaleString() : ''}</span>
+                                              </div>
+                                              {(h.oldValue || h.newValue) && (
+                                                <div className="mt-0.5 text-[11px] text-pth-muted">
+                                                  {h.field && <span className="font-medium">{h.field}: </span>}
+                                                  {h.oldValue && <span className="text-pth-muted/70 line-through">{h.oldValue}</span>}
+                                                  {h.oldValue && h.newValue && <span className="mx-1">→</span>}
+                                                  {h.newValue && <span className="text-pth-text">{h.newValue}</span>}
+                                                </div>
+                                              )}
+                                              <div className="mt-0.5 text-[10px] text-pth-muted">by {h.changedBy} · {h.entityKind}</div>
+                                            </div>
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
 
                           {/* Right: Available Resources (sticky sidebar) */}
@@ -3740,7 +3832,6 @@ export default function App(): ReactElement {
                       { key: 'projectsStatus', label: 'Projects Status' },
                       { key: 'taskTracking', label: 'Task Tracking' },
                       { key: 'prioritization', label: 'Prioritization & Risks' },
-                      { key: 'workloadOverview', label: 'Workload Overview' },
                     ] as Array<{ key: ReportTab; label: string }>).map((tab) => (
                       <button
                         key={tab.key}
@@ -3903,16 +3994,41 @@ export default function App(): ReactElement {
                                   <div className="h-6 border-b border-pth-border/15" /> {/* spacer for month header */}
                                   {bars.map((bar) => {
                                     const dotColor = bar.status === 'RED' ? 'bg-pth-red' : bar.status === 'YELLOW' ? 'bg-amber-400' : 'bg-emerald-500'
+                                    const hl = projectTaskHighlights(bar.activities)
+                                    const today = todayISO()
+                                    const tipRow = (label: string, a?: Activity) => {
+                                      if (!a) return (<div className="flex items-baseline gap-2"><span className="w-16 shrink-0 text-[10px] uppercase tracking-wide text-white/40">{label}</span><span className="text-[11px] text-white/40">—</span></div>)
+                                      const tone = a.state === 'DONE' ? 'text-emerald-400' : (a.endDate && a.endDate < today) ? 'text-red-400' : a.state === 'IN_PROGRESS' ? 'text-blue-400' : 'text-white/50'
+                                      const txt = a.state === 'DONE' ? 'Completed' : (a.endDate && a.endDate < today) ? 'Delayed' : a.state === 'IN_PROGRESS' ? 'In progress' : 'Planned'
+                                      const owner = people.find((pp) => pp.id === a.ownerId)?.name || 'Unassigned'
+                                      return (
+                                        <div className="flex items-baseline gap-2">
+                                          <span className="w-16 shrink-0 text-[10px] uppercase tracking-wide text-white/40">{label}</span>
+                                          <div className="min-w-0">
+                                            <div className="truncate text-[11px] font-medium text-white">{a.name}</div>
+                                            <div className="text-[10px] text-white/60">{owner} · <span className={tone}>{txt}</span>{a.endDate ? ` · ${formatShortDate(a.endDate)}` : ''}</div>
+                                          </div>
+                                        </div>
+                                      )
+                                    }
                                     return (
                                       <div
                                         key={`label-${bar.project.id}`}
-                                        className="flex items-center h-7 pr-3 gap-2 cursor-pointer group"
+                                        className="relative flex items-center h-7 pr-3 gap-2 cursor-pointer group"
                                         onClick={() => { setDetailProjectId(bar.project.id); setSelectedProjectId(bar.project.id) }}
-                                        title={bar.project.name}
                                       >
                                         <div className={`h-2 w-2 shrink-0 rounded-full ${dotColor}`} />
                                         <span className="truncate text-xs font-medium group-hover:text-pth-blue transition-colors">{bar.project.name}</span>
                                         <span className="ml-auto shrink-0 text-[10px] font-semibold tabular-nums text-pth-muted">{Math.round(bar.doneRatio * 100)}%</span>
+                                        {/* Hover tooltip — anchored to the fixed label column so it's never clipped */}
+                                        <div className="pointer-events-none absolute left-0 top-7 z-40 hidden w-72 rounded-lg border border-white/10 bg-gray-900/95 p-2.5 shadow-elevated group-hover:block dark:bg-black/95">
+                                          <div className="mb-1.5 truncate text-[11px] font-semibold text-white">{bar.project.name}</div>
+                                          <div className="space-y-1.5">
+                                            {tipRow('Last', hl.lastClosed)}
+                                            {tipRow('Current', hl.current)}
+                                            {tipRow('Upcoming', hl.upcoming)}
+                                          </div>
+                                        </div>
                                       </div>
                                     )
                                   })}
@@ -4507,78 +4623,6 @@ export default function App(): ReactElement {
                             </div>
                           ))}
                         </div>
-                      </div>
-                    )}
-
-                    {reportTab === 'workloadOverview' && (
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-pth-muted">
-                            {calendarWeek(currentWeek)} &middot; {formatShortDate(currentWeek)} – {formatShortDate(addDays(currentWeek, 6))}
-                          </span>
-                          <span className="text-xs text-pth-muted">{workloadRows.length} resources</span>
-                        </div>
-                        {workloadRows.map((row) => {
-                          const warning = row.utilization >= state.settings.workloadWarningThreshold && row.utilization <= state.settings.workloadCriticalThreshold
-                          const critical = row.utilization > state.settings.workloadCriticalThreshold
-                          const isExpanded = expandedWorkloadPersonId === row.person.id
-
-                          // group assignments by project for the accordion content
-                          const projectBreakdown = row.personAssignments.reduce<Record<string, { name: string; hours: number }>>((acc, asgn) => {
-                            const act = state.activities.find((a) => a.id === asgn.activityId)
-                            const projId = act?.projectId
-                            if (!projId) return acc
-                            const projName = state.projects.find((p) => p.id === projId)?.name ?? 'Unknown'
-                            if (!acc[projId]) acc[projId] = { name: projName, hours: 0 }
-                            acc[projId].hours += asgn.assignedHours
-                            return acc
-                          }, {})
-                          const totalHours = Object.values(projectBreakdown).reduce((s, p) => s + p.hours, 0)
-
-                          return (
-                            <div key={row.person.id} className="rounded-xl border border-pth-border/15 bg-pth-card transition-shadow hover:shadow-sm">
-                              <button
-                                type="button"
-                                className="flex w-full items-center gap-4 px-4 py-3"
-                                onClick={() => setExpandedWorkloadPersonId((cur) => (cur === row.person.id ? null : row.person.id))}
-                              >
-                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pth-subtle text-xs font-bold">{row.person.initials}</div>
-                                <div className="min-w-0 flex-1 text-left">
-                                  <div className="text-sm font-medium">{row.person.name}</div>
-                                  <div className="text-[11px] text-pth-muted">{row.utilization}% allocated</div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <div className="w-24 h-1.5 rounded-full bg-pth-border/20 overflow-hidden">
-                                    <div ref={dynRef({ width: `${Math.min(row.utilization, 150)}%` })} className={`h-full rounded-full transition-all ${critical ? 'bg-pth-red' : warning ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-                                  </div>
-                                  <span className={`min-w-[3rem] text-right text-xs font-semibold ${critical ? 'text-pth-red' : warning ? 'text-amber-600' : 'text-emerald-600'}`}>{row.utilization}%</span>
-                                  <ChevronDown size={14} className={`text-pth-muted transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                                </div>
-                              </button>
-                              <AnimatePresence>
-                                {isExpanded && (
-                                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                                    <div className="border-t border-pth-border/15 px-4 py-3 space-y-1.5">
-                                      {Object.entries(projectBreakdown).length > 0 ? Object.entries(projectBreakdown).map(([projId, info]) => {
-                                        const pct = totalHours > 0 ? Math.round((info.hours / Math.max(row.capacityHours, 1)) * 100) : 0
-                                        return (
-                                        <div key={projId} className="flex items-center justify-between rounded-lg bg-pth-subtle px-3 py-2 text-xs">
-                                          <div className="flex items-center gap-2 min-w-0">
-                                            <span className="h-1.5 w-1.5 rounded-full bg-pth-blue" />
-                                            <span className="font-medium truncate">{info.name}</span>
-                                          </div>
-                                          <span className="shrink-0 font-semibold">{pct}%</span>
-                                        </div>)
-                                      }) : (
-                                        <div className="text-xs text-pth-muted px-3 py-2">No project assignments for this week</div>
-                                      )}
-                                    </div>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </div>
-                          )
-                        })}
                       </div>
                     )}
                   </div>
