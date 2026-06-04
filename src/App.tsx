@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactElement } from 're
 import { AnimatePresence, motion } from 'framer-motion'
 import { getContext, type IContext } from '@microsoft/power-apps/app'
 import logoImg from '/logo.png?inline'
-import { fetchAllFromDataverse, fetchDataverseUsers, isDataverseConfigured, createProjectInDataverse, deleteProjectInDataverse, updateProjectInDataverse, createMilestoneInDataverse, updateMilestoneInDataverse, deleteMilestoneInDataverse, createActivityInDataverse, updateActivityInDataverse, deleteActivityInDataverse, createResourceInDataverse, updateResourceInDataverse, deleteResourceInDataverse, updateSettingsInDataverse, searchAadUsers, fetchCurrentUserProfile, sendProjectCreationEmail, sendProjectCreationViaFunction, fetchTaskTemplates, createTaskTemplate, updateTaskTemplate, deleteTaskTemplate, type TaskTemplateRow, type AadUser, type DataverseUser } from './dataverse'
+import { fetchAllFromDataverse, fetchDataverseUsers, isDataverseConfigured, createProjectInDataverse, deleteProjectInDataverse, updateProjectInDataverse, createMilestoneInDataverse, updateMilestoneInDataverse, deleteMilestoneInDataverse, createActivityInDataverse, updateActivityInDataverse, deleteActivityInDataverse, createResourceInDataverse, updateResourceInDataverse, deleteResourceInDataverse, updateSettingsInDataverse, updateProjectStatusOverview, searchAadUsers, fetchCurrentUserProfile, sendProjectCreationEmail, sendProjectCreationViaFunction, fetchTaskTemplates, createTaskTemplate, updateTaskTemplate, deleteTaskTemplate, type TaskTemplateRow, type AadUser, type DataverseUser } from './dataverse'
 import {
   Bell,
   BellRing,
@@ -114,6 +114,9 @@ type Project = {
   plannedStartDate: string
   plannedEndDate: string
   projectType?: string
+  statusOverview?: RygStatus
+  projectResponsible?: string
+  sponsorName?: string
 }
 
 type Milestone = {
@@ -1251,6 +1254,9 @@ export default function App(): ReactElement {
           plannedStartDate: p.plannedStartDate || todayISO(),
           plannedEndDate: p.plannedEndDate || addDays(todayISO(), 30),
           projectType: (p as { projectType?: string }).projectType ?? '',
+          statusOverview: (p as { statusOverview?: RygStatus }).statusOverview,
+          projectResponsible: (p as { projectResponsible?: string }).projectResponsible ?? '',
+          sponsorName: p._sponsorName || '',
         }}),
         milestones: dv.milestones.map((m) => ({
           id: m.id,
@@ -1442,7 +1448,8 @@ export default function App(): ReactElement {
     return filteredProjects.map((project) => {
       const pm = dvUsers.find((u) => u.id === project.projectManagerId)?.fullname ?? people.find((person) => person.id === project.projectManagerId)?.name ?? 'Unknown'
       const site = project.siteIds.map((id) => sites.find((s) => s.id === id)?.name ?? id).join(', ') || 'Unknown'
-      const status = seededProjectStatus(state, project.id)
+      // Use the MANUAL Status Overview (PM-assigned); fall back to computed task status when unset.
+      const status = project.statusOverview ?? seededProjectStatus(state, project.id)
       const nextMilestone = projectNextMilestone(state, project.id)
       const delayedCount = state.activities.filter(
         (activity) => activity.projectId === project.id && !activity.doneDate && rygFromDueDate(activity.endDate, state.settings.warningDaysThreshold) === 'RED',
@@ -1482,7 +1489,8 @@ export default function App(): ReactElement {
     return rptFiltered.map((project) => {
       const pm = dvUsers.find((u) => u.id === project.projectManagerId)?.fullname ?? people.find((person) => person.id === project.projectManagerId)?.name ?? 'Unknown'
       const site = project.siteIds.map((id) => sites.find((s) => s.id === id)?.name ?? id).join(', ') || 'Unknown'
-      const status = seededProjectStatus(state, project.id)
+      // Use the MANUAL Status Overview (PM-assigned); fall back to computed task status when unset.
+      const status = project.statusOverview ?? seededProjectStatus(state, project.id)
       const nextMilestone = projectNextMilestone(state, project.id)
       const delayedCount = state.activities.filter((a) => a.projectId === project.id && !a.doneDate && rygFromDueDate(a.endDate, state.settings.warningDaysThreshold) === 'RED').length
       const pActs = state.activities.filter((a) => a.projectId === project.id)
@@ -1497,7 +1505,7 @@ export default function App(): ReactElement {
 
   const rptKpi = useMemo(() => {
     const total = rptFiltered.length
-    const statuses = rptFiltered.map((p) => seededProjectStatus(state, p.id))
+    const statuses = rptFiltered.map((p) => p.statusOverview ?? seededProjectStatus(state, p.id))
     const onTrack = statuses.filter((s) => s === 'GREEN').length
     const atRisk = statuses.filter((s) => s === 'YELLOW').length
     const critical = statuses.filter((s) => s === 'RED').length
@@ -2218,6 +2226,14 @@ export default function App(): ReactElement {
     setActivityDialogOpen(true)
     setDragPersonId(null)
     setDropTargetId(null)
+  }
+
+  function setProjectStatusOverview(projectId: string, status: RygStatus): void {
+    setState((prev) => ({
+      ...prev,
+      projects: prev.projects.map((p) => (p.id === projectId ? { ...p, statusOverview: status } : p)),
+    }))
+    if (isDataverseConfigured()) updateProjectStatusOverview(projectId, status)
   }
 
   function handleDropOnTask(activityId: string): void {
@@ -3091,11 +3107,11 @@ export default function App(): ReactElement {
                               <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                                 <div>
                                   <span className="text-xs font-medium text-pth-blue">Executive Sponsor</span>
-                                  <p className="mt-0.5 text-sm font-medium">{sponsor?.name ?? '—'}</p>
+                                  <p className="mt-0.5 text-sm font-medium">{selectedProject.sponsorName || sponsor?.name || '—'}</p>
                                 </div>
                                 <div>
                                   <span className="text-xs font-medium text-pth-blue">Project Responsible</span>
-                                  <p className="mt-0.5 text-sm font-medium">{pm?.name ?? '—'}</p>
+                                  <p className="mt-0.5 text-sm font-medium">{selectedProject.projectResponsible || pm?.name || '—'}</p>
                                 </div>
                                 <div>
                                   <span className="text-xs font-medium text-pth-blue">Planned Start</span>
@@ -3115,6 +3131,20 @@ export default function App(): ReactElement {
                           <div className="glass-card rounded-xl p-5 shadow-card">
                             <h2 className="text-base font-semibold tracking-tight mb-4">Stakeholders</h2>
                             <div className="space-y-4">
+                              <div>
+                                <div className="flex items-center gap-1.5 text-xs font-medium text-pth-muted"><ShieldAlert size={12} /> Status Overview</div>
+                                <select
+                                  title="Status Overview"
+                                  value={selectedProject.statusOverview ?? ''}
+                                  onChange={(e) => e.target.value && setProjectStatusOverview(selectedProject.id, e.target.value as RygStatus)}
+                                  className={`mt-1 h-9 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm font-medium outline-none focus:border-pth-blue ${selectedProject.statusOverview === 'RED' ? 'text-pth-red' : selectedProject.statusOverview === 'YELLOW' ? 'text-amber-600' : selectedProject.statusOverview === 'GREEN' ? 'text-emerald-600' : ''}`}
+                                >
+                                  <option value="">— Not set —</option>
+                                  <option value="GREEN">🟢 Green</option>
+                                  <option value="YELLOW">🟡 Yellow</option>
+                                  <option value="RED">🔴 Red</option>
+                                </select>
+                              </div>
                               <div>
                                 <div className="flex items-center gap-1.5 text-xs font-medium text-pth-muted"><Users size={12} /> Customers</div>
                                 <p className="mt-0.5 text-sm">{projClients}</p>
@@ -3793,7 +3823,7 @@ export default function App(): ReactElement {
                             const maxEnd = ends[ends.length - 1]
                             const doneCount = pActs.filter((a) => a.state === 'DONE').length
                             const doneRatio = doneCount / pActs.length
-                            const status = seededProjectStatus(state, project.id)
+                            const status = project.statusOverview ?? seededProjectStatus(state, project.id)
                             const milestones = state.milestones.filter((m) => m.projectId === project.id)
                             return { project, minStart, maxEnd, doneRatio, status, activities: pActs, milestones }
                           }).filter(Boolean) as Array<{project: Project; minStart: string; maxEnd: string; doneRatio: number; status: RygStatus; activities: Activity[]; milestones: Milestone[]}>

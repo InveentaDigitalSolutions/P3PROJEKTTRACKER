@@ -137,10 +137,24 @@ function mapProject(r: Row) {
     plannedStartDate: ((r.pth_plannedstartdate ?? '') as string).slice(0, 10),
     plannedEndDate: ((r.pth_plannedenddate ?? '') as string).slice(0, 10),
     projectType: (r.pth_projecttype ?? '') as string,
+    statusOverview: (STATUS_OVERVIEW_MAP[r.pth_statusoverview as number] ?? undefined) as RygStatus | undefined,
+    projectResponsible: (r.pth_projectresponsible ?? '') as string,
     _sponsorName: (r.pth_sponsorexecutive ?? '') as string,
     _pmName: (r.pth_projectmanagername ?? '') as string,
     _timeStatus: RYG_MAP[r.pth_timestatus as number] ?? ('GREEN' as RygStatus),
   }
+}
+
+/* Manual project Status Overview (Green/Yellow/Red) */
+const STATUS_OVERVIEW_MAP: Record<number, RygStatus> = {
+  100000000: 'GREEN',
+  100000001: 'YELLOW',
+  100000002: 'RED',
+}
+const STATUS_OVERVIEW_TO_DV: Record<RygStatus, number> = {
+  GREEN: 100000000,
+  YELLOW: 100000001,
+  RED: 100000002,
 }
 
 function mapMilestone(r: Row) {
@@ -511,6 +525,8 @@ export interface CreateProjectPayload {
   plannedEndDate: string
   projectIdExternal?: string
   projectType?: string
+  projectResponsible?: string
+  statusOverview?: RygStatus
 }
 
 /** Build the Dataverse column payload from the app-level create payload. */
@@ -532,7 +548,14 @@ function buildProjectBody(p: CreateProjectPayload): Record<string, unknown> {
     pth_criticalpathchangedflag: 0,
   }
   if (p.projectType) body.pth_projecttype = p.projectType
+  if (p.projectResponsible !== undefined) body.pth_projectresponsible = p.projectResponsible || null
+  if (p.statusOverview) body.pth_statusoverview = STATUS_OVERVIEW_TO_DV[p.statusOverview]
   return body
+}
+
+/** Update just the manual Status Overview for a project. */
+export async function updateProjectStatusOverview(id: string, status: RygStatus): Promise<boolean> {
+  return dvPatch('pth_projects', id, { pth_statusoverview: STATUS_OVERVIEW_TO_DV[status] })
 }
 
 /**

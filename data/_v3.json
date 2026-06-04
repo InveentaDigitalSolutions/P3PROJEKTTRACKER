@@ -1,0 +1,4719 @@
+[
+ {
+  "area": "PPS",
+  "location": "SlpP",
+  "category": "ECR Standard",
+  "title": "3E10171456 - T4EVO Cap",
+  "sponsor": "Carreira Leandro (M/PPS-CC-NA)",
+  "responsible": "Ricardo Jose Vazquez Morales",
+  "statusOverview": "Yellow",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "Business case available",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "2",
+    "task": "KO meeting",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "3",
+    "task": "TR meeting",
+    "dept": "ChR",
+    "start": "2026-04-17",
+    "finish": "2026-04-24",
+    "status": "Done"
+   },
+   {
+    "no": "4",
+    "task": "RACE submission for new PN if applies",
+    "dept": "ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "5",
+    "task": "Customer acceptance of the ECR",
+    "dept": "PJM/Sales",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "6",
+    "task": "PTR parts available",
+    "dept": "PPS",
+    "start": "2026-07-17",
+    "finish": "2026-07-31",
+    "status": "Plan"
+   },
+   {
+    "no": "7",
+    "task": "First part of MP206 completion",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "8",
+    "task": "Counter measurement",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "9",
+    "task": "Counter measurement end date",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "10",
+    "task": "DL review and release if applies",
+    "dept": "PUQ/ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "11",
+    "task": "PTR Date",
+    "dept": "LOG/ChR",
+    "start": "2026-08-07",
+    "finish": "2026-08-14",
+    "status": "Plan"
+   },
+   {
+    "no": "12",
+    "task": "PV start date",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "13",
+    "task": "PV end date",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "14",
+    "task": "PTR report",
+    "dept": "MFE/ENG/QMM",
+    "start": "2026-08-07",
+    "finish": "2026-08-14",
+    "status": "Plan"
+   },
+   {
+    "no": "14.1",
+    "task": "PV report",
+    "dept": "MFE/ENG/QMM",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "15",
+    "task": "Interim PSW",
+    "dept": "ChR/PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "16",
+    "task": "Customer validation completion",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "17",
+    "task": "Final Review presentation",
+    "dept": "ChR",
+    "start": "2026-08-21",
+    "finish": "2026-08-28",
+    "status": "Plan"
+   },
+   {
+    "no": "18",
+    "task": "New PN release and available in SAP",
+    "dept": "TEF6",
+    "start": "2026-08-21",
+    "finish": "2026-08-28",
+    "status": "Plan"
+   },
+   {
+    "no": "19",
+    "task": "ECR ST40",
+    "dept": "ChR/Lcoal Change Co",
+    "start": "2026-08-21",
+    "finish": "2026-08-28",
+    "status": "Plan"
+   },
+   {
+    "no": "20",
+    "task": "Customer approval (full PSW)",
+    "dept": "QMM",
+    "start": "2026-09-04",
+    "finish": "2026-09-25",
+    "status": "Plan"
+   },
+   {
+    "no": "21",
+    "task": "PO Update",
+    "dept": "Sales",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "22",
+    "task": "Full PSW Supplier",
+    "dept": "PUQ",
+    "start": "2026-10-02",
+    "finish": "2026-10-09",
+    "status": "Plan"
+   },
+   {
+    "no": "23",
+    "task": "Systematic release to supplier",
+    "dept": "PPS/LOG",
+    "start": "2026-10-09",
+    "finish": "2026-10-23",
+    "status": "Plan"
+   },
+   {
+    "no": "24",
+    "task": "SOP supplier",
+    "dept": "PPS/LOG",
+    "start": "2026-10-09",
+    "finish": "2026-10-23",
+    "status": "Plan"
+   },
+   {
+    "no": "25",
+    "task": "Date of first batch arrival",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "26",
+    "task": "SOP BOSCH",
+    "dept": "CFT",
+    "start": "2026-10-30",
+    "finish": "2026-10-30",
+    "status": "Plan"
+   },
+   {
+    "no": "27",
+    "task": "ECR close ST48",
+    "dept": "CFT",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   }
+  ]
+ },
+ {
+  "area": "PPS",
+  "location": "SlpP",
+  "category": "ECR Standard",
+  "title": "3E10148721 T6 Tube (Scherdel)",
+  "sponsor": "Carreira Leandro (M/PPS-CC-NA)",
+  "responsible": "Ricardo Jose Vazquez Morales",
+  "statusOverview": "Red",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "Business case available",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "2",
+    "task": "KO meeting",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "3",
+    "task": "TR meeting",
+    "dept": "ChR",
+    "start": "2025-12-30",
+    "finish": "2025-12-30",
+    "status": "Done"
+   },
+   {
+    "no": "4",
+    "task": "RACE submission for new PN if applies",
+    "dept": "ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "5",
+    "task": "Customer acceptance of the ECR",
+    "dept": "PJM/Sales",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "6",
+    "task": "PTR parts available",
+    "dept": "PPS",
+    "start": "2026-06-26",
+    "finish": "2026-07-03",
+    "status": "Plan"
+   },
+   {
+    "no": "7",
+    "task": "First part of MP206 completion",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "8",
+    "task": "Counter measurement",
+    "dept": "PUQ",
+    "start": "2026-07-10",
+    "finish": "2026-07-24",
+    "status": "Plan"
+   },
+   {
+    "no": "9",
+    "task": "Counter measurement end date",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "10",
+    "task": "DL review and release if applies",
+    "dept": "PUQ/ChR",
+    "start": "2026-07-31",
+    "finish": "2026-08-07",
+    "status": "Plan"
+   },
+   {
+    "no": "11",
+    "task": "PTR Date",
+    "dept": "LOG/ChR",
+    "start": "2026-08-14",
+    "finish": "2026-08-28",
+    "status": "Plan"
+   },
+   {
+    "no": "12",
+    "task": "PV start date",
+    "dept": "ChR/ENG",
+    "start": "2026-09-18",
+    "finish": "2026-12-04",
+    "status": "Plan"
+   },
+   {
+    "no": "13",
+    "task": "PV end date",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "14",
+    "task": "PTR report",
+    "dept": "MFE/ENG/QMM",
+    "start": "2026-08-14",
+    "finish": "2026-08-28",
+    "status": "Plan"
+   },
+   {
+    "no": "14.1",
+    "task": "PV report",
+    "dept": "MFE/ENG/QMM",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "15",
+    "task": "Interim PSW",
+    "dept": "ChR/PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "16",
+    "task": "Customer validation completion",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "17",
+    "task": "Final Review presentation",
+    "dept": "ChR",
+    "start": "2026-12-11",
+    "finish": "2026-12-18",
+    "status": "Plan"
+   },
+   {
+    "no": "18",
+    "task": "New PN release and available in SAP",
+    "dept": "TEF6",
+    "start": "2026-12-11",
+    "finish": "2026-12-18",
+    "status": "Plan"
+   },
+   {
+    "no": "19",
+    "task": "ECR ST40",
+    "dept": "ChR/Lcoal Change Co",
+    "start": "2026-12-11",
+    "finish": "2026-12-18",
+    "status": "Plan"
+   },
+   {
+    "no": "20",
+    "task": "Customer approval (full PSW)",
+    "dept": "QMM",
+    "start": "2026-12-11",
+    "finish": "2026-12-25",
+    "status": "Plan"
+   },
+   {
+    "no": "21",
+    "task": "PO Update",
+    "dept": "Sales",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "22",
+    "task": "Full PSW Supplier",
+    "dept": "PUQ",
+    "start": "2026-12-11",
+    "finish": null,
+    "status": "Plan"
+   },
+   {
+    "no": "23",
+    "task": "Systematic release to supplier",
+    "dept": "PPS/LOG",
+    "start": "2027-01-15",
+    "finish": "2027-02-05",
+    "status": "Plan"
+   },
+   {
+    "no": "24",
+    "task": "SOP supplier",
+    "dept": "PPS/LOG",
+    "start": "2027-01-15",
+    "finish": "2027-02-05",
+    "status": "Plan"
+   },
+   {
+    "no": "25",
+    "task": "Date of first batch arrival",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "26",
+    "task": "SOP BOSCH",
+    "dept": "CFT",
+    "start": "2027-02-12",
+    "finish": "2027-02-12",
+    "status": "Plan"
+   },
+   {
+    "no": "27",
+    "task": "ECR close ST48",
+    "dept": "CFT",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   }
+  ]
+ },
+ {
+  "area": "PPS",
+  "location": "SlpP",
+  "category": "ECR Standard",
+  "title": "3E10153365 (STLA)",
+  "sponsor": "Carreira Leandro (M/PPS-CC-NA)",
+  "responsible": "Lucero Villegas Toranzo",
+  "statusOverview": "Yellow",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "Business case available",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "2",
+    "task": "KO meeting",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "3",
+    "task": "TR meeting",
+    "dept": "ChR",
+    "start": "2026-04-10",
+    "finish": "2026-04-10",
+    "status": "Done"
+   },
+   {
+    "no": "4",
+    "task": "RACE submission for new PN if applies",
+    "dept": "ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "5",
+    "task": "Customer acceptance of the ECR",
+    "dept": "PJM/Sales",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "6",
+    "task": "PTR parts available",
+    "dept": "PPS",
+    "start": "2026-09-25",
+    "finish": "2026-10-16",
+    "status": "Plan"
+   },
+   {
+    "no": "7",
+    "task": "First part of MP206 completion",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "8",
+    "task": "Counter measurement",
+    "dept": "PUQ",
+    "start": "2026-01-30",
+    "finish": "2026-04-10",
+    "status": "Done"
+   },
+   {
+    "no": "9",
+    "task": "Counter measurement end date",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "10",
+    "task": "DL review and release if applies",
+    "dept": "PUQ/ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "11",
+    "task": "PTR Date",
+    "dept": "LOG/ChR",
+    "start": "2026-02-13",
+    "finish": "2026-02-13",
+    "status": "Done"
+   },
+   {
+    "no": "12",
+    "task": "PV start date",
+    "dept": "ChR/ENG",
+    "start": "2026-01-30",
+    "finish": "2026-04-03",
+    "status": "Done"
+   },
+   {
+    "no": "13",
+    "task": "PV end date",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "14",
+    "task": "PTR report",
+    "dept": "MFE/ENG/QMM",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "14.1",
+    "task": "PV report",
+    "dept": "MFE/ENG/QMM",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "15",
+    "task": "Interim PSW",
+    "dept": "ChR/PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "16",
+    "task": "Customer validation completion",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "17",
+    "task": "Final Review presentation",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "18",
+    "task": "New PN release and available in SAP",
+    "dept": "TEF6",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "19",
+    "task": "ECR ST40",
+    "dept": "ChR/Lcoal Change Co",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "20",
+    "task": "Customer approval (full PSW)",
+    "dept": "QMM",
+    "start": "2026-02-13",
+    "finish": "2026-09-18",
+    "status": "On going"
+   },
+   {
+    "no": "21",
+    "task": "PO Update",
+    "dept": "Sales",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "22",
+    "task": "Full PSW Supplier",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "23",
+    "task": "Systematic release to supplier",
+    "dept": "PPS/LOG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "24",
+    "task": "SOP supplier",
+    "dept": "PPS/LOG",
+    "start": "2026-07-31",
+    "finish": "2026-07-31",
+    "status": "Plan"
+   },
+   {
+    "no": "25",
+    "task": "Date of first batch arrival",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "26",
+    "task": "SOP BOSCH",
+    "dept": "CFT",
+    "start": "2026-10-23",
+    "finish": "2026-10-23",
+    "status": "Plan"
+   },
+   {
+    "no": "27",
+    "task": "ECR close ST48",
+    "dept": "CFT",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   }
+  ]
+ },
+ {
+  "area": "PPS",
+  "location": "SlpP",
+  "category": "ECR Standard",
+  "title": "3E10153559 (VW)",
+  "sponsor": "Carreira Leandro (M/PPS-CC-NA)",
+  "responsible": "Lucero Villegas Toranzo",
+  "statusOverview": "Green",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "Business case available",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "2",
+    "task": "KO meeting",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "3",
+    "task": "TR meeting",
+    "dept": "ChR",
+    "start": "2026-04-10",
+    "finish": "2026-04-10",
+    "status": "Done"
+   },
+   {
+    "no": "4",
+    "task": "RACE submission for new PN if applies",
+    "dept": "ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "5",
+    "task": "Customer acceptance of the ECR",
+    "dept": "PJM/Sales",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "6",
+    "task": "PTR parts available",
+    "dept": "PPS",
+    "start": "2026-09-25",
+    "finish": "2026-10-16",
+    "status": "Plan"
+   },
+   {
+    "no": "7",
+    "task": "First part of MP206 completion",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "8",
+    "task": "Counter measurement",
+    "dept": "PUQ",
+    "start": "2027-02-05",
+    "finish": "2027-04-16",
+    "status": "Plan"
+   },
+   {
+    "no": "9",
+    "task": "Counter measurement end date",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "10",
+    "task": "DL review and release if applies",
+    "dept": "PUQ/ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "11",
+    "task": "PTR Date",
+    "dept": "LOG/ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "12",
+    "task": "PV start date",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "13",
+    "task": "PV end date",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "14",
+    "task": "PTR report",
+    "dept": "MFE/ENG/QMM",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "14.1",
+    "task": "PV report",
+    "dept": "MFE/ENG/QMM",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "15",
+    "task": "Interim PSW",
+    "dept": "ChR/PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "16",
+    "task": "Customer validation completion",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "17",
+    "task": "Final Review presentation",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "18",
+    "task": "New PN release and available in SAP",
+    "dept": "TEF6",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "19",
+    "task": "ECR ST40",
+    "dept": "ChR/Lcoal Change Co",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "20",
+    "task": "Customer approval (full PSW)",
+    "dept": "QMM",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "21",
+    "task": "PO Update",
+    "dept": "Sales",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "22",
+    "task": "Full PSW Supplier",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "23",
+    "task": "Systematic release to supplier",
+    "dept": "PPS/LOG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "24",
+    "task": "SOP supplier",
+    "dept": "PPS/LOG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "25",
+    "task": "Date of first batch arrival",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "26",
+    "task": "SOP BOSCH",
+    "dept": "CFT",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "27",
+    "task": "ECR close ST48",
+    "dept": "CFT",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   }
+  ]
+ },
+ {
+  "area": "PPS",
+  "location": "SlpP",
+  "category": "ECR Standard",
+  "title": "3E10153553 (Ford)",
+  "sponsor": "Carreira Leandro (M/PPS-CC-NA)",
+  "responsible": "Lucero Villegas Toranzo",
+  "statusOverview": "Yellow",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "Business case available",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "2",
+    "task": "KO meeting",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "3",
+    "task": "TR meeting",
+    "dept": "ChR",
+    "start": "2026-04-10",
+    "finish": "2026-04-10",
+    "status": "Done"
+   },
+   {
+    "no": "4",
+    "task": "RACE submission for new PN if applies",
+    "dept": "ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "5",
+    "task": "Customer acceptance of the ECR",
+    "dept": "PJM/Sales",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "6",
+    "task": "PTR parts available",
+    "dept": "PPS",
+    "start": "2026-09-25",
+    "finish": "2026-10-16",
+    "status": "Plan"
+   },
+   {
+    "no": "7",
+    "task": "First part of MP206 completion",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "8",
+    "task": "Counter measurement",
+    "dept": "PUQ",
+    "start": "2027-02-05",
+    "finish": "2027-04-16",
+    "status": "Plan"
+   },
+   {
+    "no": "9",
+    "task": "Counter measurement end date",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "10",
+    "task": "DL review and release if applies",
+    "dept": "PUQ/ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "11",
+    "task": "PTR Date",
+    "dept": "LOG/ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "12",
+    "task": "PV start date",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "13",
+    "task": "PV end date",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "14",
+    "task": "PTR report",
+    "dept": "MFE/ENG/QMM",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "14.1",
+    "task": "PV report",
+    "dept": "MFE/ENG/QMM",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "15",
+    "task": "Interim PSW",
+    "dept": "ChR/PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "16",
+    "task": "Customer validation completion",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "17",
+    "task": "Final Review presentation",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "18",
+    "task": "New PN release and available in SAP",
+    "dept": "TEF6",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "19",
+    "task": "ECR ST40",
+    "dept": "ChR/Lcoal Change Co",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "20",
+    "task": "Customer approval (full PSW)",
+    "dept": "QMM",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "21",
+    "task": "PO Update",
+    "dept": "Sales",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "22",
+    "task": "Full PSW Supplier",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "23",
+    "task": "Systematic release to supplier",
+    "dept": "PPS/LOG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "24",
+    "task": "SOP supplier",
+    "dept": "PPS/LOG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "25",
+    "task": "Date of first batch arrival",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "26",
+    "task": "SOP BOSCH",
+    "dept": "CFT",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "27",
+    "task": "ECR close ST48",
+    "dept": "CFT",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   }
+  ]
+ },
+ {
+  "area": "PPS",
+  "location": "SlpP",
+  "category": "ECR Standard",
+  "title": "3E10153663 (Rotax 46mm)",
+  "sponsor": "Carreira Leandro (M/PPS-CC-NA)",
+  "responsible": "Lucero Villegas Toranzo",
+  "statusOverview": "Green",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "Business case available",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "2",
+    "task": "KO meeting",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "3",
+    "task": "TR meeting",
+    "dept": "ChR",
+    "start": "2026-04-10",
+    "finish": "2026-04-10",
+    "status": "Done"
+   },
+   {
+    "no": "4",
+    "task": "RACE submission for new PN if applies",
+    "dept": "ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "5",
+    "task": "Customer acceptance of the ECR",
+    "dept": "PJM/Sales",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "6",
+    "task": "PTR parts available",
+    "dept": "PPS",
+    "start": "2026-09-25",
+    "finish": "2026-10-16",
+    "status": "Plan"
+   },
+   {
+    "no": "7",
+    "task": "First part of MP206 completion",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "8",
+    "task": "Counter measurement",
+    "dept": "PUQ",
+    "start": "2026-01-30",
+    "finish": "2026-04-10",
+    "status": "Done"
+   },
+   {
+    "no": "9",
+    "task": "Counter measurement end date",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "10",
+    "task": "DL review and release if applies",
+    "dept": "PUQ/ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "11",
+    "task": "PTR Date",
+    "dept": "LOG/ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "12",
+    "task": "PV start date",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "13",
+    "task": "PV end date",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "14",
+    "task": "PTR report",
+    "dept": "MFE/ENG/QMM",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "14.1",
+    "task": "PV report",
+    "dept": "MFE/ENG/QMM",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "15",
+    "task": "Interim PSW",
+    "dept": "ChR/PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "16",
+    "task": "Customer validation completion",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "17",
+    "task": "Final Review presentation",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "18",
+    "task": "New PN release and available in SAP",
+    "dept": "TEF6",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "19",
+    "task": "ECR ST40",
+    "dept": "ChR/Lcoal Change Co",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "20",
+    "task": "Customer approval (full PSW)",
+    "dept": "QMM",
+    "start": "2026-02-13",
+    "finish": "2026-10-30",
+    "status": "On going"
+   },
+   {
+    "no": "21",
+    "task": "PO Update",
+    "dept": "Sales",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "22",
+    "task": "Full PSW Supplier",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "23",
+    "task": "Systematic release to supplier",
+    "dept": "PPS/LOG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "24",
+    "task": "SOP supplier",
+    "dept": "PPS/LOG",
+    "start": "2026-08-14",
+    "finish": "2026-08-14",
+    "status": "Plan"
+   },
+   {
+    "no": "25",
+    "task": "Date of first batch arrival",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "26",
+    "task": "SOP BOSCH",
+    "dept": "CFT",
+    "start": "2026-11-06",
+    "finish": "2026-11-06",
+    "status": "Plan"
+   },
+   {
+    "no": "27",
+    "task": "ECR close ST48",
+    "dept": "CFT",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   }
+  ]
+ },
+ {
+  "area": "ENG",
+  "location": "SlpP",
+  "category": "CIP Project",
+  "title": "Ford MPC OEE Optimization",
+  "sponsor": "Gonzalez Bravo Jesus Ivan (PS-CC/ENG2-MX)",
+  "responsible": "Rodolfo Lopez Halun",
+  "statusOverview": "Green",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "New Set up standard alignment",
+    "dept": "CFT",
+    "start": "2025-10-01",
+    "finish": "2025-11-04",
+    "status": "Done"
+   },
+   {
+    "no": "2",
+    "task": "Technical Evaluation of new standard",
+    "dept": "MFE",
+    "start": "2025-11-05",
+    "finish": "2025-11-25",
+    "status": "Done"
+   },
+   {
+    "no": "3",
+    "task": "Change of documentation (set up release format)",
+    "dept": "ENG",
+    "start": "2025-11-26",
+    "finish": "2025-12-17",
+    "status": "Done"
+   },
+   {
+    "no": "4",
+    "task": "New Standard implementation",
+    "dept": "ENG",
+    "start": "2026-05-14",
+    "finish": "2026-09-18",
+    "status": "On going"
+   },
+   {
+    "no": "5",
+    "task": "Evaluation / Feedback of new standard",
+    "dept": "CFT",
+    "start": "2026-09-21",
+    "finish": "2026-11-02",
+    "status": "Plan"
+   },
+   {
+    "no": "6",
+    "task": "Change over concept training",
+    "dept": "ENG",
+    "start": "2026-11-03",
+    "finish": "2026-11-24",
+    "status": "Plan"
+   },
+   {
+    "no": "7",
+    "task": "Lessons Learned sharing",
+    "dept": "ENG",
+    "start": "2026-11-25",
+    "finish": "2026-12-01",
+    "status": "Plan"
+   }
+  ]
+ },
+ {
+  "area": "ENG",
+  "location": "SlpP",
+  "category": "ECR Standard",
+  "title": "T6 - NLP Airflow, stopper design change",
+  "sponsor": "Gonzalez Bravo Jesus Ivan (PS-CC/ENG2-MX)",
+  "responsible": "Rodolfo Lopez Halun",
+  "statusOverview": "Green",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "Business case available",
+    "dept": "ENG + PPS",
+    "start": "2026-03-11",
+    "finish": "2026-06-03",
+    "status": "On going"
+   },
+   {
+    "no": "2",
+    "task": "KO meeting",
+    "dept": "ENG",
+    "start": "2026-05-20",
+    "finish": "2026-05-27",
+    "status": "Done"
+   },
+   {
+    "no": "3",
+    "task": "TR meeting",
+    "dept": "ENG",
+    "start": "2026-05-20",
+    "finish": "2026-05-27",
+    "status": "Done"
+   },
+   {
+    "no": "4",
+    "task": "RACE submission for new PN if applies",
+    "dept": "NA",
+    "start": null,
+    "finish": null,
+    "status": "Plan"
+   },
+   {
+    "no": "5",
+    "task": "Customer acceptance of the ECR",
+    "dept": "PJM + ENG",
+    "start": "2026-05-27",
+    "finish": "2026-06-24",
+    "status": "On going"
+   },
+   {
+    "no": "6",
+    "task": "PTR parts available",
+    "dept": "LOG + PPS",
+    "start": "2026-05-06",
+    "finish": "2026-06-10",
+    "status": "On going"
+   },
+   {
+    "no": "7",
+    "task": "First part of MP206 completion",
+    "dept": "ENG + MFE",
+    "start": "2026-05-20",
+    "finish": "2026-06-10",
+    "status": "On going"
+   },
+   {
+    "no": "8",
+    "task": "Counter measurement start date",
+    "dept": "NA",
+    "start": null,
+    "finish": null,
+    "status": "Plan"
+   },
+   {
+    "no": "9",
+    "task": "Counter measurement end date",
+    "dept": "PUQ",
+    "start": "2026-06-10",
+    "finish": "2026-07-01",
+    "status": "Plan"
+   },
+   {
+    "no": "10",
+    "task": "DL review and release if applies",
+    "dept": "ENG + QUA",
+    "start": "2026-07-01",
+    "finish": "2026-07-08",
+    "status": "Plan"
+   },
+   {
+    "no": "11",
+    "task": "PTR Date",
+    "dept": "ENG + MFE",
+    "start": "2026-07-08",
+    "finish": "2026-07-15",
+    "status": "Plan"
+   },
+   {
+    "no": "12",
+    "task": "PV start date",
+    "dept": "ENG + MFE",
+    "start": "2026-07-15",
+    "finish": "2026-07-22",
+    "status": "Plan"
+   },
+   {
+    "no": "13",
+    "task": "PV end date",
+    "dept": "ENG + MFE",
+    "start": "2026-07-22",
+    "finish": "2026-08-19",
+    "status": "Plan"
+   },
+   {
+    "no": "14",
+    "task": "PTR and PV report",
+    "dept": "ENG",
+    "start": "2026-08-19",
+    "finish": "2026-08-26",
+    "status": "Plan"
+   },
+   {
+    "no": "15",
+    "task": "Interim PSW",
+    "dept": "ENG + QUA",
+    "start": "2026-08-26",
+    "finish": "2026-09-02",
+    "status": "Plan"
+   },
+   {
+    "no": "16",
+    "task": "Customer validation completion",
+    "dept": "PJM + ENG",
+    "start": "2026-09-02",
+    "finish": "2026-09-23",
+    "status": "Plan"
+   },
+   {
+    "no": "17",
+    "task": "Final Review presentation",
+    "dept": "ENG + PJM",
+    "start": "2026-09-23",
+    "finish": "2026-09-30",
+    "status": "Plan"
+   },
+   {
+    "no": "18",
+    "task": "New PN release and available in SAP",
+    "dept": "LOG + PPS",
+    "start": "2026-09-30",
+    "finish": "2026-10-07",
+    "status": "Plan"
+   },
+   {
+    "no": "19",
+    "task": "ECR ST40",
+    "dept": "ENG",
+    "start": "2026-10-07",
+    "finish": "2026-10-14",
+    "status": "Plan"
+   },
+   {
+    "no": "20",
+    "task": "Customer approval (full PSW)",
+    "dept": "PJM + QUA",
+    "start": "2026-10-14",
+    "finish": "2026-10-28",
+    "status": "Plan"
+   },
+   {
+    "no": "21",
+    "task": "PO Update",
+    "dept": "LOG + PPS",
+    "start": "2026-10-28",
+    "finish": "2026-11-04",
+    "status": "Plan"
+   },
+   {
+    "no": "22",
+    "task": "Full PSW Supplier",
+    "dept": "PPS + QUA",
+    "start": "2026-11-04",
+    "finish": "2026-11-18",
+    "status": "Plan"
+   },
+   {
+    "no": "23",
+    "task": "Systematic release to supplier",
+    "dept": "PPS",
+    "start": "2026-11-18",
+    "finish": "2026-11-25",
+    "status": "Plan"
+   },
+   {
+    "no": "24",
+    "task": "SOP supplier",
+    "dept": "PPS + MFE",
+    "start": "2026-11-25",
+    "finish": "2026-12-09",
+    "status": "Plan"
+   },
+   {
+    "no": "25",
+    "task": "Date of first batch arrival",
+    "dept": "LOG",
+    "start": "2026-12-09",
+    "finish": "2026-12-16",
+    "status": "Plan"
+   },
+   {
+    "no": "26",
+    "task": "SOP BOSCH",
+    "dept": "MFE + LOG",
+    "start": "2026-12-16",
+    "finish": "2026-12-23",
+    "status": "Plan"
+   },
+   {
+    "no": "27",
+    "task": "ECR close ST48",
+    "dept": "ENG",
+    "start": "2026-12-23",
+    "finish": "2026-12-30",
+    "status": "Plan"
+   }
+  ]
+ },
+ {
+  "area": "ENG",
+  "location": "SlpP",
+  "category": "ECR Standard",
+  "title": "ECR: 3E10180125: Housing Order specification update - STLA T4 Evo DV-E 5.2 FL",
+  "sponsor": "Gonzalez Bravo Jesus Ivan (PS-CC/ENG2-MX)",
+  "responsible": "Teofilo Flores Gonzalez",
+  "statusOverview": "Green",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "Business case available",
+    "dept": "ENG + PPS + PUQ",
+    "start": "2026-03-02",
+    "finish": "2026-03-27",
+    "status": "Done"
+   },
+   {
+    "no": "2",
+    "task": "KO meeting",
+    "dept": "ENG",
+    "start": "2026-03-30",
+    "finish": "2026-03-04",
+    "status": "Done"
+   },
+   {
+    "no": "3",
+    "task": "TR meeting",
+    "dept": "ENG",
+    "start": "2026-03-30",
+    "finish": "2026-04-03",
+    "status": "Done"
+   },
+   {
+    "no": "4",
+    "task": "Customer acceptance of the ECR",
+    "dept": "PJM + ENG",
+    "start": "2026-04-05",
+    "finish": "2026-06-05",
+    "status": "On going"
+   },
+   {
+    "no": "5",
+    "task": "Parameters homologation",
+    "dept": "ENG + SUP + PUQ",
+    "start": "2026-06-08",
+    "finish": "2026-07-03",
+    "status": "Plan"
+   },
+   {
+    "no": "6",
+    "task": "PTR long trial for data evaluation",
+    "dept": "ENG + SUP + PUQ",
+    "start": "2026-07-06",
+    "finish": "2026-07-17",
+    "status": "Plan"
+   },
+   {
+    "no": "7",
+    "task": "PTR data evaluation",
+    "dept": "ENG + SUP + PUQ",
+    "start": "2026-07-20",
+    "finish": "2026-07-31",
+    "status": "Plan"
+   },
+   {
+    "no": "8",
+    "task": "Trial report",
+    "dept": "ENG + SUP + PUQ",
+    "start": "2026-08-03",
+    "finish": "2026-08-07",
+    "status": "Plan"
+   },
+   {
+    "no": "9",
+    "task": "Full PSW",
+    "dept": "ENG + PUQ + PPS",
+    "start": "2026-08-10",
+    "finish": "2026-08-28",
+    "status": "Plan"
+   },
+   {
+    "no": "10",
+    "task": "Final Review presentation",
+    "dept": "ENG + PJM",
+    "start": "2026-09-01",
+    "finish": "2026-09-11",
+    "status": "Plan"
+   },
+   {
+    "no": "11",
+    "task": "ECR ST40 (Order spec release in BOM)",
+    "dept": "ENG + DOC",
+    "start": "2026-09-14",
+    "finish": "2026-09-25",
+    "status": "Plan"
+   },
+   {
+    "no": "12",
+    "task": "SOP supplier",
+    "dept": "PPS + PUQ + SUP",
+    "start": "2026-09-28",
+    "finish": "2026-09-28",
+    "status": "Plan"
+   },
+   {
+    "no": "13",
+    "task": "ECR close ST48",
+    "dept": "ENG",
+    "start": "2026-09-29",
+    "finish": "2026-10-09",
+    "status": "Plan"
+   }
+  ]
+ },
+ {
+  "area": "ENG",
+  "location": "SlpP",
+  "category": "ECR Standard",
+  "title": "ECR: 3E10134551: DV-E 5NC Overview List + Housing DRWs update",
+  "sponsor": "Gonzalez Bravo Jesus Ivan (PS-CC/ENG2-MX)",
+  "responsible": "Diana Gabriela Cervantes Marin",
+  "statusOverview": "Green",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "Business case available",
+    "dept": "(ChR)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "2",
+    "task": "KO meeting",
+    "dept": "(ChR)",
+    "start": "2025-04-08",
+    "finish": "2025-04-08",
+    "status": "Done"
+   },
+   {
+    "no": "3",
+    "task": "TR meeting",
+    "dept": "(ChR)",
+    "start": "2025-04-12",
+    "finish": "2025-04-12",
+    "status": "Done"
+   },
+   {
+    "no": "4",
+    "task": "RACE submission for new PN if applies",
+    "dept": "(ENG)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "5",
+    "task": "Customer acceptance of the ECR",
+    "dept": "(PJM/Sales)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "6",
+    "task": "PTR parts available",
+    "dept": "(PPS)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "7",
+    "task": "First part of MP206 completion",
+    "dept": "(ChR)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "8",
+    "task": "Counter measurement start date",
+    "dept": "(PUQ)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "9",
+    "task": "Counter measurement end date",
+    "dept": "(PUQ)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "10",
+    "task": "DL review and release if applies",
+    "dept": "(PUQ/ChR)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "11",
+    "task": "PTR Date",
+    "dept": "(LOG/ChR)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "12",
+    "task": "PV start date",
+    "dept": "(ChR/ENG)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "13",
+    "task": "PV end date",
+    "dept": "(ChR/ENG)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "14",
+    "task": "PTR and PV report",
+    "dept": "(MFE/ENG/QMM)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "15",
+    "task": "Interim PSW",
+    "dept": "(ChR/PUQ)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "16",
+    "task": "Customer validation completion",
+    "dept": "(ChR/ENG)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "17",
+    "task": "Final Review presentation",
+    "dept": "(ChR)",
+    "start": "2025-05-12",
+    "finish": "2025-05-12",
+    "status": "Done"
+   },
+   {
+    "no": "18",
+    "task": "New PN release and available in SAP",
+    "dept": "(TEF6)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "19",
+    "task": "ECR ST40",
+    "dept": "(ChR/Lcoal Change Co)",
+    "start": "2026-06-30",
+    "finish": "2026-06-30",
+    "status": "Plan"
+   },
+   {
+    "no": "20",
+    "task": "Customer approval (full PSW)",
+    "dept": "(QMM)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "21",
+    "task": "PO Update",
+    "dept": "(Sales)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "22",
+    "task": "Full PSW Supplier",
+    "dept": "(PUQ)",
+    "start": "2026-01-27",
+    "finish": "2026-06-30",
+    "status": "Plan"
+   },
+   {
+    "no": "23",
+    "task": "Systematic release to supplier",
+    "dept": "(PPS/LOG)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "24",
+    "task": "SOP supplier",
+    "dept": "(PPS/LOG)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "25",
+    "task": "Date of first batch arrival",
+    "dept": "(ChR)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "26",
+    "task": "SOP BOSCH",
+    "dept": "(CFT)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "27",
+    "task": "ECR close ST48",
+    "dept": "(CFT)",
+    "start": "2026-10-07",
+    "finish": "2026-10-07",
+    "status": "Plan"
+   }
+  ]
+ },
+ {
+  "area": "ENG",
+  "location": "SlpP",
+  "category": "ECR Standard",
+  "title": "ECR: BRP New Inlet design",
+  "sponsor": "Gonzalez Bravo Jesus Ivan (PS-CC/ENG2-MX)",
+  "responsible": "Teofilo Flores Gonzalez",
+  "statusOverview": "Yellow",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "Business case available",
+    "dept": "CFT",
+    "start": "2026-05-14",
+    "finish": "2026-06-01",
+    "status": "On going"
+   },
+   {
+    "no": "2",
+    "task": "KO meeting",
+    "dept": "(ChR)",
+    "start": "2026-06-04",
+    "finish": "2026-06-18",
+    "status": "Plan"
+   },
+   {
+    "no": "3",
+    "task": "TR meeting",
+    "dept": "(ChR)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "4",
+    "task": "RACE submission for new PN if applies",
+    "dept": "(ENG)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "5",
+    "task": "Customer acceptance of the ECR",
+    "dept": "(PJM/Sales)",
+    "start": "2026-06-18",
+    "finish": "2026-06-25",
+    "status": "Plan"
+   },
+   {
+    "no": "6",
+    "task": "PTR parts available",
+    "dept": "(PPS)",
+    "start": "2026-10-05",
+    "finish": "2026-10-05",
+    "status": "Plan"
+   },
+   {
+    "no": "7",
+    "task": "First part of MP206 completion",
+    "dept": "(ChR)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "8",
+    "task": "Counter measurement start date",
+    "dept": "(PUQ)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "9",
+    "task": "Counter measurement end date",
+    "dept": "(PUQ)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "10",
+    "task": "DL review and release if applies",
+    "dept": "(PUQ/ChR)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "11",
+    "task": "PTR Date",
+    "dept": "(LOG/ChR)",
+    "start": "2026-10-08",
+    "finish": "2026-10-08",
+    "status": "Plan"
+   },
+   {
+    "no": "12",
+    "task": "PV start date",
+    "dept": "(ChR/ENG)",
+    "start": "2026-10-14",
+    "finish": "2026-10-14",
+    "status": "Plan"
+   },
+   {
+    "no": "13",
+    "task": "PV end date",
+    "dept": "(ChR/ENG)",
+    "start": "2027-01-20",
+    "finish": "2027-01-20",
+    "status": "Plan"
+   },
+   {
+    "no": "14",
+    "task": "PTR and PV report",
+    "dept": "(MFE/ENG/QMM)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "15",
+    "task": "Interim PSW",
+    "dept": "(ChR/PUQ)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "16",
+    "task": "Customer validation completion",
+    "dept": "(ChR/ENG)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "17",
+    "task": "Final Review presentation",
+    "dept": "(ChR)",
+    "start": "2027-01-28",
+    "finish": "2027-01-28",
+    "status": "Plan"
+   },
+   {
+    "no": "18",
+    "task": "New PN release and available in SAP",
+    "dept": "(TEF6)",
+    "start": "2027-02-03",
+    "finish": "2027-02-03",
+    "status": "Plan"
+   },
+   {
+    "no": "19",
+    "task": "ECR ST40",
+    "dept": "(ChR/Lcoal Change Co)",
+    "start": "2027-02-03",
+    "finish": "2027-02-03",
+    "status": "Plan"
+   },
+   {
+    "no": "20",
+    "task": "Customer approval (full PSW)",
+    "dept": "(QMM)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "21",
+    "task": "PO Update",
+    "dept": "(Sales)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "22",
+    "task": "Full PSW Supplier",
+    "dept": "(PUQ)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "23",
+    "task": "Systematic release to supplier",
+    "dept": "(PPS/LOG)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "24",
+    "task": "SOP supplier",
+    "dept": "(PPS/LOG)",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "25",
+    "task": "Date of first batch arrival",
+    "dept": "(ChR)",
+    "start": "2027-02-10",
+    "finish": "2027-02-10",
+    "status": "Plan"
+   },
+   {
+    "no": "26",
+    "task": "SOP BOSCH",
+    "dept": "(CFT)",
+    "start": "2027-02-10",
+    "finish": "2027-02-10",
+    "status": "Plan"
+   },
+   {
+    "no": "27",
+    "task": "ECR close ST48",
+    "dept": "(CFT)",
+    "start": "2027-02-10",
+    "finish": "2027-02-10",
+    "status": "Plan"
+   }
+  ]
+ },
+ {
+  "area": "MSE",
+  "location": "SlpP",
+  "category": "MSE Line Project",
+  "title": "Flexline Deployment",
+  "sponsor": "Kargi Furkan (SlpP/VSL3)",
+  "responsible": "Guillermo Adrian Ornelas Robledo",
+  "statusOverview": "Green",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "Project configuration",
+    "dept": "PJM",
+    "start": "2025-08-15",
+    "finish": "2025-12-04",
+    "status": "Done"
+   },
+   {
+    "no": "2",
+    "task": "QG0",
+    "dept": "PJM",
+    "start": "2026-02-06",
+    "finish": "2026-02-06",
+    "status": "Done"
+   },
+   {
+    "no": "3",
+    "task": "QG1",
+    "dept": "PJM",
+    "start": "2026-04-16",
+    "finish": "2026-04-16",
+    "status": "Done"
+   },
+   {
+    "no": "4",
+    "task": "QG4",
+    "dept": "PJM",
+    "start": "2027-04-08",
+    "finish": "2027-04-08",
+    "status": "Plan"
+   },
+   {
+    "no": "5",
+    "task": "PIA-Workshop",
+    "dept": "PJM",
+    "start": "2025-10-06",
+    "finish": "2025-10-17",
+    "status": "Done"
+   },
+   {
+    "no": "6",
+    "task": "PGL Assessment III",
+    "dept": "CFT",
+    "start": "2026-01-09",
+    "finish": "2026-01-09",
+    "status": "Done"
+   },
+   {
+    "no": "7",
+    "task": "Release BPS for MAR",
+    "dept": "BPS Leadplant",
+    "start": "2026-01-14",
+    "finish": "2026-02-06",
+    "status": "Done"
+   },
+   {
+    "no": "8",
+    "task": "MAR approved",
+    "dept": "MFE SlpP",
+    "start": "2026-02-20",
+    "finish": "2026-02-20",
+    "status": "Done"
+   },
+   {
+    "no": "9",
+    "task": "Kick-off ECR-Team",
+    "dept": "QMM SlpP",
+    "start": "2026-02-02",
+    "finish": "2026-02-02",
+    "status": "Done"
+   },
+   {
+    "no": "10",
+    "task": "Customer negotiation",
+    "dept": "QMM SlpP",
+    "start": "2026-04-17",
+    "finish": "2026-05-30",
+    "status": "Done"
+   },
+   {
+    "no": "11",
+    "task": "Team Review",
+    "dept": "CFT",
+    "start": "2026-05-07",
+    "finish": "2026-05-07",
+    "status": "Done"
+   },
+   {
+    "no": "12",
+    "task": "Design release",
+    "dept": "BMG",
+    "start": "2026-06-23",
+    "finish": "2026-06-23",
+    "status": "Plan"
+   },
+   {
+    "no": "13",
+    "task": "Training @ BMG6",
+    "dept": "BMG",
+    "start": "2026-11-09",
+    "finish": "2026-12-11",
+    "status": "Plan"
+   },
+   {
+    "no": "14",
+    "task": "Pre-acceptance @ supplier site",
+    "dept": "MFE SlpP",
+    "start": "2026-11-23",
+    "finish": "2026-12-11",
+    "status": "Plan"
+   },
+   {
+    "no": "15",
+    "task": "Dismantling",
+    "dept": "BMG",
+    "start": "2026-12-14",
+    "finish": "2026-12-22",
+    "status": "Plan"
+   },
+   {
+    "no": "16",
+    "task": "Transport untill arrival in SlpP",
+    "dept": "MFE SlpP",
+    "start": "2026-12-22",
+    "finish": "2027-02-11",
+    "status": "Plan"
+   },
+   {
+    "no": "17",
+    "task": "Area & infrastructure @ SlpP",
+    "dept": "MFE SlpP",
+    "start": "2026-06-23",
+    "finish": "2026-12-20",
+    "status": "Plan"
+   },
+   {
+    "no": "18",
+    "task": "SlpP area ready",
+    "dept": "MFE SlpP",
+    "start": "2026-12-20",
+    "finish": "2026-12-20",
+    "status": "Plan"
+   },
+   {
+    "no": "19",
+    "task": "Commissioning",
+    "dept": "BMG",
+    "start": "2027-02-12",
+    "finish": "2027-03-26",
+    "status": "Plan"
+   },
+   {
+    "no": "20",
+    "task": "Final acceptance",
+    "dept": "MFE SlpP",
+    "start": "2027-03-26",
+    "finish": "2027-04-09",
+    "status": "Plan"
+   },
+   {
+    "no": "21",
+    "task": "Training @ SlpP",
+    "dept": "BMG",
+    "start": "2027-02-12",
+    "finish": "2027-04-09",
+    "status": "Plan"
+   },
+   {
+    "no": "22",
+    "task": "PTR / 0-series",
+    "dept": "MFE SlpP",
+    "start": "2027-04-09",
+    "finish": "2027-04-23",
+    "status": "Plan"
+   },
+   {
+    "no": "23",
+    "task": "P-FMEA",
+    "dept": "MFE SlpP",
+    "start": "2026-10-01",
+    "finish": "2026-10-01",
+    "status": "Plan"
+   },
+   {
+    "no": "24",
+    "task": "CP",
+    "dept": "MFE SlpP",
+    "start": "2026-11-18",
+    "finish": "2026-11-18",
+    "status": "Plan"
+   },
+   {
+    "no": "25",
+    "task": "MPF sheet",
+    "dept": "MFE SlpP",
+    "start": "2026-05-08",
+    "finish": "2026-05-08",
+    "status": "Done"
+   },
+   {
+    "no": "26",
+    "task": "Safe launch plan",
+    "dept": "QMM SlpP",
+    "start": "2026-05-22",
+    "finish": "2026-05-22",
+    "status": "Done"
+   },
+   {
+    "no": "27",
+    "task": "Parts tracking list",
+    "dept": "MFE SlpP",
+    "start": "2026-04-17",
+    "finish": "2026-04-17",
+    "status": "Done"
+   },
+   {
+    "no": "28",
+    "task": "Production release acc. MP-206.01",
+    "dept": "MFE SlpP",
+    "start": "2027-04-09",
+    "finish": "2027-05-01",
+    "status": "Plan"
+   },
+   {
+    "no": "29",
+    "task": "int. SOP",
+    "dept": "MFE SlpP",
+    "start": "2027-05-02",
+    "finish": "2027-05-02",
+    "status": "Plan"
+   },
+   {
+    "no": "30",
+    "task": "Measurement acc. Offer drawing",
+    "dept": "MFE SlpP",
+    "start": "2027-04-23",
+    "finish": "2027-05-07",
+    "status": "Plan"
+   },
+   {
+    "no": "31",
+    "task": "PPAP documentation",
+    "dept": "QMM SlpP",
+    "start": "2027-04-23",
+    "finish": "2027-05-07",
+    "status": "Plan"
+   },
+   {
+    "no": "32",
+    "task": "PV testing (more detailed description after commitment about strategy)",
+    "dept": "ENG",
+    "start": "2027-04-23",
+    "finish": "2027-06-04",
+    "status": "Plan"
+   },
+   {
+    "no": "33",
+    "task": "PPAP to customer",
+    "dept": "QMM SlpP",
+    "start": "2027-06-05",
+    "finish": "2027-06-05",
+    "status": "Plan"
+   },
+   {
+    "no": "34",
+    "task": "Customer release phase",
+    "dept": "MFE SlpP",
+    "start": "2027-06-05",
+    "finish": "2027-07-03",
+    "status": "Plan"
+   },
+   {
+    "no": "35",
+    "task": "ext. SOP",
+    "dept": "MFE SlpP",
+    "start": "2027-07-03",
+    "finish": "2027-07-03",
+    "status": "Plan"
+   },
+   {
+    "no": "36",
+    "task": "Safe launch incl. Ramp up support",
+    "dept": "QMM SlpP",
+    "start": "2027-07-03",
+    "finish": "2027-07-31",
+    "status": "Plan"
+   }
+  ]
+ },
+ {
+  "area": "MSE",
+  "location": "SlpP",
+  "category": "Relocation",
+  "title": "5NC relocation",
+  "sponsor": "Kargi Furkan (SlpP/VSL3)",
+  "responsible": "Guillermo Adrian Ornelas Robledo",
+  "statusOverview": "Green",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "Lines Comparison",
+    "dept": "CFT",
+    "start": "2025-07-01",
+    "finish": "2025-09-30",
+    "status": "Done"
+   },
+   {
+    "no": "2",
+    "task": "Business continuity of SlpP line (Spare parts)",
+    "dept": "MFE SlpP",
+    "start": "2025-10-01",
+    "finish": "2026-03-31",
+    "status": "Done"
+   },
+   {
+    "no": "3",
+    "task": "Kick off",
+    "dept": "PJM_relocation",
+    "start": "2026-04-01",
+    "finish": "2026-06-30",
+    "status": "On going"
+   },
+   {
+    "no": "4",
+    "task": "TEF design and refurbishment",
+    "dept": "TEF NuP",
+    "start": "2026-07-01",
+    "finish": "2027-06-30",
+    "status": "Plan"
+   },
+   {
+    "no": "5",
+    "task": "Integration of SlpP types in Relocated Line",
+    "dept": "MFE SlpP / MFE NuP",
+    "start": "2026-04-01",
+    "finish": "2026-09-30",
+    "status": "On going"
+   },
+   {
+    "no": "6",
+    "task": "Prepare layout",
+    "dept": "MFE SlpP",
+    "start": "2026-10-01",
+    "finish": "2027-04-01",
+    "status": "Plan"
+   },
+   {
+    "no": "7",
+    "task": "Stock building at Origin",
+    "dept": "MFE NuP",
+    "start": "2027-07-01",
+    "finish": "2027-09-30",
+    "status": "Plan"
+   },
+   {
+    "no": "8",
+    "task": "Shipping to SlpP",
+    "dept": "MFE NuP",
+    "start": "2027-10-01",
+    "finish": "2027-12-31",
+    "status": "Plan"
+   },
+   {
+    "no": "9",
+    "task": "Re-assembly",
+    "dept": "MFE SlpP / MFE NuP",
+    "start": "2028-01-01",
+    "finish": "2028-03-31",
+    "status": "Plan"
+   },
+   {
+    "no": "10",
+    "task": "Internal Release",
+    "dept": "MFE SlpP",
+    "start": "2028-04-01",
+    "finish": "2028-09-30",
+    "status": "Plan"
+   },
+   {
+    "no": "11",
+    "task": "Customer Release",
+    "dept": "MFE SlpP / QMM SlpP / QMM NuP",
+    "start": "2028-07-01",
+    "finish": "2028-12-31",
+    "status": "Plan"
+   }
+  ]
+ },
+ {
+  "area": "MSE",
+  "location": "SlpP",
+  "category": "Subassembly Consolidation",
+  "title": "Subassembly Consolidation",
+  "sponsor": "Kargi Furkan (SlpP/VSL3)",
+  "responsible": "Guillermo Adrian Ornelas Robledo",
+  "statusOverview": "Green",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "Area ready to receive the stations",
+    "dept": "BPS",
+    "start": "2026-01-16",
+    "finish": "2026-01-16",
+    "status": "Done"
+   },
+   {
+    "no": "2",
+    "task": "Kick off",
+    "dept": "BPS",
+    "start": "2026-01-19",
+    "finish": "2026-01-19",
+    "status": "Done"
+   },
+   {
+    "no": "3",
+    "task": "Move Molding Shaft",
+    "dept": "BPS",
+    "start": "2026-07-10",
+    "finish": "2026-07-10",
+    "status": "Plan"
+   },
+   {
+    "no": "4",
+    "task": "Install Coupling Unit (ST37) New",
+    "dept": "BPS",
+    "start": "2026-01-26",
+    "finish": "2026-01-26",
+    "status": "Done"
+   },
+   {
+    "no": "5",
+    "task": "Move Coupling Unit (ST37) Current",
+    "dept": "BPS",
+    "start": "2026-08-17",
+    "finish": "2026-08-17",
+    "status": "Plan"
+   },
+   {
+    "no": "6",
+    "task": "Move Cover Ramming (St65)",
+    "dept": "BPS",
+    "start": "2026-09-30",
+    "finish": "2026-09-30",
+    "status": "Plan"
+   },
+   {
+    "no": "7",
+    "task": "Move Shaft C-Clip",
+    "dept": "BPS",
+    "start": "2026-11-20",
+    "finish": "2026-11-20",
+    "status": "Plan"
+   },
+   {
+    "no": "8",
+    "task": "Move Manual Coupling Unit",
+    "dept": "BPS",
+    "start": "2026-11-20",
+    "finish": "2026-11-20",
+    "status": "Plan"
+   }
+  ]
+ },
+ {
+  "area": "ENG",
+  "location": "TlP",
+  "category": "ECR Standard",
+  "title": "ECR: 3E10128035 BASF material discontinuation",
+  "sponsor": "Gonzalez Bravo Jesus Ivan (PS-CC/ENG2-MX)",
+  "responsible": "Alejandro Ceballos Sanchez",
+  "statusOverview": "Yellow",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "Business case available",
+    "dept": "ChR",
+    "start": "2025-01-09",
+    "finish": "2025-01-16",
+    "status": "Done"
+   },
+   {
+    "no": "2",
+    "task": "KO meeting",
+    "dept": "ChR",
+    "start": "2025-04-25",
+    "finish": "2025-05-02",
+    "status": "Done"
+   },
+   {
+    "no": "3",
+    "task": "TR meeting",
+    "dept": "ChR",
+    "start": "2025-04-28",
+    "finish": "2025-05-05",
+    "status": "Done"
+   },
+   {
+    "no": "4",
+    "task": "RACE submission for new PN if applies",
+    "dept": "ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "5",
+    "task": "Customer acceptance of the ECR",
+    "dept": "PJM/Sales",
+    "start": "2025-02-07",
+    "finish": "2025-02-07",
+    "status": "Done"
+   },
+   {
+    "no": "6",
+    "task": "PTR parts available",
+    "dept": "PPS",
+    "start": "2025-04-17",
+    "finish": "2025-04-17",
+    "status": "Done"
+   },
+   {
+    "no": "7",
+    "task": "First part of MP206 completion",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "8",
+    "task": "Counter measurement start date",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "9",
+    "task": "Counter measurement end date",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "10",
+    "task": "DL review and release if applies",
+    "dept": "PUQ/ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "11",
+    "task": "PTR Date",
+    "dept": "LOG/ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "12",
+    "task": "PV start date",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "13",
+    "task": "PV end date",
+    "dept": "ChR/ENG",
+    "start": "2025-09-26",
+    "finish": "2025-09-26",
+    "status": "Done"
+   },
+   {
+    "no": "14",
+    "task": "PTR and PV report",
+    "dept": "MFE/ENG/QMM",
+    "start": "2025-09-26",
+    "finish": "2025-09-26",
+    "status": "Done"
+   },
+   {
+    "no": "15",
+    "task": "Interim PSW",
+    "dept": "ChR/PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "16",
+    "task": "Customer validation completion",
+    "dept": "ChR/ENG",
+    "start": "2025-09-26",
+    "finish": "2025-09-26",
+    "status": "Done"
+   },
+   {
+    "no": "17",
+    "task": "Final Review presentation",
+    "dept": "ChR",
+    "start": "2026-02-13",
+    "finish": "2026-04-13",
+    "status": "Done"
+   },
+   {
+    "no": "18",
+    "task": "New PN release and available in SAP",
+    "dept": "TEF6",
+    "start": "2024-12-13",
+    "finish": "2024-12-13",
+    "status": "Done"
+   },
+   {
+    "no": "19",
+    "task": "ECR ST40",
+    "dept": "ChR/Lcoal Change Co",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "20",
+    "task": "Customer approval full PSW",
+    "dept": "QMM",
+    "start": "2026-03-27",
+    "finish": "2026-04-24",
+    "status": "Done"
+   },
+   {
+    "no": "21",
+    "task": "PO Update",
+    "dept": "Sales",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "22",
+    "task": "Full PSW Supplier",
+    "dept": "PUQ",
+    "start": "2025-04-22",
+    "finish": "2025-04-22",
+    "status": "Done"
+   },
+   {
+    "no": "23",
+    "task": "Systematic release to supplier",
+    "dept": "PPS/LOG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "24",
+    "task": "SOP supplier",
+    "dept": "PPS/LOG",
+    "start": "2026-05-14",
+    "finish": "2026-05-14",
+    "status": "Done"
+   },
+   {
+    "no": "25",
+    "task": "Date of first batch arrival",
+    "dept": "ChR",
+    "start": "2026-05-22",
+    "finish": "2026-05-22",
+    "status": "Done"
+   },
+   {
+    "no": "26",
+    "task": "SOP BOSCH",
+    "dept": "CFT",
+    "start": "2026-05-22",
+    "finish": "2026-05-22",
+    "status": "Done"
+   },
+   {
+    "no": "27",
+    "task": "ECR close ST48",
+    "dept": "CFT",
+    "start": "2026-05-29",
+    "finish": "2026-05-29",
+    "status": "Done"
+   }
+  ]
+ },
+ {
+  "area": "ENG",
+  "location": "TlP",
+  "category": "ECR Standard",
+  "title": "ECR: 3E10141881 002KP0363 change to 158742000F",
+  "sponsor": "Gonzalez Bravo Jesus Ivan (PS-CC/ENG2-MX)",
+  "responsible": "Eric Maximiliano Marmolejo Ortiz",
+  "statusOverview": "Red",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "Business case available",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "2",
+    "task": "KO meeting",
+    "dept": "ChR",
+    "start": "2025-01-06",
+    "finish": "2025-01-17",
+    "status": "Done"
+   },
+   {
+    "no": "3",
+    "task": "TR meeting",
+    "dept": "ChR",
+    "start": "2025-01-06",
+    "finish": "2025-01-17",
+    "status": "Done"
+   },
+   {
+    "no": "4",
+    "task": "RACE submission for new PN if applies",
+    "dept": "ENG",
+    "start": "2025-01-20",
+    "finish": "2025-01-31",
+    "status": "Done"
+   },
+   {
+    "no": "5",
+    "task": "Customer acceptance of the ECR",
+    "dept": "PJM/Sales",
+    "start": "2024-12-19",
+    "finish": "2024-12-19",
+    "status": "Done"
+   },
+   {
+    "no": "6",
+    "task": "PTR parts available",
+    "dept": "PPS",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "7",
+    "task": "First part of MP206 completion",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "8",
+    "task": "Counter measurement start date",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "9",
+    "task": "Counter measurement end date",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "10",
+    "task": "DL review and release if applies",
+    "dept": "PUQ/ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "11",
+    "task": "PTR Date",
+    "dept": "LOG/ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "12",
+    "task": "PV start date",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "13",
+    "task": "PV end date",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "14",
+    "task": "PTR and PV report",
+    "dept": "MFE/ENG/QMM",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "15",
+    "task": "Interim PSW",
+    "dept": "ChR/PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "16",
+    "task": "Customer validation completion",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "17",
+    "task": "Final Review presentation",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "18",
+    "task": "New PN release and available in SAP",
+    "dept": "TEF6",
+    "start": "2025-02-10",
+    "finish": "2025-02-10",
+    "status": "Done"
+   },
+   {
+    "no": "19",
+    "task": "ECR ST40",
+    "dept": "ChR/Lcoal Change Co",
+    "start": "2025-02-04",
+    "finish": "2025-02-04",
+    "status": "Done"
+   },
+   {
+    "no": "20",
+    "task": "Customer approval full PSW",
+    "dept": "QMM",
+    "start": "2025-04-14",
+    "finish": "2025-04-14",
+    "status": "Done"
+   },
+   {
+    "no": "21",
+    "task": "PO Update",
+    "dept": "Sales",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "22",
+    "task": "Full PSW Supplier",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "23",
+    "task": "Systematic release to supplier",
+    "dept": "PPS/LOG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "24",
+    "task": "SOP supplier",
+    "dept": "PPS/LOG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "25",
+    "task": "Date of first batch arrival",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "26",
+    "task": "SOP BOSCH",
+    "dept": "CFT",
+    "start": "2025-04-21",
+    "finish": "2025-04-21",
+    "status": "Done"
+   },
+   {
+    "no": "27",
+    "task": "ECR close ST48",
+    "dept": "CFT",
+    "start": "2025-04-21",
+    "finish": "2025-04-21",
+    "status": "Done"
+   }
+  ]
+ },
+ {
+  "area": "ENG",
+  "location": "TlP",
+  "category": "ECR Standard",
+  "title": "ECR: 3E10155743 Cancellation of Part numbers Ford",
+  "sponsor": "Gonzalez Bravo Jesus Ivan (PS-CC/ENG2-MX)",
+  "responsible": "Diana Gabriela Cervantes Marin",
+  "statusOverview": "Yellow",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "Business case available",
+    "dept": "ChR",
+    "start": "2025-04-30",
+    "finish": "2025-04-30",
+    "status": "Done"
+   },
+   {
+    "no": "2",
+    "task": "KO meeting",
+    "dept": "ChR",
+    "start": "2025-05-14",
+    "finish": "2025-05-14",
+    "status": "Done"
+   },
+   {
+    "no": "3",
+    "task": "TR meeting",
+    "dept": "ChR",
+    "start": "2025-05-19",
+    "finish": "2025-05-19",
+    "status": "Done"
+   },
+   {
+    "no": "4",
+    "task": "RACE submission for new PN if applies",
+    "dept": "ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "5",
+    "task": "Customer acceptance of the ECR",
+    "dept": "PJM/Sales",
+    "start": "2025-06-20",
+    "finish": "2025-06-20",
+    "status": "Done"
+   },
+   {
+    "no": "6",
+    "task": "PTR parts available",
+    "dept": "PPS",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "7",
+    "task": "First part of MP206 completion",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "8",
+    "task": "Counter measurement start date",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "9",
+    "task": "Counter measurement end date",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "10",
+    "task": "DL review and release if applies",
+    "dept": "PUQ/ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "11",
+    "task": "PTR Date",
+    "dept": "LOG/ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "12",
+    "task": "PV start date",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "13",
+    "task": "PV end date",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "14",
+    "task": "PTR and PV report",
+    "dept": "MFE/ENG/QMM",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "15",
+    "task": "Interim PSW",
+    "dept": "ChR/PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "16",
+    "task": "Customer validation completion",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "17",
+    "task": "Final Review presentation",
+    "dept": "ChR",
+    "start": "2025-10-24",
+    "finish": "2025-10-24",
+    "status": "Done"
+   },
+   {
+    "no": "18",
+    "task": "New PN release and available in SAP",
+    "dept": "TEF6",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "19",
+    "task": "ECR ST40",
+    "dept": "ChR/Lcoal Change Co",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "20",
+    "task": "Customer approval full PSW",
+    "dept": "QMM",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "21",
+    "task": "PO Update",
+    "dept": "Sales",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "22",
+    "task": "Full PSW Supplier",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "23",
+    "task": "Systematic release to supplier",
+    "dept": "PPS/LOG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "24",
+    "task": "SOP supplier",
+    "dept": "PPS/LOG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "25",
+    "task": "Date of first batch arrival",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "26",
+    "task": "SOP BOSCH",
+    "dept": "CFT",
+    "start": "2025-12-09",
+    "finish": "2025-12-09",
+    "status": "Done"
+   },
+   {
+    "no": "27",
+    "task": "ECR close ST48",
+    "dept": "CFT",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   }
+  ]
+ },
+ {
+  "area": "ENG",
+  "location": "TlP",
+  "category": "ECR Standard",
+  "title": "Project / ECR: 3E10175353 BRP Sea/Doo FSMs /Updates per customer request 2nd label",
+  "sponsor": "Gonzalez Bravo Jesus Ivan (PS-CC/ENG2-MX)",
+  "responsible": "Alberto Levi Rossano Ruiz",
+  "statusOverview": "Yellow",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "Business case available",
+    "dept": "ChR",
+    "start": "2026-02-03",
+    "finish": "2026-02-06",
+    "status": "Done"
+   },
+   {
+    "no": "2",
+    "task": "KO meeting",
+    "dept": "ChR",
+    "start": "2026-02-02",
+    "finish": "2026-02-06",
+    "status": "Done"
+   },
+   {
+    "no": "3",
+    "task": "TR meeting",
+    "dept": "ChR",
+    "start": "2026-02-09",
+    "finish": "2026-02-20",
+    "status": "Done"
+   },
+   {
+    "no": "4",
+    "task": "RACE submission for new PN if applies",
+    "dept": "ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "5",
+    "task": "Customer acceptance of the ECR",
+    "dept": "PJM/Sales",
+    "start": "2026-02-09",
+    "finish": "2026-02-13",
+    "status": "Done"
+   },
+   {
+    "no": "6",
+    "task": "PTR parts available",
+    "dept": "PPS",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "7",
+    "task": "First part of MP206 completion",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "8",
+    "task": "Counter measurement start date",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "9",
+    "task": "Counter measurement end date",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "10",
+    "task": "DL review and release if applies",
+    "dept": "PUQ/ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "11",
+    "task": "PTR Date",
+    "dept": "LOG/ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "12",
+    "task": "PV start date",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "13",
+    "task": "PV end date",
+    "dept": "ChR/ENG",
+    "start": "2026-02-26",
+    "finish": "2026-02-26",
+    "status": "Done"
+   },
+   {
+    "no": "14",
+    "task": "PTR and PV report",
+    "dept": "MFE/ENG/QMM",
+    "start": "2026-03-27",
+    "finish": "2026-03-27",
+    "status": "Done"
+   },
+   {
+    "no": "15",
+    "task": "Interim PSW",
+    "dept": "ChR/PUQ",
+    "start": "2026-05-05",
+    "finish": "2026-05-05",
+    "status": "Done"
+   },
+   {
+    "no": "16",
+    "task": "Customer validation completion",
+    "dept": "ChR/ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "17",
+    "task": "Final Review presentation",
+    "dept": "ChR",
+    "start": "2026-04-20",
+    "finish": "2026-05-04",
+    "status": "Done"
+   },
+   {
+    "no": "18",
+    "task": "New PN release and available in SAP",
+    "dept": "TEF6",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "19",
+    "task": "ECR ST40",
+    "dept": "ChR/Lcoal Change Co",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "20",
+    "task": "Customer approval full PSW",
+    "dept": "QMM",
+    "start": "2026-06-11",
+    "finish": "2026-06-11",
+    "status": "Plan"
+   },
+   {
+    "no": "21",
+    "task": "PO Update",
+    "dept": "Sales",
+    "start": "2026-02-18",
+    "finish": "2026-04-17",
+    "status": "Done"
+   },
+   {
+    "no": "22",
+    "task": "Full PSW Supplier",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "23",
+    "task": "Systematic release to supplier",
+    "dept": "PPS/LOG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "24",
+    "task": "SOP supplier",
+    "dept": "PPS/LOG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "25",
+    "task": "Date of first batch arrival",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "26",
+    "task": "SOP BOSCH",
+    "dept": "CFT",
+    "start": "2026-06-18",
+    "finish": "2026-06-18",
+    "status": "Plan"
+   },
+   {
+    "no": "27",
+    "task": "ECR close ST48",
+    "dept": "CFT",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   }
+  ]
+ },
+ {
+  "area": "ENG",
+  "location": "TlP",
+  "category": "CO ECR",
+  "title": "ECR: 3E10177261: PS-CC/NA: Reactivation of component",
+  "sponsor": "Gonzalez Bravo Jesus Ivan (PS-CC/ENG2-MX)",
+  "responsible": "Diana Gabriela Cervantes Marin",
+  "statusOverview": "Green",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "KO meeting",
+    "dept": "ChR",
+    "start": "2026-04-29",
+    "finish": "2026-04-29",
+    "status": "Done"
+   },
+   {
+    "no": "2",
+    "task": "TR meeting",
+    "dept": "ChR",
+    "start": "2026-05-11",
+    "finish": "2026-05-11",
+    "status": "Done"
+   },
+   {
+    "no": "3",
+    "task": "Correction on SAP",
+    "dept": "Doc. Department",
+    "start": "2026-05-13",
+    "finish": "2026-05-13",
+    "status": "Done"
+   },
+   {
+    "no": "4",
+    "task": "ECR ST40",
+    "dept": "ChR/Local Change Co",
+    "start": "2026-05-15",
+    "finish": "2026-05-15",
+    "status": "Done"
+   },
+   {
+    "no": "5",
+    "task": "SOP BOSCH",
+    "dept": "CFT",
+    "start": "2026-03-06",
+    "finish": "2026-03-06",
+    "status": "Done"
+   },
+   {
+    "no": "6",
+    "task": "ECR close ST48",
+    "dept": "Local Change Co",
+    "start": "2026-05-29",
+    "finish": "2026-05-29",
+    "status": "Done"
+   }
+  ]
+ },
+ {
+  "area": "PjM",
+  "location": "SlpP",
+  "category": "New Program",
+  "title": "DVE BRP 54mm NC",
+  "sponsor": "Mata Rodriguez Cinthya (PS-CC/PJM-NA)",
+  "responsible": "Blanca Azucena Lopez Lopez",
+  "statusOverview": "Yellow",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "Project Award",
+    "dept": "Aq. Mngr.",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "2",
+    "task": "Project Kickoff",
+    "dept": "PjM",
+    "start": "2025-04-07",
+    "finish": "2025-04-07",
+    "status": "Done"
+   },
+   {
+    "no": "3",
+    "task": "Design phase",
+    "dept": "ENG",
+    "start": "2025-06-09",
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "4",
+    "task": "B- Design freeze",
+    "dept": "ENG",
+    "start": "2025-10-02",
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "5",
+    "task": "QGC0",
+    "dept": "PjM",
+    "start": "2025-10-02",
+    "finish": "2025-10-02",
+    "status": "Done"
+   },
+   {
+    "no": "6",
+    "task": "Soft tooling",
+    "dept": "ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "7",
+    "task": "B-samples production run",
+    "dept": "ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "8",
+    "task": "B-samples",
+    "dept": "ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "9",
+    "task": "DV",
+    "dept": "ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "10",
+    "task": "DVP&R",
+    "dept": "ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "11",
+    "task": "C-component design freeze",
+    "dept": "ENG",
+    "start": "2025-11-14",
+    "finish": "2025-11-14",
+    "status": "Done"
+   },
+   {
+    "no": "12",
+    "task": "Drawing release",
+    "dept": "ENG",
+    "start": "2026-04-04",
+    "finish": "2026-04-04",
+    "status": "Done"
+   },
+   {
+    "no": "13",
+    "task": "Sourcing",
+    "dept": "PPS",
+    "start": "2025-11-03",
+    "finish": "2025-11-28",
+    "status": "Done"
+   },
+   {
+    "no": "14",
+    "task": "Line Retrofit",
+    "dept": "MSE",
+    "start": "2025-12-15",
+    "finish": "2027-02-26",
+    "status": "On going"
+   },
+   {
+    "no": "15",
+    "task": "PFMEA",
+    "dept": "MSE",
+    "start": "2026-04-20",
+    "finish": "2026-08-19",
+    "status": "On going"
+   },
+   {
+    "no": "16",
+    "task": "Line Release",
+    "dept": "MSE",
+    "start": "2026-04-27",
+    "finish": "2027-08-31",
+    "status": "On going"
+   },
+   {
+    "no": "17",
+    "task": "10 Digits MM",
+    "dept": "PjM",
+    "start": "2026-03-13",
+    "finish": "2026-03-13",
+    "status": "Done"
+   },
+   {
+    "no": "18",
+    "task": "DFMEA",
+    "dept": "ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "19",
+    "task": "C-component release",
+    "dept": "PUQ",
+    "start": "2026-11-12",
+    "finish": "2026-11-12",
+    "status": "Plan"
+   },
+   {
+    "no": "20",
+    "task": "IMDS",
+    "dept": "ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "21",
+    "task": "MDM",
+    "dept": "PUQ/QMM",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "22",
+    "task": "PTR",
+    "dept": "QMM",
+    "start": "2026-08-14",
+    "finish": "2026-08-14",
+    "status": "Plan"
+   },
+   {
+    "no": "23",
+    "task": "PVP",
+    "dept": "QMM",
+    "start": "2026-08-17",
+    "finish": "2027-01-29",
+    "status": "Plan"
+   },
+   {
+    "no": "24",
+    "task": "PVP&R",
+    "dept": "QMM",
+    "start": "2027-02-01",
+    "finish": "2027-02-19",
+    "status": "Plan"
+   },
+   {
+    "no": "25",
+    "task": "13 Digits release",
+    "dept": "PjM",
+    "start": "2026-10-23",
+    "finish": "2026-11-13",
+    "status": "Plan"
+   },
+   {
+    "no": "26",
+    "task": "Zero series",
+    "dept": "MSE / QMM",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "27",
+    "task": "PPAP submission",
+    "dept": "QMM",
+    "start": "2027-03-05",
+    "finish": "2027-03-05",
+    "status": "Plan"
+   },
+   {
+    "no": "28",
+    "task": "PPAP approval",
+    "dept": "QMM",
+    "start": "2027-05-18",
+    "finish": "2027-05-18",
+    "status": "Plan"
+   },
+   {
+    "no": "29",
+    "task": "QGC4",
+    "dept": "PjM",
+    "start": "2027-02-15",
+    "finish": "2027-02-15",
+    "status": "Plan"
+   },
+   {
+    "no": "30",
+    "task": "SOP",
+    "dept": "MSE/QMM",
+    "start": "2027-05-18",
+    "finish": "2027-05-18",
+    "status": "Plan"
+   }
+  ]
+ },
+ {
+  "area": "PjM",
+  "location": "TlP",
+  "category": "ECR Standard",
+  "title": "ECR 3E10144732 – Pump para 2154 -> 0580.454.00U → 0580.454.01G",
+  "sponsor": "Mata Rodriguez Cinthya (PS-CC/PJM-NA)",
+  "responsible": "Jorge Rocha Lopez",
+  "statusOverview": "Green",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "Business case available",
+    "dept": "ChR",
+    "start": "2025-05-26",
+    "finish": "2025-05-26",
+    "status": "Done"
+   },
+   {
+    "no": "2",
+    "task": "KO meeting",
+    "dept": "ChR",
+    "start": "2025-01-01",
+    "finish": "2025-01-01",
+    "status": "Done"
+   },
+   {
+    "no": "3",
+    "task": "TR meeting",
+    "dept": "ChR",
+    "start": "2025-01-01",
+    "finish": "2025-01-01",
+    "status": "Done"
+   },
+   {
+    "no": "4",
+    "task": "RACE submission for new PN if applies",
+    "dept": "ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "5",
+    "task": "Customer acceptance of the ECR",
+    "dept": "PJM/Sales",
+    "start": "2025-02-01",
+    "finish": "2025-02-08",
+    "status": "Done"
+   },
+   {
+    "no": "6",
+    "task": "PTR parts available",
+    "dept": "PPS",
+    "start": "2025-05-20",
+    "finish": "2025-05-26",
+    "status": "Done"
+   },
+   {
+    "no": "7",
+    "task": "First part of MP206 completion",
+    "dept": "ChR",
+    "start": "2025-05-26",
+    "finish": "2025-05-26",
+    "status": "Done"
+   },
+   {
+    "no": "8",
+    "task": "Counter measurement start date",
+    "dept": "PUQ",
+    "start": "2025-05-26",
+    "finish": "2025-05-26",
+    "status": "Done"
+   },
+   {
+    "no": "9",
+    "task": "Counter measurement end date",
+    "dept": "PUQ",
+    "start": "2025-05-26",
+    "finish": "2025-05-26",
+    "status": "Done"
+   },
+   {
+    "no": "10",
+    "task": "DL review and release if applies",
+    "dept": "PUQ/ChR",
+    "start": "2025-05-26",
+    "finish": "2025-05-26",
+    "status": "Done"
+   },
+   {
+    "no": "11",
+    "task": "Supplier Full Release",
+    "dept": "PUQ/ChR",
+    "start": "2025-05-26",
+    "finish": "2025-05-26",
+    "status": "Done"
+   },
+   {
+    "no": "11",
+    "task": "PTR Date",
+    "dept": "LOG/ChR",
+    "start": "2026-06-06",
+    "finish": "2026-06-06",
+    "status": "Plan"
+   },
+   {
+    "no": "12",
+    "task": "PV start date",
+    "dept": "ChR/ENG",
+    "start": "2025-12-12",
+    "finish": "2025-12-12",
+    "status": "Done"
+   },
+   {
+    "no": "13",
+    "task": "PV end date",
+    "dept": "ChR/ENG",
+    "start": "2026-04-14",
+    "finish": "2026-04-14",
+    "status": "Done"
+   },
+   {
+    "no": "14",
+    "task": "PTR and PV report",
+    "dept": "MFE/ENG/QMM",
+    "start": "2026-04-14",
+    "finish": "2026-04-14",
+    "status": "Done"
+   },
+   {
+    "no": "15",
+    "task": "Interim PSW",
+    "dept": "ChR/PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "16",
+    "task": "Customer validation completion",
+    "dept": "ChR/ENG",
+    "start": "2026-04-14",
+    "finish": "2026-04-14",
+    "status": "Done"
+   },
+   {
+    "no": "17",
+    "task": "Final Review presentation",
+    "dept": "ChR",
+    "start": "2026-04-14",
+    "finish": "2026-04-14",
+    "status": "Done"
+   },
+   {
+    "no": "18",
+    "task": "New PN release and available in SAP",
+    "dept": "TEF6",
+    "start": "2026-02-20",
+    "finish": "2026-02-20",
+    "status": "Done"
+   },
+   {
+    "no": "19",
+    "task": "ECR ST40",
+    "dept": "ChR/Lcoal Change Co",
+    "start": "2026-04-21",
+    "finish": "2026-04-21",
+    "status": "Done"
+   },
+   {
+    "no": "20",
+    "task": "0/Series",
+    "dept": "MSE",
+    "start": "2026-06-01",
+    "finish": "2026-06-01",
+    "status": "Done"
+   },
+   {
+    "no": "21",
+    "task": "PPAP Submission *from TLP to Customer",
+    "dept": "QMM",
+    "start": "2026-06-17",
+    "finish": "2026-07-14",
+    "status": "Plan"
+   },
+   {
+    "no": "22",
+    "task": "PPAP Approval *from Customer to TLP",
+    "dept": "QMM",
+    "start": "2026-07-15",
+    "finish": "2026-08-11",
+    "status": "Plan"
+   },
+   {
+    "no": "23",
+    "task": "PO Update",
+    "dept": "Sales",
+    "start": "2026-05-21",
+    "finish": "2026-05-29",
+    "status": "Done"
+   },
+   {
+    "no": "24",
+    "task": "Full PSW Supplier",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "25",
+    "task": "Systematic release to supplier",
+    "dept": "PPS/LOG",
+    "start": "2026-08-11",
+    "finish": "2026-08-22",
+    "status": "Plan"
+   },
+   {
+    "no": "26",
+    "task": "SOP supplier",
+    "dept": "PPS/LOG",
+    "start": "2027-01-01",
+    "finish": "2027-01-01",
+    "status": "Plan"
+   },
+   {
+    "no": "27",
+    "task": "Date of first batch arrival",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "28",
+    "task": "SOP BOSCH",
+    "dept": "CFT",
+    "start": "2026-09-04",
+    "finish": "2026-09-04",
+    "status": "Plan"
+   },
+   {
+    "no": "29",
+    "task": "ECR close ST48",
+    "dept": "CFT",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   }
+  ]
+ },
+ {
+  "area": "PjM",
+  "location": "TlP",
+  "category": "ECR Standard",
+  "title": "RACE FXRC126580 – Pump para 1895 & RACE FXRC126584 – Pump para 1896",
+  "sponsor": "Mata Rodriguez Cinthya (PS-CC/PJM-NA)",
+  "responsible": "Jorge Rocha Lopez",
+  "statusOverview": "Green",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "Business case available",
+    "dept": "ChR",
+    "start": "2025-05-26",
+    "finish": "2025-05-26",
+    "status": "Done"
+   },
+   {
+    "no": "2",
+    "task": "KO meeting",
+    "dept": "ChR",
+    "start": "2025-01-01",
+    "finish": "2025-01-01",
+    "status": "Done"
+   },
+   {
+    "no": "3",
+    "task": "TR meeting",
+    "dept": "ChR",
+    "start": "2025-01-01",
+    "finish": "2025-01-01",
+    "status": "Done"
+   },
+   {
+    "no": "4",
+    "task": "RACE submission for new PN if applies",
+    "dept": "ENG",
+    "start": "2026-05-04",
+    "finish": "2026-05-18",
+    "status": "Done"
+   },
+   {
+    "no": "5",
+    "task": "Customer acceptance of the ECR",
+    "dept": "PJM/Sales",
+    "start": "2025-02-01",
+    "finish": "2025-02-08",
+    "status": "Done"
+   },
+   {
+    "no": "6",
+    "task": "PTR parts available",
+    "dept": "PPS",
+    "start": "2025-05-20",
+    "finish": "2025-05-26",
+    "status": "Done"
+   },
+   {
+    "no": "7",
+    "task": "First part of MP206 completion",
+    "dept": "ChR",
+    "start": "2025-05-26",
+    "finish": "2025-05-26",
+    "status": "Done"
+   },
+   {
+    "no": "8",
+    "task": "Counter measurement start date",
+    "dept": "PUQ",
+    "start": "2025-05-26",
+    "finish": "2025-05-26",
+    "status": "Done"
+   },
+   {
+    "no": "9",
+    "task": "Counter measurement end date",
+    "dept": "PUQ",
+    "start": "2025-05-26",
+    "finish": "2025-05-26",
+    "status": "Done"
+   },
+   {
+    "no": "10",
+    "task": "DL review and release if applies",
+    "dept": "PUQ/ChR",
+    "start": "2025-05-26",
+    "finish": "2025-05-26",
+    "status": "Done"
+   },
+   {
+    "no": "11",
+    "task": "Supplier Full Release",
+    "dept": "PUQ/ChR",
+    "start": "2025-05-26",
+    "finish": "2025-05-26",
+    "status": "Done"
+   },
+   {
+    "no": "11",
+    "task": "PTR Date",
+    "dept": "LOG/ChR",
+    "start": "2026-06-06",
+    "finish": "2026-06-06",
+    "status": "Plan"
+   },
+   {
+    "no": "12",
+    "task": "PV start date",
+    "dept": "ChR/ENG",
+    "start": "2025-12-12",
+    "finish": "2025-12-12",
+    "status": "Done"
+   },
+   {
+    "no": "13",
+    "task": "PV end date",
+    "dept": "ChR/ENG",
+    "start": "2026-04-14",
+    "finish": "2026-04-14",
+    "status": "Done"
+   },
+   {
+    "no": "14",
+    "task": "PTR and PV report",
+    "dept": "MFE/ENG/QMM",
+    "start": "2026-04-14",
+    "finish": "2026-04-14",
+    "status": "Done"
+   },
+   {
+    "no": "15",
+    "task": "Interim PSW",
+    "dept": "ChR/PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "16",
+    "task": "Customer validation completion",
+    "dept": "ChR/ENG",
+    "start": "2026-04-14",
+    "finish": "2026-04-14",
+    "status": "Done"
+   },
+   {
+    "no": "17",
+    "task": "Final Review presentation",
+    "dept": "ChR",
+    "start": "2026-04-14",
+    "finish": "2026-04-14",
+    "status": "Done"
+   },
+   {
+    "no": "18",
+    "task": "New PN release and available in SAP",
+    "dept": "TEF6",
+    "start": "2026-02-20",
+    "finish": "2026-02-20",
+    "status": "Done"
+   },
+   {
+    "no": "19",
+    "task": "ECR ST40",
+    "dept": "ChR/Lcoal Change Co",
+    "start": "2026-04-21",
+    "finish": "2026-04-21",
+    "status": "Done"
+   },
+   {
+    "no": "20",
+    "task": "0/Series",
+    "dept": "MSE",
+    "start": "2026-06-23",
+    "finish": "2026-06-29",
+    "status": "Plan"
+   },
+   {
+    "no": "21",
+    "task": "PPAP Submission *from TLP to Customer",
+    "dept": "QMM",
+    "start": "2026-07-14",
+    "finish": "2026-08-10",
+    "status": "Plan"
+   },
+   {
+    "no": "22",
+    "task": "PPAP Approval *from Customer to TLP",
+    "dept": "QMM",
+    "start": "2026-08-11",
+    "finish": "2026-09-07",
+    "status": "Plan"
+   },
+   {
+    "no": "23",
+    "task": "PO Update",
+    "dept": "Sales",
+    "start": "2026-05-21",
+    "finish": "2026-05-29",
+    "status": "Done"
+   },
+   {
+    "no": "24",
+    "task": "Full PSW Supplier",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "25",
+    "task": "Systematic release to supplier",
+    "dept": "PPS/LOG",
+    "start": "2026-08-11",
+    "finish": "2026-08-22",
+    "status": "Plan"
+   },
+   {
+    "no": "26",
+    "task": "SOP supplier",
+    "dept": "PPS/LOG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "27",
+    "task": "Date of first batch arrival",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "28",
+    "task": "SOP BOSCH",
+    "dept": "CFT",
+    "start": "2026-06-29",
+    "finish": "2026-07-08",
+    "status": "Plan"
+   },
+   {
+    "no": "29",
+    "task": "ECR close ST48",
+    "dept": "CFT",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   }
+  ]
+ },
+ {
+  "area": "PjM",
+  "location": "TlP",
+  "category": "ECR Standard",
+  "title": "3E10165605 – Nissan & STLA Reservoir – 2026",
+  "sponsor": "Mata Rodriguez Cinthya (PS-CC/PJM-NA)",
+  "responsible": "Jorge Rocha Lopez",
+  "statusOverview": "Green",
+  "tasks": [
+   {
+    "no": "1",
+    "task": "Business case available",
+    "dept": "ChR",
+    "start": "2025-10-13",
+    "finish": "2025-10-13",
+    "status": "Done"
+   },
+   {
+    "no": "2",
+    "task": "KO meeting",
+    "dept": "ChR",
+    "start": "2026-01-22",
+    "finish": "2026-01-29",
+    "status": "Done"
+   },
+   {
+    "no": "3",
+    "task": "TR meeting",
+    "dept": "ChR",
+    "start": "2026-02-09",
+    "finish": "2026-02-13",
+    "status": "Done"
+   },
+   {
+    "no": "4",
+    "task": "RACE submission for new PN if applies",
+    "dept": "ENG",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "5",
+    "task": "Customer acceptance of the ECR",
+    "dept": "PJM/Sales",
+    "start": "2026-02-13",
+    "finish": "2026-03-27",
+    "status": "Done"
+   },
+   {
+    "no": "6",
+    "task": "PTR parts available",
+    "dept": "PPS",
+    "start": "2026-04-20",
+    "finish": "2026-05-08",
+    "status": "Done"
+   },
+   {
+    "no": "7",
+    "task": "First part of MP206 completion",
+    "dept": "ChR",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "8",
+    "task": "Counter measurement start date",
+    "dept": "PUQ",
+    "start": "2026-05-22",
+    "finish": "2026-05-22",
+    "status": "Done"
+   },
+   {
+    "no": "9",
+    "task": "Counter measurement end date",
+    "dept": "PUQ",
+    "start": "2026-05-29",
+    "finish": "2026-05-29",
+    "status": "Done"
+   },
+   {
+    "no": "10",
+    "task": "DL review and release if applies",
+    "dept": "PUQ/ChR",
+    "start": "2026-05-29",
+    "finish": "2026-06-05",
+    "status": "On going"
+   },
+   {
+    "no": "11",
+    "task": "Supplier Full Release",
+    "dept": "PUQ/ChR",
+    "start": "2026-06-05",
+    "finish": "2026-06-12",
+    "status": "Plan"
+   },
+   {
+    "no": "11",
+    "task": "PTR Date",
+    "dept": "LOG/ChR",
+    "start": "2026-06-01",
+    "finish": "2026-06-05",
+    "status": "On going"
+   },
+   {
+    "no": "12",
+    "task": "PV start date",
+    "dept": "ChR/ENG",
+    "start": "2026-06-22",
+    "finish": "2026-06-22",
+    "status": "Plan"
+   },
+   {
+    "no": "13",
+    "task": "PV end date",
+    "dept": "ChR/ENG",
+    "start": "2026-07-17",
+    "finish": "2026-07-17",
+    "status": "Plan"
+   },
+   {
+    "no": "14",
+    "task": "PTR and PV report",
+    "dept": "MFE/ENG/QMM",
+    "start": "2026-08-14",
+    "finish": "2026-08-14",
+    "status": "Plan"
+   },
+   {
+    "no": "15",
+    "task": "Interim PSW",
+    "dept": "ChR/PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "16",
+    "task": "Customer validation completion",
+    "dept": "ChR/ENG",
+    "start": "2026-08-14",
+    "finish": "2026-08-14",
+    "status": "Plan"
+   },
+   {
+    "no": "17",
+    "task": "Final Review presentation",
+    "dept": "ChR",
+    "start": "2026-08-14",
+    "finish": "2026-08-21",
+    "status": "Plan"
+   },
+   {
+    "no": "18",
+    "task": "New PN release and available in SAP",
+    "dept": "TEF6",
+    "start": "2026-08-14",
+    "finish": "2026-08-14",
+    "status": "Plan"
+   },
+   {
+    "no": "19",
+    "task": "ECR ST40",
+    "dept": "ChR/Lcoal Change Co",
+    "start": "2026-07-24",
+    "finish": "2026-07-24",
+    "status": "Plan"
+   },
+   {
+    "no": "20",
+    "task": "0/Series",
+    "dept": "MSE",
+    "start": "2026-07-27",
+    "finish": "2026-07-31",
+    "status": "Plan"
+   },
+   {
+    "no": "21",
+    "task": "PPAP Submission *from TLP to Customer",
+    "dept": "QMM",
+    "start": "2026-08-17",
+    "finish": "2026-09-11",
+    "status": "Plan"
+   },
+   {
+    "no": "22",
+    "task": "PPAP Approval *from Customer to TLP",
+    "dept": "QMM",
+    "start": "2026-09-14",
+    "finish": "2026-10-09",
+    "status": "Plan"
+   },
+   {
+    "no": "23",
+    "task": "PO Update",
+    "dept": "Sales",
+    "start": "2026-10-09",
+    "finish": "2026-10-09",
+    "status": "Plan"
+   },
+   {
+    "no": "24",
+    "task": "Full PSW Supplier",
+    "dept": "PUQ",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   },
+   {
+    "no": "25",
+    "task": "Systematic release to supplier",
+    "dept": "PPS/LOG",
+    "start": "2026-10-09",
+    "finish": "2026-10-09",
+    "status": "Plan"
+   },
+   {
+    "no": "26",
+    "task": "SOP supplier",
+    "dept": "PPS/LOG",
+    "start": "2026-07-02",
+    "finish": "2026-07-08",
+    "status": "Plan"
+   },
+   {
+    "no": "27",
+    "task": "Date of first batch arrival",
+    "dept": "ChR",
+    "start": "2026-12-01",
+    "finish": "2026-12-01",
+    "status": "Plan"
+   },
+   {
+    "no": "28",
+    "task": "SOP BOSCH",
+    "dept": "CFT",
+    "start": "2026-12-01",
+    "finish": "2026-12-01",
+    "status": "Plan"
+   },
+   {
+    "no": "29",
+    "task": "ECR close ST48",
+    "dept": "CFT",
+    "start": null,
+    "finish": null,
+    "status": "N/A"
+   }
+  ]
+ }
+]
