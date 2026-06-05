@@ -1493,6 +1493,13 @@ export default function App(): ReactElement {
   const scopedProjectIds = useMemo(() => getScopeProjectIds(role, currentUserId, state.projects, people), [role, currentUserId, state.projects, people])
   const scopedProjects = useMemo(() => state.projects.filter((project) => scopedProjectIds.has(project.id)), [state.projects, scopedProjectIds])
 
+  // Distinct real Executive Sponsors across the scoped projects (for the filter dropdown)
+  const sponsorOptions = useMemo(() => {
+    const set = new Set<string>()
+    scopedProjects.forEach((p) => { const s = (p.sponsorName || '').trim(); if (s) set.add(s) })
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [scopedProjects])
+
   useEffect(() => {
     if (!selectedProjectId && scopedProjects.length > 0) {
       setSelectedProjectId(scopedProjects[0].id)
@@ -1549,9 +1556,9 @@ export default function App(): ReactElement {
       result = result.filter((p) => seededProjectStatus(state, p.id) === filterStatus)
     }
 
-    // Manager filter
+    // Executive Sponsor filter
     if (filterManager !== 'all') {
-      result = result.filter((p) => p.projectManagerId === filterManager)
+      result = result.filter((p) => (p.sponsorName || '').trim() === filterManager)
     }
 
     // Month / CW horizon filter — keep projects whose activity date range overlaps the selected window
@@ -1601,7 +1608,7 @@ export default function App(): ReactElement {
     }
     if (rptCategory !== 'all') result = result.filter((p) => p.category === rptCategory)
     if (rptStatus !== 'all') result = result.filter((p) => seededProjectStatus(state, p.id) === rptStatus)
-    if (rptManager !== 'all') result = result.filter((p) => p.projectManagerId === rptManager)
+    if (rptManager !== 'all') result = result.filter((p) => (p.sponsorName || '').trim() === rptManager)
     if (rptSite !== 'all') result = result.filter((p) => p.siteIds.includes(rptSite))
     return result
   }, [scopedProjects, state, rptSearch, rptCategory, rptStatus, rptManager, rptSite])
@@ -2983,11 +2990,9 @@ export default function App(): ReactElement {
                       <option value="YELLOW">At Risk</option>
                       <option value="RED">Critical</option>
                     </select>
-                    <select title="Manager filter" className="h-10 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" value={filterManager} onChange={(e) => setFilterManager(e.target.value)}>
-                      <option value="all">All Managers</option>
-                      {dvConnected && dvUsers.length > 0
-                        ? dvUsers.map((u) => <option key={u.id} value={u.id}>{u.fullname}</option>)
-                        : people.filter((p) => p.role === 'PROJECT_MANAGER').map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    <select title="Executive Sponsor filter" className="h-10 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:outline-none focus:ring-2 focus:ring-pth-blue/20" value={filterManager} onChange={(e) => setFilterManager(e.target.value)}>
+                      <option value="all">All Sponsors</option>
+                      {sponsorOptions.map((name) => <option key={name} value={name}>{name}</option>)}
                     </select>
                   </div>
 
@@ -3985,11 +3990,9 @@ export default function App(): ReactElement {
                             <option value="YELLOW">At Risk</option>
                             <option value="RED">Critical</option>
                           </select>
-                          <select title="Manager" className="h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm outline-none focus:border-pth-blue" value={rptManager} onChange={(e) => setRptManager(e.target.value)}>
-                            <option value="all">All Managers</option>
-                            {dvConnected && dvUsers.length > 0
-                              ? dvUsers.map((u) => <option key={u.id} value={u.id}>{u.fullname}</option>)
-                              : people.filter((p) => p.role === 'PROJECT_MANAGER').map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                          <select title="Executive Sponsor" className="h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm outline-none focus:border-pth-blue" value={rptManager} onChange={(e) => setRptManager(e.target.value)}>
+                            <option value="all">All Sponsors</option>
+                            {sponsorOptions.map((name) => <option key={name} value={name}>{name}</option>)}
                           </select>
                           <select title="Site" className="h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm outline-none focus:border-pth-blue" value={rptSite} onChange={(e) => setRptSite(e.target.value)}>
                             <option value="all">All Sites</option>
