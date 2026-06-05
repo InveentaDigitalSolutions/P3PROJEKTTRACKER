@@ -1081,6 +1081,7 @@ export default function App(): ReactElement {
   const [ttView, setTtView] = useState<'tasks' | 'area' | 'project' | 'owner'>('tasks')
   const [ttOwner, setTtOwner] = useState<string>('all')
   const [ganttLabelWidth, setGanttLabelWidth] = useState(176) // px, user-resizable
+  const [ganttPopoverId, setGanttPopoverId] = useState<string | null>(null) // project whose task popup is open
   const [taskNaFilter, setTaskNaFilter] = useState<'active' | 'na' | 'all'>('active')
   const [resourcePaneSearch, setResourcePaneSearch] = useState('')
   const [resourcePaneArea, setResourcePaneArea] = useState<string>('all')
@@ -4014,21 +4015,27 @@ export default function App(): ReactElement {
                                     return (
                                       <div
                                         key={`label-${bar.project.id}`}
-                                        className="relative flex items-center h-7 pr-3 gap-2 cursor-pointer group"
-                                        onClick={() => { setDetailProjectId(bar.project.id); setSelectedProjectId(bar.project.id) }}
+                                        className="relative flex items-center h-7 pr-3 gap-2 cursor-pointer"
+                                        onClick={() => setGanttPopoverId((cur) => (cur === bar.project.id ? null : bar.project.id))}
                                       >
                                         <div className={`h-2 w-2 shrink-0 rounded-full ${dotColor}`} />
-                                        <span className="truncate text-xs font-medium group-hover:text-pth-blue transition-colors">{bar.project.name}</span>
+                                        <span className={`truncate text-xs font-medium transition-colors ${ganttPopoverId === bar.project.id ? 'text-pth-blue' : 'hover:text-pth-blue'}`}>{bar.project.name}</span>
                                         <span className="ml-auto shrink-0 text-[10px] font-semibold tabular-nums text-pth-muted">{Math.round(bar.doneRatio * 100)}%</span>
-                                        {/* Hover tooltip — anchored to the fixed label column so it's never clipped */}
-                                        <div className="pointer-events-none absolute left-0 top-7 z-40 hidden w-72 rounded-lg border border-white/10 bg-gray-900/95 p-2.5 shadow-elevated group-hover:block dark:bg-black/95">
-                                          <div className="mb-1.5 truncate text-[11px] font-semibold text-white">{bar.project.name}</div>
-                                          <div className="space-y-1.5">
-                                            {tipRow('Last', hl.lastClosed)}
-                                            {tipRow('Current', hl.current)}
-                                            {tipRow('Upcoming', hl.upcoming)}
+                                        {/* Click popup — anchored to the fixed label column so it's never clipped */}
+                                        {ganttPopoverId === bar.project.id && (
+                                          <div className="absolute left-0 top-7 z-40 w-72 rounded-lg border border-white/10 bg-gray-900/95 p-2.5 shadow-elevated dark:bg-black/95" onClick={(e) => e.stopPropagation()}>
+                                            <div className="mb-1.5 flex items-center justify-between gap-2">
+                                              <span className="truncate text-[11px] font-semibold text-white">{bar.project.name}</span>
+                                              <button type="button" onClick={() => setGanttPopoverId(null)} className="shrink-0 text-white/50 hover:text-white"><X size={12} /></button>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                              {tipRow('Last', hl.lastClosed)}
+                                              {tipRow('Current', hl.current)}
+                                              {tipRow('Upcoming', hl.upcoming)}
+                                            </div>
+                                            <button type="button" onClick={() => { setDetailProjectId(bar.project.id); setSelectedProjectId(bar.project.id); setGanttPopoverId(null) }} className="mt-2 w-full rounded-md bg-pth-blue/90 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-pth-blue">Open project →</button>
                                           </div>
-                                        </div>
+                                        )}
                                       </div>
                                     )
                                   })}
@@ -4089,7 +4096,7 @@ export default function App(): ReactElement {
                                           <div
                                             key={bar.project.id}
                                             className="relative h-7 cursor-pointer group"
-                                            onClick={() => { setDetailProjectId(bar.project.id); setSelectedProjectId(bar.project.id) }}
+                                            onClick={() => setGanttPopoverId((cur) => (cur === bar.project.id ? null : bar.project.id))}
                                           >
                                             {/* Background bar */}
                                             <div ref={dynRef({left: `${left}%`, width: `${width}%`})} className={`absolute top-1 bottom-1 overflow-hidden rounded ${barBg} group-hover:ring-1 group-hover:ring-pth-blue/30 transition-shadow`}>
