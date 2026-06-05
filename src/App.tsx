@@ -3096,14 +3096,21 @@ export default function App(): ReactElement {
                             </div>
                           </div>
 
-                          {/* PM + Sponsor */}
-                          <div className="mt-4 flex items-center gap-2 border-t border-pth-border/15 pt-3">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-pth-subtle text-[10px] font-bold text-pth-text">{pm?.initials ?? '??'}</div>
-                            <div className="min-w-0 text-xs leading-tight">
-                              <div className="truncate font-medium">{pm?.name ?? 'Unknown'}</div>
-                              <div className="truncate text-pth-muted">{sponsor?.name ?? 'Unknown'}</div>
-                            </div>
-                          </div>
+                          {/* Executive Sponsor + Project Responsible (from the imported file) */}
+                          {(() => {
+                            const sponsorName = row.project.sponsorName || sponsor?.name || ''
+                            const responsibleName = row.project.projectResponsible || pm?.name || ''
+                            const initials = (sponsorName || responsibleName).split(/[\s(]/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '—'
+                            return (
+                              <div className="mt-4 flex items-center gap-2 border-t border-pth-border/15 pt-3">
+                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-pth-subtle text-[10px] font-bold text-pth-text">{initials}</div>
+                                <div className="min-w-0 text-xs leading-tight">
+                                  <div className="truncate font-medium" title={sponsorName}>{sponsorName || '—'}</div>
+                                  <div className="truncate text-pth-muted" title={responsibleName}>{responsibleName || '—'}</div>
+                                </div>
+                              </div>
+                            )
+                          })()}
                         </button>
                       )
                     })}
