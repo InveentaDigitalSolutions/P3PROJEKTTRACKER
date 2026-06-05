@@ -78,7 +78,7 @@ type MasterDataTab = 'people' | 'customers' | 'suppliers' | 'templates'
 type ReportActivityTab = 'upcoming' | 'closed' | 'delayed'
 type ProjectCategory = 'ECR' | 'CIP' | 'Path Forward' | 'New Programs'
 type RygStatus = 'RED' | 'YELLOW' | 'GREEN'
-type ReportTab = 'projectsStatus' | 'taskTracking' | 'prioritization'
+type ReportTab = 'projectsStatus' | 'taskTracking'
 type ActivityState = 'NOT_STARTED' | 'IN_PROGRESS' | 'DONE' | 'NOT_APPLICABLE'
 
 type Site = { id: string; name: string }
@@ -984,6 +984,82 @@ function categoryBadge(cat: ProjectCategory): ReactElement {
   return <span className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${colours[cat]}`}>{cat}</span>
 }
 
+/** Download an array of row-objects as a CSV file. */
+function downloadCsv(filename: string, headers: string[], rows: Array<Array<string | number>>): void {
+  const esc = (v: string | number) => { const s = String(v ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
+  const csv = [headers.map(esc).join(','), ...rows.map((r) => r.map(esc).join(','))].join('\n')
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = filename
+  document.body.appendChild(a); a.click(); document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+/** Monday (ISO) date of a given ISO calendar week. */
+function isoWeekStart(year: number, week: number): string {
+  const simple = new Date(Date.UTC(year, 0, 1 + (week - 1) * 7))
+  const dow = simple.getUTCDay()
+  const monday = new Date(simple)
+  monday.setUTCDate(simple.getUTCDate() - ((dow + 6) % 7))
+  return monday.toISOString().slice(0, 10)
+}
+
+const TASK_STATUS_OPTIONS: Array<{ key: ActivityState; label: string; tone: string }> = [
+  { key: 'NOT_STARTED', label: 'Not started', tone: 'bg-pth-border/30 text-pth-text' },
+  { key: 'IN_PROGRESS', label: 'In progress', tone: 'bg-pth-blue/15 text-pth-blue' },
+  { key: 'DONE', label: 'Done', tone: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' },
+  { key: 'NOT_APPLICABLE', label: 'N/A', tone: 'bg-pth-muted/15 text-pth-muted' },
+]
+const TASK_STATUS_LABEL: Record<ActivityState, string> = { NOT_STARTED: 'Not started', IN_PROGRESS: 'In progress', DONE: 'Done', NOT_APPLICABLE: 'N/A' }
+/** Inline status dropdown styled like the badge — change status without a dialog. */
+function TaskStatusSelect({ value, onChange }: { value: ActivityState; onChange: (s: ActivityState) => void }): ReactElement {
+  const o = TASK_STATUS_OPTIONS.find((x) => x.key === value)
+  return (
+    <select
+      value={value}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => onChange(e.target.value as ActivityState)}
+      className={`cursor-pointer whitespace-nowrap rounded-full border-0 px-2 py-0.5 text-[10px] font-medium outline-none focus:ring-1 focus:ring-pth-blue ${o?.tone ?? 'bg-pth-subtle'}`}
+      title="Change status"
+    >
+      {TASK_STATUS_OPTIONS.map((opt) => <option key={opt.key} value={opt.key}>{opt.label}</option>)}
+    </select>
+  )
+}
+
+/** Reusable multi-select task-status filter chips. Empty selection = show all. */
+function TaskStatusChips({ selected, onToggle }: { selected: Set<ActivityState>; onToggle: (s: ActivityState) => void }): ReactElement {
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {TASK_STATUS_OPTIONS.map((o) => {
+        const on = selected.has(o.key)
+        return (
+          <button key={o.key} type="button" onClick={() => onToggle(o.key)}
+            className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${on ? o.tone + ' ring-1 ring-pth-blue/40' : 'bg-pth-subtle text-pth-muted hover:text-pth-text'}`}>
+            {o.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** useState that persists to localStorage under `pth.<key>`. */
+function usePersistedState<T>(key: string, initial: T): [T, (v: T | ((p: T) => T)) => void] {
+  const storageKey = `pth.${key}`
+  const [value, setValue] = useState<T>(() => {
+    try {
+      const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(storageKey) : null
+      return raw != null ? (JSON.parse(raw) as T) : initial
+    } catch { return initial }
+  })
+  useEffect(() => {
+    try { localStorage.setItem(storageKey, JSON.stringify(value)) } catch { /* quota / disabled */ }
+  }, [storageKey, value])
+  return [value, setValue]
+}
+
 export default function App(): ReactElement {
   const [state, setState] = useState<AppState>(() => generateInitialState())
   const [currentUserId, setCurrentUserId] = useState('u_dir_1')
@@ -993,19 +1069,19 @@ export default function App(): ReactElement {
   const [dvLoading, setDvLoading] = useState(false)
   const [dvConnected, setDvConnected] = useState(false)
   const [dvUsers, setDvUsers] = useState<DataverseUser[]>([])
-  const [navPage, setNavPage] = useState<NavPage>('overview')
-  const [reportTab, setReportTab] = useState<ReportTab>('projectsStatus')
+  const [navPage, setNavPage] = usePersistedState<NavPage>('navPage', 'overview')
+  const [reportTab, setReportTab] = usePersistedState<ReportTab>('reportTab', 'projectsStatus')
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(state.projects[0]?.id ?? null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [filterCategory, setFilterCategory] = useState<string>('all')
-  const [filterStatus, setFilterStatus] = useState<string>('all')
-  const [filterManager, setFilterManager] = useState<string>('all')
+  const [sidebarCollapsed, setSidebarCollapsed] = usePersistedState('sidebarCollapsed', false)
+  const [filterCategory, setFilterCategory] = usePersistedState<string>('filterCategory', 'all')
+  const [filterStatus, setFilterStatus] = usePersistedState<string>('filterStatus', 'all')
+  const [filterManager, setFilterManager] = usePersistedState<string>('filterManager', 'all')
   const [detailProjectId, setDetailProjectId] = useState<string | null>(null)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   // Month + calendar week horizon filter
   const currentYM = todayISO().slice(0, 7) // e.g. '2026-02'
-  const [filterMonth, setFilterMonth] = useState(currentYM)
+  const [filterMonth, setFilterMonth] = usePersistedState('filterMonth', currentYM)
   const [filterCW, setFilterCW] = useState<number | 'all'>('all')
 
   // Derive horizon start & end from month + CW selection
@@ -1040,16 +1116,15 @@ export default function App(): ReactElement {
   const [projectSearch, setProjectSearch] = useState('')
   const [workloadWeekOffset, setWorkloadWeekOffset] = useState(0)
   const [workloadSearch, setWorkloadSearch] = useState('')
-  const [workloadView, setWorkloadView] = useState<'cards' | 'list'>('cards')
+  const [workloadView, setWorkloadView] = usePersistedState<'cards' | 'list'>('workloadView', 'cards')
   const [workloadSiteFilter, setWorkloadSiteFilter] = useState<'all' | 'SlpP' | 'TlP'>('all')
   const [workloadAreaFilter, setWorkloadAreaFilter] = useState<string>('all')
-  const [expandedRiskProjectId, setExpandedRiskProjectId] = useState<string | null>(null)
   const [milestoneDialogOpen, setMilestoneDialogOpen] = useState(false)
   const [milestoneEditId, setMilestoneEditId] = useState<string | null>(null)
   const [editingProject, setEditingProject] = useState(false)
   const [creatingSaving, setCreatingSaving] = useState(false)
   const [inlineMilestones, setInlineMilestones] = useState<InlineMilestone[]>([])
-  const [viewMode, setViewMode] = useState<'gallery' | 'list'>('gallery')
+  const [viewMode, setViewMode] = usePersistedState<'gallery' | 'list'>('viewMode', 'gallery')
   const [activityDialogOpen, setActivityDialogOpen] = useState(false)
   const [activityMilestoneId, setActivityMilestoneId] = useState<string | null>(null)
   const [activityEditMode, setActivityEditMode] = useState<ActivityEditMode>('create')
@@ -1077,12 +1152,25 @@ export default function App(): ReactElement {
   const [ttArea, setTtArea] = useState<string>('all')
   const [ttLoc, setTtLoc] = useState<string>('all')
   const [ttProjType, setTtProjType] = useState<string>('all')
-  const [ttRisk, setTtRisk] = useState<string>('atrisk')
-  const [ttView, setTtView] = useState<'tasks' | 'area' | 'project' | 'owner'>('tasks')
+  const [ttRygFilter, setTtRygFilter] = useState<Set<RygStatus>>(new Set()) // multi-select days-left RYG; empty = all
+  const [ttSearch, setTtSearch] = useState('')
+  const [ttView, setTtView] = usePersistedState<'all' | 'project' | 'area' | 'owner' | 'status' | 'task'>('ttView', 'all')
+  const [ttTaskFilter, setTtTaskFilter] = useState<string>('all') // filter by task name
+  const [ttSelected, setTtSelected] = useState<Set<string>>(new Set()) // selected task ids for bulk actions
   const [ttOwner, setTtOwner] = useState<string>('all')
+  // Task Tracking date filter: mode + values
+  const [ttDateMode, setTtDateMode] = useState<'all' | 'overdue' | 'week' | 'month' | 'next30' | 'range' | 'cw'>('all')
+  const [ttDateFrom, setTtDateFrom] = useState<string>('')
+  const [ttDateTo, setTtDateTo] = useState<string>('')
+  const [ttCwYear, setTtCwYear] = useState<string>('2026')
+  const [ttCwNum, setTtCwNum] = useState<string>('')
   const [ganttLabelWidth, setGanttLabelWidth] = useState(176) // px, user-resizable
   const [ganttPopoverId, setGanttPopoverId] = useState<string | null>(null) // project whose task popup is open
   const [taskNaFilter, setTaskNaFilter] = useState<'active' | 'na' | 'all'>('active')
+  // Multi-select task status filters (empty Set = show all). Shared across views.
+  const [detailStatusFilter, setDetailStatusFilter] = useState<Set<ActivityState>>(new Set())
+  const [ttStatusFilter, setTtStatusFilter] = useState<Set<ActivityState>>(new Set())
+  const [wlStatusFilter, setWlStatusFilter] = useState<Set<ActivityState>>(new Set())
   const [resourcePaneSearch, setResourcePaneSearch] = useState('')
   const [resourcePaneArea, setResourcePaneArea] = useState<string>('all')
   const [ttExpanded, setTtExpanded] = useState<Set<string>>(new Set())
@@ -1116,12 +1204,7 @@ export default function App(): ReactElement {
   ])
   const [paTestingFlowId, setPaTestingFlowId] = useState<string | null>(null)
 
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches
-    }
-    return false
-  })
+  const [darkMode, setDarkMode] = usePersistedState('darkMode', typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)').matches : false)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode)
@@ -1483,7 +1566,8 @@ export default function App(): ReactElement {
 
   const projectRows = useMemo(() => {
     return filteredProjects.map((project) => {
-      const pm = dvUsers.find((u) => u.id === project.projectManagerId)?.fullname ?? people.find((person) => person.id === project.projectManagerId)?.name ?? 'Unknown'
+      // Show the real Executive Sponsor (from the imported file); fall back to the resolved PM.
+      const pm = project.sponsorName || dvUsers.find((u) => u.id === project.sponsorExecutiveId)?.fullname || dvUsers.find((u) => u.id === project.projectManagerId)?.fullname || people.find((person) => person.id === project.projectManagerId)?.name || 'Unknown'
       const site = project.siteIds.map((id) => sites.find((s) => s.id === id)?.name ?? id).join(', ') || 'Unknown'
       // Use the MANUAL Status Overview (PM-assigned); fall back to computed task status when unset.
       const status = project.statusOverview ?? seededProjectStatus(state, project.id)
@@ -1585,43 +1669,6 @@ export default function App(): ReactElement {
       .map((a) => ({ ...a, delayDays: Math.abs(dayDiff(todayISO(), a.endDate)) }))
   }, [reportProject, state.activities, state.settings.warningDaysThreshold])
 
-  const upcomingMilestonesRisk = useMemo(() => {
-    return state.milestones
-      .filter((milestone) => milestone.targetDate >= horizonRange.start && milestone.targetDate <= horizonRange.end)
-      .map((milestone) => {
-        const project = state.projects.find((p) => p.id === milestone.projectId)
-        const status = rygFromDueDate(milestone.targetDate, state.settings.warningDaysThreshold)
-        return {
-          projectName: project?.name ?? 'Unknown',
-          milestone,
-          status,
-          daysRemaining: dayDiff(todayISO(), milestone.targetDate),
-        }
-      })
-      .sort((a, b) => {
-        if (rankStatus(a.status) !== rankStatus(b.status)) return rankStatus(a.status) - rankStatus(b.status)
-        return a.milestone.targetDate < b.milestone.targetDate ? -1 : 1
-      })
-  }, [horizonRange, state.milestones, state.projects, state.settings.warningDaysThreshold])
-
-  const delayedGrouped = useMemo(() => {
-    return state.projects
-      .map((project) => {
-        const items = state.activities.filter(
-          (activity) =>
-            activity.projectId === project.id &&
-            !activity.doneDate &&
-            rygFromDueDate(activity.endDate, state.settings.warningDaysThreshold) === 'RED',
-        )
-        return {
-          project,
-          items,
-          criticalImpact: items.some((item) => item.criticalPath),
-        }
-      })
-      .filter((group) => group.items.length > 0)
-  }, [state.activities, state.projects, state.settings.warningDaysThreshold])
-
   const currentWeek = useMemo(() => addDays(weekStartISO(todayISO()), workloadWeekOffset * 7), [workloadWeekOffset])
 
   const workloadRows = useMemo(() => {
@@ -1642,6 +1689,7 @@ export default function App(): ReactElement {
         const ownedTasks = state.activities.filter((a) =>
           a.ownerId === person.id &&
           a.state !== 'NOT_APPLICABLE' && a.state !== 'DONE' &&
+          (wlStatusFilter.size === 0 || wlStatusFilter.has(a.state)) &&
           a.startDate && a.endDate &&
           a.startDate <= weekEnd && a.endDate >= currentWeek,
         )
@@ -1671,7 +1719,7 @@ export default function App(): ReactElement {
           relatedProjects,
         }
       })
-  }, [currentUserId, currentWeek, role, people, state.activities, state.assignments, state.projects, state.settings.defaultWeeklyCapacity])
+  }, [currentUserId, currentWeek, role, people, state.activities, state.assignments, state.projects, state.settings.defaultWeeklyCapacity, wlStatusFilter])
 
   // Peak weekly utilization per resource across ALL their owned active tasks.
   // hours/week for a task = workloadPct% × weekly capacity, applied to every
@@ -2277,6 +2325,53 @@ export default function App(): ReactElement {
     setDropTargetId(null)
   }
 
+  const toggleStatus = (setter: (fn: (prev: Set<ActivityState>) => Set<ActivityState>) => void) => (s: ActivityState) =>
+    setter((prev) => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n })
+
+  // Inline task status change (from list rows, no dialog). Persists + logs.
+  function setTaskStatus(activityId: string, newState: ActivityState): void {
+    const act = state.activities.find((a) => a.id === activityId)
+    if (!act || act.state === newState) return
+    const doneDate = newState === 'DONE' ? (act.doneDate ?? act.endDate ?? todayISO()) : undefined
+    setState((prev) => ({
+      ...prev,
+      activities: prev.activities.map((a) => (a.id === activityId ? { ...a, state: newState, doneDate } : a)),
+    }))
+    if (isDataverseConfigured()) {
+      const ownerName = people.find((p) => p.id === act.ownerId)?.name ?? 'Unassigned'
+      updateActivityInDataverse(activityId, {
+        name: act.name, ownerName, startDate: act.startDate, endDate: act.endDate,
+        doneDate, state: newState, criticalPath: act.criticalPath,
+        projectId: act.projectId, milestoneId: act.milestoneId,
+        workloadPct: act.workloadPct, responsible: act.responsible,
+      })
+    }
+    recordChange({ summary: `Task "${act.name}" — Status changed`, changeType: 'StatusChanged', field: 'Status', oldValue: TASK_STATUS_LABEL[act.state], newValue: TASK_STATUS_LABEL[newState], entityKind: 'Task', projectId: act.projectId, activityId })
+  }
+
+  // Bulk-assign an owner to many tasks at once. Persists + logs each.
+  function bulkAssignOwner(activityIds: string[], ownerId: string): void {
+    const ownerName = people.find((p) => p.id === ownerId)?.name ?? 'Unassigned'
+    setState((prev) => ({
+      ...prev,
+      activities: prev.activities.map((a) => (activityIds.includes(a.id) ? { ...a, ownerId } : a)),
+    }))
+    if (isDataverseConfigured()) {
+      for (const id of activityIds) {
+        const act = state.activities.find((a) => a.id === id)
+        if (!act) continue
+        updateActivityInDataverse(id, {
+          name: act.name, ownerName, startDate: act.startDate, endDate: act.endDate,
+          doneDate: act.doneDate, state: act.state, criticalPath: act.criticalPath,
+          projectId: act.projectId, milestoneId: act.milestoneId,
+          workloadPct: act.workloadPct, responsible: act.responsible,
+        })
+        recordChange({ summary: `Task "${act.name}" assigned to ${ownerName}`, changeType: 'Assigned', field: 'Owner', oldValue: people.find((p) => p.id === act.ownerId)?.name || 'Unassigned', newValue: ownerName, entityKind: 'Task', projectId: act.projectId, activityId: id })
+      }
+    }
+    setTtSelected(new Set())
+  }
+
   function setProjectStatusOverview(projectId: string, status: RygStatus): void {
     const prevStatus = state.projects.find((p) => p.id === projectId)?.statusOverview
     setState((prev) => ({
@@ -2321,40 +2416,40 @@ export default function App(): ReactElement {
   }
 
   function simulateWeeklyAlerts(): void {
-    const delayedMilestones = state.milestones.filter((milestone) => !milestone.doneDate && rygFromDueDate(milestone.targetDate, state.settings.warningDaysThreshold) === 'RED').length
-    const delayedActs = state.activities.filter((activity) => !activity.doneDate && rygFromDueDate(activity.endDate, state.settings.warningDaysThreshold) === 'RED').length
-    const overAllocated = workloadRows.filter((row) => row.utilization > state.settings.workloadCriticalThreshold).length
+    const today = todayISO()
+    const generated: NotificationItem[] = []
+    const projName = (id: string) => state.projects.find((p) => p.id === id)?.name ?? 'project'
+    const ownerName = (id: string) => people.find((p) => p.id === id)?.name
 
-    const generated: NotificationItem[] = [
-      {
-        id: uid('ntf'),
-        createdAt: todayISO(),
-        severity: delayedMilestones > 0 ? 'RED' : 'GREEN',
-        message: `Weekly digest: ${delayedMilestones} delayed milestones sent to all team members.`,
-        recipients: ['PROJECT_MANAGER', 'MANAGER', 'DIRECTOR'],
-      },
-      {
-        id: uid('ntf'),
-        createdAt: todayISO(),
-        severity: delayedActs > 0 ? 'RED' : 'YELLOW',
-        message: `Weekly digest: ${delayedActs} delayed activities sent to activity owners.`,
-        recipients: ['PROJECT_MANAGER', 'MANAGER', 'DIRECTOR'],
-      },
-      {
-        id: uid('ntf'),
-        createdAt: todayISO(),
-        severity: overAllocated > 0 ? 'RED' : 'GREEN',
-        message: `Weekly digest: ${overAllocated} resources over 100% utilization.`,
-        recipients: ['MANAGER', 'DIRECTOR'],
-      },
-    ]
+    // 1. Specific overdue tasks (not done, past due, in scope) → owner + managers
+    const overdue = state.activities.filter((a) => a.state !== 'NOT_APPLICABLE' && a.state !== 'DONE' && a.endDate && a.endDate < today)
+    for (const a of overdue.sort((x, y) => x.endDate.localeCompare(y.endDate)).slice(0, 12)) {
+      const days = -dayDiff(today, a.endDate)
+      const who = ownerName(a.ownerId)
+      generated.push({ id: uid('ntf'), createdAt: today, severity: 'RED', message: `OVERDUE ${days}d: "${a.name}" (${projName(a.projectId)})${who ? ` — owner ${who}` : ' — unassigned'}`, recipients: ['PROJECT_MANAGER', 'MANAGER', 'DIRECTOR'] })
+    }
 
-    setState((prev) => ({
-      ...prev,
-      notifications: [...generated, ...prev.notifications],
-    }))
+    // 2. Tasks due within the buffer window (at risk) → owner
+    const buffer = state.settings.warningDaysThreshold
+    const dueSoon = state.activities.filter((a) => a.state !== 'NOT_APPLICABLE' && a.state !== 'DONE' && a.endDate && a.endDate >= today && dayDiff(today, a.endDate) <= buffer)
+    for (const a of dueSoon.sort((x, y) => x.endDate.localeCompare(y.endDate)).slice(0, 8)) {
+      const who = ownerName(a.ownerId)
+      generated.push({ id: uid('ntf'), createdAt: today, severity: 'YELLOW', message: `Due in ${dayDiff(today, a.endDate)}d: "${a.name}" (${projName(a.projectId)})${who ? ` — ${who}` : ''}`, recipients: ['PROJECT_MANAGER', 'MANAGER'] })
+    }
 
-    // Trigger enabled Power Automate flows
+    // 3. Over-allocated resources (peak utilization > critical threshold)
+    for (const row of workloadRows) {
+      const peak = peakUtilByPerson.get(row.person.id)?.peakUtil ?? 0
+      if (peak > state.settings.workloadCriticalThreshold) {
+        generated.push({ id: uid('ntf'), createdAt: today, severity: 'RED', message: `Overloaded: ${row.person.name} at ${peak}% peak weekly utilization`, recipients: ['MANAGER', 'DIRECTOR'] })
+      }
+    }
+
+    if (generated.length === 0) {
+      generated.push({ id: uid('ntf'), createdAt: today, severity: 'GREEN', message: 'All clear — no overdue tasks, at-risk items, or overloaded resources.', recipients: ['DIRECTOR'] })
+    }
+
+    setState((prev) => ({ ...prev, notifications: [...generated, ...prev.notifications] }))
     triggerPowerAutomateFlows(generated)
   }
 
@@ -2905,6 +3000,9 @@ export default function App(): ReactElement {
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
+                    <button type="button" title="Export to CSV" onClick={() => downloadCsv(`projects-${todayISO()}.csv`, ['ID', 'Project', 'Category', 'Type', 'Status', 'Exec. Sponsor', 'Responsible', 'Site', 'Progress %'], projectRows.map((r) => [r.project.projectCode, r.project.name, r.project.category, r.project.projectType ?? '', r.status, r.pm, r.project.projectResponsible ?? '', r.site, r.progressPct]))} className="inline-flex items-center gap-1 rounded-lg border border-pth-border/40 bg-pth-subtle px-2.5 py-1.5 text-xs font-medium text-pth-muted transition-colors hover:text-pth-text">
+                      <ExternalLink size={13} /> Export
+                    </button>
                     <div className="flex items-center gap-1 rounded-lg bg-pth-subtle p-0.5">
                       <button type="button" title="Gallery view" className={`inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors ${viewMode === 'gallery' ? 'bg-pth-card shadow-sm text-pth-text' : 'text-pth-muted hover:text-pth-text'}`} onClick={() => setViewMode('gallery')}>
                         <LayoutGrid size={14} />
@@ -3022,7 +3120,7 @@ export default function App(): ReactElement {
                           <th className="px-4 py-3 text-left">Project</th>
                           <th className="hidden px-4 py-3 text-left md:table-cell">Category</th>
                           <th className="px-4 py-3 text-left">Status</th>
-                          <th className="hidden px-4 py-3 text-left md:table-cell">Manager</th>
+                          <th className="hidden px-4 py-3 text-left md:table-cell">Exec. Sponsor</th>
                           <th className="hidden px-4 py-3 text-left lg:table-cell">Site</th>
                           <th className="px-4 py-3 text-left">Due</th>
                           <th className="px-4 py-3 text-left">Progress</th>
@@ -3396,9 +3494,10 @@ export default function App(): ReactElement {
                               const naCount = allTasks.filter((a) => a.state === 'NOT_APPLICABLE').length
                               const activeCount = allTasks.length - naCount
                               const shownTasks = allTasks.filter((a) =>
-                                taskNaFilter === 'all' ? true
+                                (taskNaFilter === 'all' ? true
                                   : taskNaFilter === 'na' ? a.state === 'NOT_APPLICABLE'
-                                  : a.state !== 'NOT_APPLICABLE',
+                                  : a.state !== 'NOT_APPLICABLE')
+                                && (detailStatusFilter.size === 0 || detailStatusFilter.has(a.state)),
                               )
                               return (
                               <div className="mt-4 rounded-xl border border-pth-border/20 bg-pth-subtle/30 p-4">
@@ -3414,6 +3513,10 @@ export default function App(): ReactElement {
                                       <Plus size={13} /> Add Task
                                     </button>
                                   </div>
+                                </div>
+                                <div className="mb-3 flex items-center gap-2">
+                                  <span className="text-[10px] uppercase tracking-wide text-pth-muted">Status:</span>
+                                  <TaskStatusChips selected={detailStatusFilter} onToggle={toggleStatus(setDetailStatusFilter)} />
                                 </div>
                                 <div className="space-y-0.5">
                                   {shownTasks.map((act) => {
@@ -3440,7 +3543,7 @@ export default function App(): ReactElement {
                                           <button type="button" className="rounded-lg p-1 text-pth-muted opacity-0 transition-all group-hover/task:opacity-100 hover:bg-pth-hover hover:text-pth-text" onClick={() => openEditActivity(act)} title="Edit task">
                                             <Pencil size={12} />
                                           </button>
-                                          {activityStateBadge(act.state)}
+                                          <TaskStatusSelect value={act.state} onChange={(s) => setTaskStatus(act.id, s)} />
                                         </div>
                                       </div>
                                     )
@@ -3658,6 +3761,10 @@ export default function App(): ReactElement {
                       </button>
                     </div>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-wide text-pth-muted" title="Only tasks of the selected statuses count toward utilization">Count tasks:</span>
+                    <TaskStatusChips selected={wlStatusFilter} onToggle={toggleStatus(setWlStatusFilter)} />
+                  </div>
 
                   {/* ── KPI Cards ── */}
                   <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -3832,7 +3939,6 @@ export default function App(): ReactElement {
                     {([
                       { key: 'projectsStatus', label: 'Projects Status' },
                       { key: 'taskTracking', label: 'Task Tracking' },
-                      { key: 'prioritization', label: 'Prioritization & Risks' },
                     ] as Array<{ key: ReportTab; label: string }>).map((tab) => (
                       <button
                         key={tab.key}
@@ -4023,17 +4129,21 @@ export default function App(): ReactElement {
                                         <span className="ml-auto shrink-0 text-[10px] font-semibold tabular-nums text-pth-muted">{Math.round(bar.doneRatio * 100)}%</span>
                                         {/* Click popup — anchored to the fixed label column so it's never clipped */}
                                         {ganttPopoverId === bar.project.id && (
-                                          <div className="absolute left-0 top-7 z-40 w-72 rounded-lg border border-white/10 bg-gray-900/95 p-2.5 shadow-elevated dark:bg-black/95" onClick={(e) => e.stopPropagation()}>
+                                          <div
+                                            className="absolute left-0 top-7 z-40 w-72 cursor-pointer rounded-lg border border-white/10 bg-gray-900/95 p-2.5 shadow-elevated transition-colors hover:border-pth-blue/50 dark:bg-black/95"
+                                            onClick={(e) => { e.stopPropagation(); setSelectedProjectId(bar.project.id); setDetailProjectId(bar.project.id); setNavPage('overview'); setGanttPopoverId(null) }}
+                                            title="Open project"
+                                          >
                                             <div className="mb-1.5 flex items-center justify-between gap-2">
                                               <span className="truncate text-[11px] font-semibold text-white">{bar.project.name}</span>
-                                              <button type="button" onClick={() => setGanttPopoverId(null)} className="shrink-0 text-white/50 hover:text-white"><X size={12} /></button>
+                                              <button type="button" onClick={(e) => { e.stopPropagation(); setGanttPopoverId(null) }} className="shrink-0 text-white/50 hover:text-white"><X size={12} /></button>
                                             </div>
                                             <div className="space-y-1.5">
                                               {tipRow('Last', hl.lastClosed)}
                                               {tipRow('Current', hl.current)}
                                               {tipRow('Upcoming', hl.upcoming)}
                                             </div>
-                                            <button type="button" onClick={() => { setDetailProjectId(bar.project.id); setSelectedProjectId(bar.project.id); setGanttPopoverId(null) }} className="mt-2 w-full rounded-md bg-pth-blue/90 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-pth-blue">Open project →</button>
+                                            <div className="mt-2 w-full rounded-md bg-pth-blue/90 py-1.5 text-center text-[11px] font-semibold text-white">Open project →</div>
                                           </div>
                                         )}
                                       </div>
@@ -4343,20 +4453,37 @@ export default function App(): ReactElement {
                         const locNames = proj ? proj.siteIds.map((id) => sites.find((s) => s.id === id)?.name ?? id) : []
                         return { a, proj, status, daysToDue, ownerName: owner?.name ?? 'Unassigned', locNames }
                       })
+                      // Area filter options = distinct atomic responsible codes, cleaned.
+                      // Split compounds (ENG / PPS, MFE+QMM), drop site suffixes (SlpP/NuP/TlP),
+                      // strip stray parens, and de-duplicate so the dropdown is short & clean.
+                      const cleanArea = (t: string) => t.replace(/[()]/g, '').replace(/\b(SlpP|TlP|NuP)\b/gi, '').replace(/\s+/g, ' ').trim()
                       const areaTokens = Array.from(new Set(
-                        state.activities.flatMap((a) => (a.responsible ?? '').split(/[+/,]/).map((t) => t.trim()).filter(Boolean)),
-                      )).sort()
+                        rows.flatMap((r) => (r.a.responsible ?? '').split(/[+/,]/).map((t) => cleanArea(t)).filter((t) => t && t.toUpperCase() !== 'NA')),
+                      )).sort((a, b) => a.localeCompare(b))
                       const projTypes = Array.from(new Set(state.projects.map((p) => p.projectType).filter(Boolean) as string[])).sort()
                       const ownerNames = Array.from(new Set(rows.map((r) => r.ownerName))).sort((a, b) => (a === 'Unassigned' ? 1 : b === 'Unassigned' ? -1 : a.localeCompare(b)))
+                      const taskNames = Array.from(new Set(rows.map((r) => r.a.name).filter(Boolean))).sort()
+                      // Active date window from the date-filter controls
+                      let dateWin: { start: string; end: string } | null = null
+                      const _today = todayISO()
+                      if (ttDateMode === 'overdue') dateWin = { start: '0000-01-01', end: addDays(_today, -1) }
+                      else if (ttDateMode === 'week') { const s = weekStartISO(_today); dateWin = { start: s, end: addDays(s, 6) } }
+                      else if (ttDateMode === 'month') { const d = new Date(_today); dateWin = { start: `${_today.slice(0, 7)}-01`, end: new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).toISOString().slice(0, 10) } }
+                      else if (ttDateMode === 'next30') dateWin = { start: _today, end: addDays(_today, 30) }
+                      else if (ttDateMode === 'range' && (ttDateFrom || ttDateTo)) dateWin = { start: ttDateFrom || '0000-01-01', end: ttDateTo || '9999-12-31' }
+                      else if (ttDateMode === 'cw' && ttCwNum) { const s = isoWeekStart(Number(ttCwYear) || 2026, Number(ttCwNum)); dateWin = { start: s, end: addDays(s, 6) } }
+                      const sq = ttSearch.trim().toLowerCase()
                       const filtered = rows.filter((r) => {
+                        if (sq && !(r.a.name.toLowerCase().includes(sq) || (r.proj?.name ?? '').toLowerCase().includes(sq) || r.ownerName.toLowerCase().includes(sq) || (r.a.responsible ?? '').toLowerCase().includes(sq))) return false
                         if (ttArea !== 'all' && !(r.a.responsible ?? '').toLowerCase().includes(ttArea.toLowerCase())) return false
+                        if (ttTaskFilter !== 'all' && r.a.name !== ttTaskFilter) return false
                         if (ttLoc !== 'all' && !r.locNames.includes(ttLoc)) return false
                         if (ttProjType !== 'all' && (r.proj?.projectType ?? '') !== ttProjType) return false
                         if (ttOwner !== 'all' && r.ownerName !== ttOwner) return false
-                        if (ttRisk !== 'all' && r.a.doneDate) return false
-                        if (ttRisk === 'atrisk' && r.status === 'GREEN') return false
-                        if (ttRisk === 'red' && r.status !== 'RED') return false
-                        if (ttRisk === 'green' && r.status !== 'GREEN') return false
+                        if (ttStatusFilter.size > 0 && !ttStatusFilter.has(r.a.state)) return false
+                        if (dateWin) { const s = r.a.startDate || r.a.endDate; const e = r.a.endDate || r.a.startDate; if (!s || !e || s > dateWin.end || e < dateWin.start) return false }
+                        // Days-left RYG multi-select (empty = all). Done tasks have no RYG urgency.
+                        if (ttRygFilter.size > 0 && (r.a.doneDate ? !ttRygFilter.has('GREEN') : !ttRygFilter.has(r.status))) return false
                         return true
                       }).sort((x, y) => {
                         const rank = (s: RygStatus) => (s === 'RED' ? 0 : s === 'YELLOW' ? 1 : 2)
@@ -4366,6 +4493,15 @@ export default function App(): ReactElement {
                       const redCount = rows.filter((r) => !r.a.doneDate && r.status === 'RED').length
                       const yellowCount = rows.filter((r) => !r.a.doneDate && r.status === 'YELLOW').length
                       const dueSoon = rows.filter((r) => !r.a.doneDate && r.daysToDue !== null && r.daysToDue >= 0 && r.daysToDue <= 14).length
+                      // Hotspots: where are the at-risk (RED+YELLOW, not done) tasks concentrated?
+                      const atRiskRows = rows.filter((r) => !r.a.doneDate && r.status !== 'GREEN')
+                      const tally = (keyFn: (r: typeof rows[number]) => string[]) => {
+                        const m = new Map<string, number>()
+                        for (const r of atRiskRows) for (const k of keyFn(r)) if (k) m.set(k, (m.get(k) ?? 0) + 1)
+                        return Array.from(m.entries()).sort((a, b) => b[1] - a[1]).slice(0, 4)
+                      }
+                      const hotAreas = tally((r) => (r.a.responsible ?? '').split(/[/,+]/).map((t) => t.replace(/[()]/g, '').trim()).filter(Boolean))
+                      const hotOwners = tally((r) => [r.ownerName])
                       const sel = 'h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm outline-none focus:border-pth-blue'
 
                       // ── Build groups for By-Area / By-Project drill-down ──
@@ -4377,14 +4513,18 @@ export default function App(): ReactElement {
                         return 'GREEN'
                       }
                       const groupKeys = (r: TtRow): string[] => ttView === 'area'
-                        ? ((r.a.responsible ?? '').split(/[+/,]/).map((t) => t.trim()).filter(Boolean) || ['—'])
+                        ? ((r.a.responsible ?? '').split(/[+/,]/).map((t) => t.trim()).filter(Boolean).length ? (r.a.responsible ?? '').split(/[+/,]/).map((t) => t.trim()).filter(Boolean) : ['—'])
                         : ttView === 'owner'
                         ? [r.ownerName || 'Unassigned']
+                        : ttView === 'status'
+                        ? [TASK_STATUS_LABEL[r.a.state]]
+                        : ttView === 'task'
+                        ? [r.a.name || '—']
                         : [r.proj?.name ?? '—']
                       const groupMap = new Map<string, TtRow[]>()
-                      if (ttView !== 'tasks') {
+                      if (ttView !== 'all') {
                         for (const r of filtered) {
-                          for (const k of (groupKeys(r).length ? groupKeys(r) : ['—'])) {
+                          for (const k of groupKeys(r)) {
                             if (!groupMap.has(k)) groupMap.set(k, [])
                             groupMap.get(k)!.push(r)
                           }
@@ -4408,39 +4548,91 @@ export default function App(): ReactElement {
                       const dotClass = (s: RygStatus) => s === 'RED' ? 'bg-pth-red' : s === 'YELLOW' ? 'bg-amber-500' : 'bg-emerald-500'
                       return (
                         <div className="space-y-4">
-                          <p className="text-xs text-pth-muted">Preventive view — surfaces tasks at risk of missing their due date (target: finish ≥2 weeks early). Filter by area, location and project type to see what won't be met in time.</p>
+                          <p className="text-xs text-pth-muted">Preventive view — surfaces tasks at risk of missing their due date (target: finish ≥2 weeks early). Search, filter and group to see what won't be met in time.</p>
+
+                          {/* Row 1: search + group-by + count */}
                           <div className="flex flex-wrap items-center gap-2">
+                            <div className="relative min-w-[220px] flex-1">
+                              <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-pth-muted" />
+                              <input type="text" placeholder="Search tasks, project, owner, area…" value={ttSearch} onChange={(e) => setTtSearch(e.target.value)} className="h-9 w-full rounded-lg border border-pth-border/40 bg-pth-subtle py-1 pl-9 pr-8 text-sm outline-none placeholder:text-pth-muted/60 focus:border-pth-blue" />
+                              {ttSearch && <button type="button" onClick={() => setTtSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-pth-muted hover:text-pth-text"><X size={12} /></button>}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] uppercase tracking-wide text-pth-muted">Group:</span>
+                              <div className="flex items-center rounded-lg border border-pth-border/40 bg-pth-subtle p-0.5 text-xs">
+                                {([['all', 'None'], ['project', 'Project'], ['task', 'Task'], ['area', 'Area'], ['owner', 'Owner'], ['status', 'Status']] as const).map(([k, lbl]) => (
+                                  <button key={k} type="button" onClick={() => setTtView(k)} className={`rounded-md px-2.5 py-1 font-medium transition-colors ${ttView === k ? 'bg-pth-card text-pth-blue shadow-sm' : 'text-pth-muted hover:text-pth-text'}`}>{lbl}</button>
+                                ))}
+                              </div>
+                            </div>
+                            <span className="text-xs font-medium text-pth-muted">{filtered.length} tasks</span>
+                            <button type="button" title="Export to CSV" onClick={() => downloadCsv(`task-tracking-${todayISO()}.csv`, ['Task', 'Status', 'Urgency', 'Project', 'Type', 'Location', 'Area', 'Owner', 'Start', 'Due', 'Days left'], filtered.map((r) => [r.a.name, TASK_STATUS_LABEL[r.a.state], r.status, r.proj?.name ?? '', r.proj?.projectType ?? '', r.locNames.join(' / '), r.a.responsible ?? '', r.ownerName, r.a.startDate ?? '', r.a.doneDate ? 'Done' : (r.a.endDate ?? ''), r.a.doneDate ? '' : (r.daysToDue ?? '')]))} className="inline-flex items-center gap-1 rounded-lg border border-pth-border/40 bg-pth-subtle px-2.5 py-1.5 text-xs font-medium text-pth-muted transition-colors hover:text-pth-text">
+                              <ExternalLink size={13} /> Export
+                            </button>
+                          </div>
+
+                          {/* Row 2: combo-box filters */}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <select title="Status" className={sel} value={ttStatusFilter.size === 1 ? [...ttStatusFilter][0] : 'all'} onChange={(e) => setTtStatusFilter(e.target.value === 'all' ? new Set() : new Set([e.target.value as ActivityState]))}>
+                              <option value="all">All Statuses</option>
+                              {TASK_STATUS_OPTIONS.filter((o) => o.key !== 'NOT_APPLICABLE').map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+                            </select>
+                            <select title="Task" className={`${sel} max-w-[200px]`} value={ttTaskFilter} onChange={(e) => setTtTaskFilter(e.target.value)}>
+                              <option value="all">All Tasks</option>
+                              {taskNames.map((t) => <option key={t} value={t}>{t}</option>)}
+                            </select>
                             <select title="Area" className={sel} value={ttArea} onChange={(e) => setTtArea(e.target.value)}>
                               <option value="all">All Areas</option>
                               {areaTokens.map((t) => <option key={t} value={t}>{t}</option>)}
-                            </select>
-                            <select title="Location" className={sel} value={ttLoc} onChange={(e) => setTtLoc(e.target.value)}>
-                              <option value="all">All Locations</option>
-                              {sites.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
-                            </select>
-                            <select title="Project Type" className={sel} value={ttProjType} onChange={(e) => setTtProjType(e.target.value)}>
-                              <option value="all">All Project Types</option>
-                              {projTypes.map((t) => <option key={t} value={t}>{t}</option>)}
                             </select>
                             <select title="Owner" className={sel} value={ttOwner} onChange={(e) => setTtOwner(e.target.value)}>
                               <option value="all">All Owners</option>
                               {ownerNames.map((o) => <option key={o} value={o}>{o}</option>)}
                             </select>
-                            <select title="Risk" className={sel} value={ttRisk} onChange={(e) => setTtRisk(e.target.value)}>
-                              <option value="atrisk">At risk (RED + YELLOW)</option>
-                              <option value="red">Will miss (RED)</option>
-                              <option value="green">On track (GREEN)</option>
-                              <option value="all">All tasks</option>
+                            <select title="Project Type" className={sel} value={ttProjType} onChange={(e) => setTtProjType(e.target.value)}>
+                              <option value="all">All Project Types</option>
+                              {projTypes.map((t) => <option key={t} value={t}>{t}</option>)}
                             </select>
-                            {(ttArea !== 'all' || ttLoc !== 'all' || ttProjType !== 'all' || ttOwner !== 'all' || ttRisk !== 'atrisk') && (
-                              <button type="button" className="text-xs text-pth-muted hover:text-pth-text" onClick={() => { setTtArea('all'); setTtLoc('all'); setTtProjType('all'); setTtOwner('all'); setTtRisk('atrisk') }}>✕ Clear</button>
-                            )}
-                            <div className="ml-auto flex items-center rounded-lg border border-pth-border/40 bg-pth-subtle p-0.5 text-xs">
-                              {([['tasks', 'Tasks'], ['area', 'By Area'], ['project', 'By Project'], ['owner', 'By Owner']] as const).map(([k, lbl]) => (
-                                <button key={k} type="button" onClick={() => setTtView(k)} className={`rounded-md px-2.5 py-1 font-medium transition-colors ${ttView === k ? 'bg-pth-card text-pth-blue shadow-sm' : 'text-pth-muted hover:text-pth-text'}`}>{lbl}</button>
-                              ))}
+                            <select title="Location" className={sel} value={ttLoc} onChange={(e) => setTtLoc(e.target.value)}>
+                              <option value="all">All Locations</option>
+                              {sites.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
+                            </select>
+                          </div>
+
+                          {/* Row 3: days-left urgency chips + date filter + clear-all */}
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] uppercase tracking-wide text-pth-muted">Days left:</span>
+                              {([['RED', 'Overdue/Critical', 'bg-pth-red/15 text-pth-red'], ['YELLOW', 'At risk', 'bg-amber-500/15 text-amber-600'], ['GREEN', 'On track', 'bg-emerald-500/15 text-emerald-600']] as const).map(([k, lbl, tone]) => {
+                                const on = ttRygFilter.has(k)
+                                return <button key={k} type="button" onClick={() => setTtRygFilter((prev) => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n })} className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${on ? tone + ' ring-1 ring-pth-blue/40' : 'bg-pth-subtle text-pth-muted hover:text-pth-text'}`}>{lbl}</button>
+                              })}
                             </div>
-                            <span className="text-xs text-pth-muted">{filtered.length} tasks</span>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-[10px] uppercase tracking-wide text-pth-muted">Due:</span>
+                              <select title="Due date" value={ttDateMode} onChange={(e) => setTtDateMode(e.target.value as typeof ttDateMode)} className="h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm outline-none focus:border-pth-blue">
+                                <option value="all">Any time</option>
+                                <option value="overdue">Overdue</option>
+                                <option value="week">This week</option>
+                                <option value="month">This month</option>
+                                <option value="next30">Next 30 days</option>
+                                <option value="range">Custom range…</option>
+                                <option value="cw">Calendar week…</option>
+                              </select>
+                              {ttDateMode === 'range' && (<>
+                                <input type="date" title="From" value={ttDateFrom} onChange={(e) => setTtDateFrom(e.target.value)} className="h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm outline-none focus:border-pth-blue" />
+                                <span className="text-xs text-pth-muted">→</span>
+                                <input type="date" title="To" value={ttDateTo} onChange={(e) => setTtDateTo(e.target.value)} className="h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm outline-none focus:border-pth-blue" />
+                              </>)}
+                              {ttDateMode === 'cw' && (<>
+                                <input type="number" min={1} max={53} placeholder="CW" title="Calendar week" value={ttCwNum} onChange={(e) => setTtCwNum(e.target.value)} className="h-9 w-16 rounded-lg border border-pth-border/40 bg-pth-subtle px-2 text-sm outline-none focus:border-pth-blue" />
+                                <input type="number" min={2024} max={2030} title="Year" value={ttCwYear} onChange={(e) => setTtCwYear(e.target.value)} className="h-9 w-20 rounded-lg border border-pth-border/40 bg-pth-subtle px-2 text-sm outline-none focus:border-pth-blue" />
+                                {ttCwNum && <span className="text-[11px] text-pth-muted">{formatShortDate(isoWeekStart(Number(ttCwYear) || 2026, Number(ttCwNum)))} – {formatShortDate(addDays(isoWeekStart(Number(ttCwYear) || 2026, Number(ttCwNum)), 6))}</span>}
+                              </>)}
+                            </div>
+                            {(ttSearch || ttArea !== 'all' || ttTaskFilter !== 'all' || ttLoc !== 'all' || ttProjType !== 'all' || ttOwner !== 'all' || ttStatusFilter.size > 0 || ttRygFilter.size > 0 || ttDateMode !== 'all') && (
+                              <button type="button" className="ml-auto text-xs font-medium text-pth-blue hover:text-pth-blue/80" onClick={() => { setTtSearch(''); setTtArea('all'); setTtTaskFilter('all'); setTtLoc('all'); setTtProjType('all'); setTtOwner('all'); setTtStatusFilter(new Set()); setTtRygFilter(new Set()); setTtDateMode('all'); setTtDateFrom(''); setTtDateTo(''); setTtCwNum('') }}>✕ Clear all filters</button>
+                            )}
                           </div>
                           <div className="grid grid-cols-3 gap-3">
                             <div className="rounded-xl border border-pth-border/15 bg-pth-card p-4 text-center">
@@ -4456,14 +4648,53 @@ export default function App(): ReactElement {
                               <div className="mt-1 text-2xl font-bold text-pth-blue">{dueSoon}</div>
                             </div>
                           </div>
-                          {/* Flat task list */}
-                          {ttView === 'tasks' && (
+                          {/* Hotspots — where at-risk tasks concentrate (click to filter) */}
+                          {atRiskRows.length > 0 && (hotAreas.length > 0 || hotOwners.length > 0) && (
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div className="rounded-xl border border-pth-border/15 bg-pth-card p-3">
+                                <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-pth-muted">At-risk hotspots — by area</div>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {hotAreas.map(([k, n]) => (
+                                    <button key={k} type="button" onClick={() => setTtArea(k)} className="inline-flex items-center gap-1 rounded-full bg-pth-subtle px-2.5 py-1 text-[11px] font-medium text-pth-text transition-colors hover:bg-pth-hover">
+                                      {k}<span className="rounded-full bg-pth-red/15 px-1.5 text-[10px] font-bold text-pth-red">{n}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              <div className="rounded-xl border border-pth-border/15 bg-pth-card p-3">
+                                <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-pth-muted">At-risk hotspots — by owner</div>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {hotOwners.map(([k, n]) => (
+                                    <button key={k} type="button" onClick={() => setTtOwner(k)} className="inline-flex items-center gap-1 rounded-full bg-pth-subtle px-2.5 py-1 text-[11px] font-medium text-pth-text transition-colors hover:bg-pth-hover">
+                                      {k}<span className="rounded-full bg-pth-red/15 px-1.5 text-[10px] font-bold text-pth-red">{n}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {/* Bulk-action bar (appears when tasks are selected) */}
+                          {ttView === 'all' && ttSelected.size > 0 && (
+                            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-pth-blue/30 bg-pth-blue/5 px-4 py-2.5">
+                              <span className="text-sm font-medium text-pth-blue">{ttSelected.size} selected</span>
+                              <span className="text-xs text-pth-muted">Assign owner:</span>
+                              <select className={`${sel} max-w-[220px]`} value="" onChange={(e) => { if (e.target.value) bulkAssignOwner([...ttSelected], e.target.value) }}>
+                                <option value="">Choose resource…</option>
+                                {people.filter((p) => p.role === 'RESOURCE').map((p) => <option key={p.id} value={p.id}>{p.name}{p.area ? ` (${p.area})` : ''}</option>)}
+                              </select>
+                              <button type="button" className="ml-auto text-xs text-pth-muted hover:text-pth-text" onClick={() => setTtSelected(new Set())}>Clear selection</button>
+                            </div>
+                          )}
+                          {/* Flat task list (no grouping) */}
+                          {ttView === 'all' && (
                           <div className="overflow-x-auto rounded-xl border border-pth-border/15">
                             <table className="w-full text-sm">
                               <thead>
                                 <tr className="border-b border-pth-border/15 text-left text-[11px] uppercase tracking-wide text-pth-muted">
-                                  <th className="px-3 py-2 font-semibold">Status</th>
+                                  <th className="px-3 py-2"><input type="checkbox" title="Select all" checked={filtered.length > 0 && filtered.every((r) => ttSelected.has(r.a.id))} onChange={(e) => setTtSelected(e.target.checked ? new Set(filtered.map((r) => r.a.id)) : new Set())} className="h-3.5 w-3.5 rounded border-pth-border/50" /></th>
+                                  <th className="px-3 py-2 font-semibold">Urgency</th>
                                   <th className="px-3 py-2 font-semibold">Task</th>
+                                  <th className="whitespace-nowrap px-3 py-2 font-semibold">Status</th>
                                   <th className="px-3 py-2 font-semibold">Project</th>
                                   <th className="px-3 py-2 font-semibold">Type</th>
                                   <th className="px-3 py-2 font-semibold">Location</th>
@@ -4478,9 +4709,11 @@ export default function App(): ReactElement {
                                   const dot = dotClass(r.status)
                                   const dleft = r.daysToDue
                                   return (
-                                    <tr key={r.a.id} className="transition-colors hover:bg-pth-hover/40">
+                                    <tr key={r.a.id} className={`transition-colors hover:bg-pth-hover/40 ${ttSelected.has(r.a.id) ? 'bg-pth-blue/5' : ''}`}>
+                                      <td className="px-3 py-2"><input type="checkbox" checked={ttSelected.has(r.a.id)} onChange={(e) => setTtSelected((prev) => { const n = new Set(prev); e.target.checked ? n.add(r.a.id) : n.delete(r.a.id); return n })} className="h-3.5 w-3.5 rounded border-pth-border/50" /></td>
                                       <td className="px-3 py-2"><span className={`inline-block h-2.5 w-2.5 rounded-full ${dot}`} /></td>
                                       <td className="px-3 py-2 font-medium">{r.a.name}{r.a.criticalPath && <span className="ml-1.5 rounded bg-pth-red/10 px-1 py-0.5 text-[9px] font-semibold text-pth-red">CP</span>}</td>
+                                      <td className="whitespace-nowrap px-3 py-2"><TaskStatusSelect value={r.a.state} onChange={(s) => setTaskStatus(r.a.id, s)} /></td>
                                       <td className="max-w-[180px] truncate px-3 py-2 text-pth-muted" title={r.proj?.name}>{r.proj?.name ?? '—'}</td>
                                       <td className="px-3 py-2 text-pth-muted">{r.proj?.projectType || '—'}</td>
                                       <td className="px-3 py-2 text-pth-muted">{r.locNames.join(', ') || '—'}</td>
@@ -4493,14 +4726,14 @@ export default function App(): ReactElement {
                                     </tr>
                                   )
                                 })}
-                                {filtered.length === 0 && <tr><td colSpan={9} className="px-3 py-8 text-center text-pth-muted">No tasks match these filters.</td></tr>}
+                                {filtered.length === 0 && <tr><td colSpan={11} className="px-3 py-8 text-center text-pth-muted">No tasks match these filters.</td></tr>}
                               </tbody>
                             </table>
                           </div>
                           )}
 
-                          {/* Grouped by Area / Project — expandable */}
-                          {ttView !== 'tasks' && (
+                          {/* Grouped views — expandable */}
+                          {ttView !== 'all' && (
                           <div className="space-y-2">
                             {groups.map((g) => {
                               const open = ttExpanded.has(g.key)
@@ -4523,6 +4756,7 @@ export default function App(): ReactElement {
                                       <thead>
                                         <tr className="border-y border-pth-border/15 text-left text-[10px] uppercase tracking-wide text-pth-muted">
                                           <th className="px-3 py-1.5 pl-10 font-semibold">Task</th>
+                                          <th className="whitespace-nowrap px-3 py-1.5 font-semibold">Status</th>
                                           <th className="px-3 py-1.5 font-semibold">{ttView === 'area' ? 'Project' : 'Area'}</th>
                                           <th className="px-3 py-1.5 font-semibold">Owner</th>
                                           <th className="whitespace-nowrap px-3 py-1.5 font-semibold">Due</th>
@@ -4539,6 +4773,7 @@ export default function App(): ReactElement {
                                           return (
                                             <tr key={r.a.id} className="transition-colors hover:bg-pth-hover/40">
                                               <td className="px-3 py-1.5 pl-10"><span className={`mr-2 inline-block h-2 w-2 rounded-full ${dotClass(r.status)}`} />{r.a.name}{r.a.criticalPath && <span className="ml-1.5 rounded bg-pth-red/10 px-1 py-0.5 text-[9px] font-semibold text-pth-red">CP</span>}</td>
+                                              <td className="whitespace-nowrap px-3 py-1.5"><TaskStatusSelect value={r.a.state} onChange={(s) => setTaskStatus(r.a.id, s)} /></td>
                                               <td className="max-w-[200px] truncate px-3 py-1.5 text-pth-muted" title={ttView === 'area' ? r.proj?.name : r.a.responsible}>{ttView === 'area' ? (r.proj?.name ?? '—') : (r.a.responsible || '—')}</td>
                                               <td className="px-3 py-1.5 text-pth-muted">{r.ownerName}</td>
                                               <td className="whitespace-nowrap px-3 py-1.5 text-pth-muted">{r.a.doneDate ? 'Done' : formatShortDate(r.a.endDate)}</td>
@@ -4559,79 +4794,6 @@ export default function App(): ReactElement {
                       )
                     })()}
 
-                    {reportTab === 'prioritization' && (
-                      <div className="space-y-4">
-                        {role !== 'DIRECTOR' && (
-                          <div className="rounded-lg border border-amber-200/60 bg-amber-50/80 px-4 py-3 text-xs font-medium text-amber-800 dark:border-amber-500/20 dark:bg-amber-900/20 dark:text-amber-300">
-                            Prioritization & Risks is a Director view. Current role is {ROLE_LABEL[role]}.
-                          </div>
-                        )}
-
-                        {/* Milestones risk table */}
-                        <div className="overflow-auto rounded-xl border border-pth-border/20">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b border-pth-border/15 bg-pth-subtle text-xs font-medium uppercase tracking-wider text-pth-muted">
-                                {['Project', 'Milestone', 'Due Date', 'Days', 'RYG'].map((h) => (
-                                  <th key={h} className="px-4 py-3 text-left font-medium">{h}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-pth-border/10">
-                              {upcomingMilestonesRisk.map((row) => (
-                                <tr key={row.milestone.id} className="transition-colors hover:bg-pth-hover">
-                                  <td className="px-4 py-3 font-medium">{row.projectName}</td>
-                                  <td className="px-4 py-3 text-pth-muted">{row.milestone.name}</td>
-                                  <td className="px-4 py-3 text-pth-muted">{formatDate(row.milestone.targetDate)}</td>
-                                  <td className="px-4 py-3">
-                                    <span className={`text-xs font-semibold ${row.daysRemaining < 0 ? 'text-pth-red' : row.daysRemaining <= state.settings.warningDaysThreshold ? 'text-amber-600' : 'text-pth-muted'}`}>{row.daysRemaining}d</span>
-                                  </td>
-                                  <td className="px-4 py-3">{statusBadge(row.status)}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-
-                        {/* Delayed activities grouped */}
-                        <div className="space-y-3">
-                          <h3 className="text-xs font-semibold uppercase tracking-wider text-pth-muted">Delayed Activities per Project</h3>
-                          {delayedGrouped.map((group) => (
-                            <div key={group.project.id} className="rounded-xl border border-pth-border/15 bg-pth-card transition-shadow hover:shadow-sm">
-                              <button
-                                type="button"
-                                className="flex w-full items-center justify-between px-4 py-3"
-                                onClick={() => setExpandedRiskProjectId((current) => (current === group.project.id ? null : group.project.id))}
-                              >
-                                <span className="text-sm font-medium">{group.project.name}</span>
-                                <div className="flex items-center gap-2">
-                                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-pth-red/10 px-1.5 text-xs font-semibold text-pth-red">{group.items.length}</span>
-                                  {group.criticalImpact && <ShieldAlert size={14} className="text-pth-red" />}
-                                  <ChevronDown size={14} className={`text-pth-muted transition-transform ${expandedRiskProjectId === group.project.id ? 'rotate-180' : ''}`} />
-                                </div>
-                              </button>
-                              <AnimatePresence>
-                                {expandedRiskProjectId === group.project.id && (
-                                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                                    <div className="space-y-1.5 border-t border-pth-border/15 px-4 py-3">
-                                      {group.items.map((activity) => (
-                                        <div key={activity.id} className="flex items-center gap-2 rounded-lg bg-pth-subtle px-3 py-2 text-xs">
-                                          <span className="h-1.5 w-1.5 rounded-full bg-pth-red" />
-                                          <span className="font-medium">{activity.name}</span>
-                                          <span className="text-pth-muted">•</span>
-                                          <span className="text-pth-muted">{people.find((p) => p.id === activity.ownerId)?.name ?? 'Unknown'}</span>
-                                          {activity.criticalPath && <span className="ml-auto rounded-md bg-pth-red/10 px-1.5 py-0.5 text-[10px] font-semibold text-pth-red">Critical</span>}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
@@ -4643,7 +4805,7 @@ export default function App(): ReactElement {
                   <div className="glass-card rounded-xl border border-pth-border/20 shadow-card">
                     <div className="border-b border-pth-border/15 px-5 py-4">
                       <h2 className="text-base font-semibold tracking-tight">Alert Simulation</h2>
-                      <p className="mt-0.5 text-xs text-pth-muted">Generate weekly digest notifications based on current data</p>
+                      <p className="mt-0.5 text-xs text-pth-muted">Generate specific alerts from current data — overdue & at-risk tasks (with owners) and overloaded resources</p>
                     </div>
                     <div className="p-5">
                       <button
@@ -4651,7 +4813,7 @@ export default function App(): ReactElement {
                         className="inline-flex items-center gap-2 rounded-lg bg-pth-btn px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-pth-btn-hover active:scale-[0.98]"
                         onClick={simulateWeeklyAlerts}
                       >
-                        <CalendarClock size={14} /> Simulate Weekly Alerts
+                        <CalendarClock size={14} /> Generate Alerts
                       </button>
                     </div>
                   </div>
