@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { getContext, type IContext } from '@microsoft/power-apps/app'
-import logoImg from './assets/logo.png'
+import { logoDataUri as logoImg } from './assets/logo'
 import { fetchAllFromDataverse, fetchDataverseUsers, isDataverseConfigured, createProjectInDataverse, deleteProjectInDataverse, updateProjectInDataverse, createMilestoneInDataverse, updateMilestoneInDataverse, deleteMilestoneInDataverse, createActivityInDataverse, updateActivityInDataverse, deleteActivityInDataverse, createResourceInDataverse, updateResourceInDataverse, deleteResourceInDataverse, updateSettingsInDataverse, updateProjectStatusOverview, searchAadUsers, fetchCurrentUserProfile, sendProjectCreationEmail, sendProjectCreationViaFunction, fetchTaskTemplates, createTaskTemplate, updateTaskTemplate, deleteTaskTemplate, logChange, fetchProjectChangeLog, type TaskTemplateRow, type ChangeLogEntry, type AadUser, type DataverseUser } from './dataverse'
 import {
   Bell,
