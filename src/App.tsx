@@ -1248,12 +1248,11 @@ export default function App(): ReactElement {
   const [ttOwner, setTtOwner] = useState<string>('all')
   // Task Tracking quick-edit drawer: id of the task being edited (null = closed)
   const [taskDrawerId, setTaskDrawerId] = useState<string | null>(null)
-  // Task Tracking date filter: mode + values
-  const [ttDateMode, setTtDateMode] = useState<'all' | 'overdue' | 'week' | 'month' | 'next30' | 'range' | 'cw'>('all')
+  // Task Tracking date filter: only "range" (custom from/to) or "week" (ISO week picker)
+  const [ttDateMode, setTtDateMode] = useState<'all' | 'range' | 'week'>('all')
   const [ttDateFrom, setTtDateFrom] = useState<string>('')
   const [ttDateTo, setTtDateTo] = useState<string>('')
-  const [ttCwYear, setTtCwYear] = useState<string>('2026')
-  const [ttCwNum, setTtCwNum] = useState<string>('')
+  const [ttWeek, setTtWeek] = useState<string>('') // native <input type="week"> value, e.g. "2026-W23"
   const [ganttLabelWidth, setGanttLabelWidth] = useState(176) // px, user-resizable
   const [ganttPopoverId, setGanttPopoverId] = useState<string | null>(null) // project whose task popup is open
   const [taskNaFilter, setTaskNaFilter] = useState<'active' | 'na' | 'all'>('active')
@@ -4747,15 +4746,10 @@ export default function App(): ReactElement {
                       const projTypes = Array.from(new Set(state.projects.map((p) => p.projectType).filter(Boolean) as string[])).sort()
                       const ownerNames = Array.from(new Set(rows.map((r) => r.ownerName))).sort((a, b) => (a === 'Unassigned' ? 1 : b === 'Unassigned' ? -1 : a.localeCompare(b)))
                       const taskNames = Array.from(new Set(rows.map((r) => r.a.name).filter(Boolean))).sort()
-                      // Active date window from the date-filter controls
+                      // Active date window from the date-filter controls (range or ISO week)
                       let dateWin: { start: string; end: string } | null = null
-                      const _today = todayISO()
-                      if (ttDateMode === 'overdue') dateWin = { start: '0000-01-01', end: addDays(_today, -1) }
-                      else if (ttDateMode === 'week') { const s = weekStartISO(_today); dateWin = { start: s, end: addDays(s, 6) } }
-                      else if (ttDateMode === 'month') { const d = new Date(_today); dateWin = { start: `${_today.slice(0, 7)}-01`, end: new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).toISOString().slice(0, 10) } }
-                      else if (ttDateMode === 'next30') dateWin = { start: _today, end: addDays(_today, 30) }
-                      else if (ttDateMode === 'range' && (ttDateFrom || ttDateTo)) dateWin = { start: ttDateFrom || '0000-01-01', end: ttDateTo || '9999-12-31' }
-                      else if (ttDateMode === 'cw' && ttCwNum) { const s = isoWeekStart(Number(ttCwYear) || 2026, Number(ttCwNum)); dateWin = { start: s, end: addDays(s, 6) } }
+                      if (ttDateMode === 'range' && (ttDateFrom || ttDateTo)) dateWin = { start: ttDateFrom || '0000-01-01', end: ttDateTo || '9999-12-31' }
+                      else if (ttDateMode === 'week' && ttWeek) { const m = ttWeek.match(/^(\d{4})-W(\d{1,2})$/); if (m) { const s = isoWeekStart(Number(m[1]), Number(m[2])); dateWin = { start: s, end: addDays(s, 6) } } }
                       const sq = ttSearch.trim().toLowerCase()
                       const filtered = rows.filter((r) => {
                         if (sq && !(r.a.name.toLowerCase().includes(sq) || (r.proj?.name ?? '').toLowerCase().includes(sq) || r.ownerName.toLowerCase().includes(sq) || (r.a.responsible ?? '').toLowerCase().includes(sq))) return false
@@ -4855,12 +4849,27 @@ export default function App(): ReactElement {
                             </button>
                           </div>
 
-                          {/* Row 2: combo-box filters */}
+                          {/* Row 2: toggle-chip filters — Status + Days left (same modern pill style) */}
+                          <div className="flex flex-wrap items-center gap-x-5 gap-y-2.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-semibold uppercase tracking-wide text-pth-muted">Status</span>
+                              {TASK_STATUS_OPTIONS.filter((o) => o.key !== 'NOT_APPLICABLE').map((o) => {
+                                const on = ttStatusFilter.has(o.key)
+                                return <button key={o.key} type="button" onClick={() => setTtStatusFilter((prev) => { const n = new Set(prev); n.has(o.key) ? n.delete(o.key) : n.add(o.key); return n })} className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${on ? o.tone + ' ring-1 ring-pth-blue/40' : 'bg-pth-subtle text-pth-muted hover:text-pth-text'}`}>{o.label}</button>
+                              })}
+                            </div>
+                            <span className="h-5 w-px bg-pth-border/30" />
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-semibold uppercase tracking-wide text-pth-muted">Days left</span>
+                              {([['RED', 'Overdue/Critical', 'bg-pth-red/15 text-pth-red'], ['YELLOW', 'At risk', 'bg-amber-500/15 text-amber-600'], ['GREEN', 'On track', 'bg-emerald-500/15 text-emerald-600']] as const).map(([k, lbl, tone]) => {
+                                const on = ttRygFilter.has(k)
+                                return <button key={k} type="button" onClick={() => setTtRygFilter((prev) => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n })} className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${on ? tone + ' ring-1 ring-pth-blue/40' : 'bg-pth-subtle text-pth-muted hover:text-pth-text'}`}>{lbl}</button>
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Row 3: dimension dropdowns */}
                           <div className="flex flex-wrap items-center gap-2">
-                            <select title="Status" className={sel} value={ttStatusFilter.size === 1 ? [...ttStatusFilter][0] : 'all'} onChange={(e) => setTtStatusFilter(e.target.value === 'all' ? new Set() : new Set([e.target.value as ActivityState]))}>
-                              <option value="all">All Statuses</option>
-                              {TASK_STATUS_OPTIONS.filter((o) => o.key !== 'NOT_APPLICABLE').map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
-                            </select>
                             <select title="Task" className={`${sel} max-w-[200px]`} value={ttTaskFilter} onChange={(e) => setTtTaskFilter(e.target.value)}>
                               <option value="all">All Tasks</option>
                               {taskNames.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -4883,39 +4892,25 @@ export default function App(): ReactElement {
                             </select>
                           </div>
 
-                          {/* Row 3: days-left urgency chips + date filter + clear-all */}
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[10px] uppercase tracking-wide text-pth-muted">Days left:</span>
-                              {([['RED', 'Overdue/Critical', 'bg-pth-red/15 text-pth-red'], ['YELLOW', 'At risk', 'bg-amber-500/15 text-amber-600'], ['GREEN', 'On track', 'bg-emerald-500/15 text-emerald-600']] as const).map(([k, lbl, tone]) => {
-                                const on = ttRygFilter.has(k)
-                                return <button key={k} type="button" onClick={() => setTtRygFilter((prev) => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n })} className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${on ? tone + ' ring-1 ring-pth-blue/40' : 'bg-pth-subtle text-pth-muted hover:text-pth-text'}`}>{lbl}</button>
-                              })}
+                          {/* Row 4: due-date filter (segmented: Any / Range / Week) + clear-all */}
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                            <span className="text-[10px] font-semibold uppercase tracking-wide text-pth-muted">Due</span>
+                            <div className="flex items-center rounded-lg border border-pth-border/40 bg-pth-subtle p-0.5 text-xs">
+                              {([['all', 'Any time'], ['range', 'Date range'], ['week', 'Week']] as const).map(([k, lbl]) => (
+                                <button key={k} type="button" onClick={() => setTtDateMode(k)} className={`rounded-md px-2.5 py-1 font-medium transition-colors ${ttDateMode === k ? 'bg-pth-card text-pth-blue shadow-sm' : 'text-pth-muted hover:text-pth-text'}`}>{lbl}</button>
+                              ))}
                             </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-[10px] uppercase tracking-wide text-pth-muted">Due:</span>
-                              <select title="Due date" value={ttDateMode} onChange={(e) => setTtDateMode(e.target.value as typeof ttDateMode)} className="h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm outline-none focus:border-pth-blue">
-                                <option value="all">Any time</option>
-                                <option value="overdue">Overdue</option>
-                                <option value="week">This week</option>
-                                <option value="month">This month</option>
-                                <option value="next30">Next 30 days</option>
-                                <option value="range">Custom range…</option>
-                                <option value="cw">Calendar week…</option>
-                              </select>
-                              {ttDateMode === 'range' && (<>
-                                <input type="date" title="From" value={ttDateFrom} onChange={(e) => setTtDateFrom(e.target.value)} className="h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm outline-none focus:border-pth-blue" />
-                                <span className="text-xs text-pth-muted">→</span>
-                                <input type="date" title="To" value={ttDateTo} onChange={(e) => setTtDateTo(e.target.value)} className="h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm outline-none focus:border-pth-blue" />
-                              </>)}
-                              {ttDateMode === 'cw' && (<>
-                                <input type="number" min={1} max={53} placeholder="CW" title="Calendar week" value={ttCwNum} onChange={(e) => setTtCwNum(e.target.value)} className="h-9 w-16 rounded-lg border border-pth-border/40 bg-pth-subtle px-2 text-sm outline-none focus:border-pth-blue" />
-                                <input type="number" min={2024} max={2030} title="Year" value={ttCwYear} onChange={(e) => setTtCwYear(e.target.value)} className="h-9 w-20 rounded-lg border border-pth-border/40 bg-pth-subtle px-2 text-sm outline-none focus:border-pth-blue" />
-                                {ttCwNum && <span className="text-[11px] text-pth-muted">{formatShortDate(isoWeekStart(Number(ttCwYear) || 2026, Number(ttCwNum)))} – {formatShortDate(addDays(isoWeekStart(Number(ttCwYear) || 2026, Number(ttCwNum)), 6))}</span>}
-                              </>)}
-                            </div>
+                            {ttDateMode === 'range' && (<>
+                              <input type="date" title="From" value={ttDateFrom} onChange={(e) => setTtDateFrom(e.target.value)} className="h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm outline-none focus:border-pth-blue" />
+                              <span className="text-xs text-pth-muted">→</span>
+                              <input type="date" title="To" value={ttDateTo} onChange={(e) => setTtDateTo(e.target.value)} className="h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm outline-none focus:border-pth-blue" />
+                            </>)}
+                            {ttDateMode === 'week' && (<>
+                              <input type="week" title="Calendar week" value={ttWeek} onChange={(e) => setTtWeek(e.target.value)} className="h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm outline-none focus:border-pth-blue" />
+                              {ttWeek && /^\d{4}-W\d{1,2}$/.test(ttWeek) && (() => { const m = ttWeek.match(/^(\d{4})-W(\d{1,2})$/)!; const s = isoWeekStart(Number(m[1]), Number(m[2])); return <span className="text-[11px] text-pth-muted">{formatShortDate(s)} – {formatShortDate(addDays(s, 6))}</span> })()}
+                            </>)}
                             {(ttSearch || ttArea !== 'all' || ttTaskFilter !== 'all' || ttLoc !== 'all' || ttProjType !== 'all' || ttOwner !== 'all' || ttStatusFilter.size > 0 || ttRygFilter.size > 0 || ttDateMode !== 'all') && (
-                              <button type="button" className="ml-auto text-xs font-medium text-pth-blue hover:text-pth-blue/80" onClick={() => { setTtSearch(''); setTtArea('all'); setTtTaskFilter('all'); setTtLoc('all'); setTtProjType('all'); setTtOwner('all'); setTtStatusFilter(new Set()); setTtRygFilter(new Set()); setTtDateMode('all'); setTtDateFrom(''); setTtDateTo(''); setTtCwNum('') }}>✕ Clear all filters</button>
+                              <button type="button" className="ml-auto text-xs font-medium text-pth-blue hover:text-pth-blue/80" onClick={() => { setTtSearch(''); setTtArea('all'); setTtTaskFilter('all'); setTtLoc('all'); setTtProjType('all'); setTtOwner('all'); setTtStatusFilter(new Set()); setTtRygFilter(new Set()); setTtDateMode('all'); setTtDateFrom(''); setTtDateTo(''); setTtWeek('') }}>✕ Clear all filters</button>
                             )}
                           </div>
                           <div className="grid grid-cols-3 gap-3">
