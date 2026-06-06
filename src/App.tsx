@@ -1028,6 +1028,72 @@ function TaskStatusSelect({ value, onChange }: { value: ActivityState; onChange:
   )
 }
 
+/** Slide-over drawer to quickly edit a single task without leaving Task Tracking. */
+function TaskEditDrawer({ activity, projectName, owners, onClose, onSave, onOpenProject }: {
+  activity: Activity
+  projectName: string
+  owners: Person[]
+  onClose: () => void
+  onSave: (patch: { state: ActivityState; ownerId: string; startDate: string; endDate: string; criticalPath: boolean }) => void
+  onOpenProject: () => void
+}): ReactElement {
+  const [taskState, setTaskState] = useState<ActivityState>(activity.state)
+  const [ownerId, setOwnerId] = useState(activity.ownerId)
+  const [startDate, setStartDate] = useState(activity.startDate || '')
+  const [endDate, setEndDate] = useState(activity.endDate || '')
+  const [criticalPath, setCriticalPath] = useState(activity.criticalPath)
+  const fieldCls = 'h-10 w-full rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-sm transition-colors focus:border-pth-blue focus:bg-pth-card focus:outline-none focus:ring-2 focus:ring-pth-blue/20'
+  return (
+    <>
+      <motion.div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
+      <motion.div
+        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col bg-pth-card shadow-2xl"
+        initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'tween', duration: 0.2 }}
+      >
+        <div className="flex items-start justify-between border-b border-pth-border/15 px-5 py-4">
+          <div className="min-w-0">
+            <h3 className="truncate text-sm font-semibold leading-snug" title={activity.name}>{activity.name}</h3>
+            <button type="button" onClick={onOpenProject} className="mt-0.5 truncate text-xs text-pth-blue hover:underline" title={projectName}>{projectName} →</button>
+          </div>
+          <button type="button" title="Close" className="rounded-lg p-1.5 text-pth-muted transition-colors hover:bg-pth-hover" onClick={onClose}><X size={16} /></button>
+        </div>
+        <div className="flex-1 space-y-4 overflow-y-auto p-5">
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium text-pth-muted">Status</span>
+            <select className={fieldCls} value={taskState} onChange={(e) => setTaskState(e.target.value as ActivityState)}>
+              {TASK_STATUS_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+            </select>
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium text-pth-muted">Owner</span>
+            <select className={fieldCls} value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
+              <option value="">Unassigned</option>
+              {owners.map((p) => <option key={p.id} value={p.id}>{p.name}{p.area ? ` (${p.area})` : ''}</option>)}
+            </select>
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium text-pth-muted">Start Date</span>
+              <input type="date" className={fieldCls} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </label>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium text-pth-muted">End Date</span>
+              <input type="date" className={fieldCls} value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </label>
+          </div>
+          <label className="flex items-center gap-2 pt-1">
+            <input type="checkbox" checked={criticalPath} onChange={(e) => setCriticalPath(e.target.checked)} className="h-4 w-4 rounded border-pth-border/50" />
+            <span className="text-sm">Critical path</span>
+          </label>
+        </div>
+        <div className="border-t border-pth-border/15 px-5 py-4">
+          <button type="button" onClick={() => onSave({ state: taskState, ownerId, startDate, endDate, criticalPath })} className="w-full rounded-lg bg-pth-btn py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-pth-btn-hover active:scale-[0.98]">Save Changes</button>
+        </div>
+      </motion.div>
+    </>
+  )
+}
+
 /** Reusable multi-select task-status filter chips. Empty selection = show all. */
 function TaskStatusChips({ selected, onToggle }: { selected: Set<ActivityState>; onToggle: (s: ActivityState) => void }): ReactElement {
   return (
@@ -1158,6 +1224,8 @@ export default function App(): ReactElement {
   const [ttTaskFilter, setTtTaskFilter] = useState<string>('all') // filter by task name
   const [ttSelected, setTtSelected] = useState<Set<string>>(new Set()) // selected task ids for bulk actions
   const [ttOwner, setTtOwner] = useState<string>('all')
+  // Task Tracking quick-edit drawer: id of the task being edited (null = closed)
+  const [taskDrawerId, setTaskDrawerId] = useState<string | null>(null)
   // Task Tracking date filter: mode + values
   const [ttDateMode, setTtDateMode] = useState<'all' | 'overdue' | 'week' | 'month' | 'next30' | 'range' | 'cw'>('all')
   const [ttDateFrom, setTtDateFrom] = useState<string>('')
@@ -2377,6 +2445,43 @@ export default function App(): ReactElement {
       }
     }
     setTtSelected(new Set())
+  }
+
+  // Save quick-edit drawer changes for one task: state, owner, dates, critical-path.
+  // Persists to Dataverse and logs each changed field to history.
+  function saveTaskEdit(activityId: string, patch: { state: ActivityState; ownerId: string; startDate: string; endDate: string; criticalPath: boolean }): void {
+    const act = state.activities.find((a) => a.id === activityId)
+    if (!act) return
+    const doneDate = patch.state === 'DONE' ? (act.doneDate ?? patch.endDate ?? act.endDate ?? todayISO()) : undefined
+    setState((prev) => ({
+      ...prev,
+      activities: prev.activities.map((a) => (a.id === activityId
+        ? { ...a, state: patch.state, ownerId: patch.ownerId, startDate: patch.startDate, endDate: patch.endDate, criticalPath: patch.criticalPath, doneDate }
+        : a)),
+    }))
+    const ownerName = people.find((p) => p.id === patch.ownerId)?.name ?? 'Unassigned'
+    if (isDataverseConfigured()) {
+      updateActivityInDataverse(activityId, {
+        name: act.name, ownerName, startDate: patch.startDate, endDate: patch.endDate,
+        doneDate, state: patch.state, criticalPath: patch.criticalPath,
+        projectId: act.projectId, milestoneId: act.milestoneId,
+        workloadPct: act.workloadPct, responsible: act.responsible,
+      })
+    }
+    // Log each changed field
+    if (patch.state !== act.state) recordChange({ summary: `Task "${act.name}" — Status changed`, changeType: 'StatusChanged', field: 'Status', oldValue: TASK_STATUS_LABEL[act.state], newValue: TASK_STATUS_LABEL[patch.state], entityKind: 'Task', projectId: act.projectId, activityId })
+    if (patch.ownerId !== act.ownerId) recordChange({ summary: `Task "${act.name}" assigned to ${ownerName}`, changeType: 'Assigned', field: 'Owner', oldValue: people.find((p) => p.id === act.ownerId)?.name || 'Unassigned', newValue: ownerName, entityKind: 'Task', projectId: act.projectId, activityId })
+    if (patch.startDate !== act.startDate) recordChange({ summary: `Task "${act.name}" — Start date changed`, changeType: 'Updated', field: 'Start Date', oldValue: act.startDate || '—', newValue: patch.startDate || '—', entityKind: 'Task', projectId: act.projectId, activityId })
+    if (patch.endDate !== act.endDate) recordChange({ summary: `Task "${act.name}" — End date changed`, changeType: 'Updated', field: 'End Date', oldValue: act.endDate || '—', newValue: patch.endDate || '—', entityKind: 'Task', projectId: act.projectId, activityId })
+    if (patch.criticalPath !== act.criticalPath) recordChange({ summary: `Task "${act.name}" — Critical path ${patch.criticalPath ? 'set' : 'cleared'}`, changeType: 'Updated', field: 'Critical Path', oldValue: String(act.criticalPath), newValue: String(patch.criticalPath), entityKind: 'Task', projectId: act.projectId, activityId })
+    setTaskDrawerId(null)
+  }
+
+  // Navigate from Task Tracking to a project's detail screen.
+  function openProjectDetail(projectId: string): void {
+    setSelectedProjectId(projectId)
+    setDetailProjectId(projectId)
+    setNavPage('overview')
   }
 
   function setProjectStatusOverview(projectId: string, status: RygStatus): void {
@@ -4722,9 +4827,9 @@ export default function App(): ReactElement {
                                     <tr key={r.a.id} className={`transition-colors hover:bg-pth-hover/40 ${ttSelected.has(r.a.id) ? 'bg-pth-blue/5' : ''}`}>
                                       <td className="px-3 py-2"><input type="checkbox" checked={ttSelected.has(r.a.id)} onChange={(e) => setTtSelected((prev) => { const n = new Set(prev); e.target.checked ? n.add(r.a.id) : n.delete(r.a.id); return n })} className="h-3.5 w-3.5 rounded border-pth-border/50" /></td>
                                       <td className="px-3 py-2"><span className={`inline-block h-2.5 w-2.5 rounded-full ${dot}`} /></td>
-                                      <td className="px-3 py-2 font-medium">{r.a.name}{r.a.criticalPath && <span className="ml-1.5 rounded bg-pth-red/10 px-1 py-0.5 text-[9px] font-semibold text-pth-red">CP</span>}</td>
+                                      <td className="px-3 py-2 font-medium"><button type="button" onClick={() => setTaskDrawerId(r.a.id)} className="text-left hover:text-pth-blue hover:underline">{r.a.name}</button>{r.a.criticalPath && <span className="ml-1.5 rounded bg-pth-red/10 px-1 py-0.5 text-[9px] font-semibold text-pth-red">CP</span>}</td>
                                       <td className="whitespace-nowrap px-3 py-2"><TaskStatusSelect value={r.a.state} onChange={(s) => setTaskStatus(r.a.id, s)} /></td>
-                                      <td className="max-w-[180px] truncate px-3 py-2 text-pth-muted" title={r.proj?.name}>{r.proj?.name ?? '—'}</td>
+                                      <td className="max-w-[180px] truncate px-3 py-2 text-pth-muted" title={r.proj?.name}>{r.proj ? <button type="button" onClick={() => openProjectDetail(r.proj!.id)} className="max-w-full truncate text-left hover:text-pth-blue hover:underline">{r.proj.name}</button> : '—'}</td>
                                       <td className="px-3 py-2 text-pth-muted">{r.proj?.projectType || '—'}</td>
                                       <td className="px-3 py-2 text-pth-muted">{r.locNames.join(', ') || '—'}</td>
                                       <td className="px-3 py-2 text-pth-muted">{r.a.responsible || '—'}</td>
@@ -4767,7 +4872,8 @@ export default function App(): ReactElement {
                                         <tr className="border-y border-pth-border/15 text-left text-[10px] uppercase tracking-wide text-pth-muted">
                                           <th className="px-3 py-1.5 pl-10 font-semibold">Task</th>
                                           <th className="whitespace-nowrap px-3 py-1.5 font-semibold">Status</th>
-                                          <th className="px-3 py-1.5 font-semibold">{ttView === 'area' ? 'Project' : 'Area'}</th>
+                                          <th className="px-3 py-1.5 font-semibold">Project</th>
+                                          {ttView !== 'area' && <th className="px-3 py-1.5 font-semibold">Area</th>}
                                           <th className="px-3 py-1.5 font-semibold">Owner</th>
                                           <th className="whitespace-nowrap px-3 py-1.5 font-semibold">Due</th>
                                           <th className="whitespace-nowrap px-3 py-1.5 font-semibold">Days left</th>
@@ -4782,9 +4888,10 @@ export default function App(): ReactElement {
                                           const dleft = r.daysToDue
                                           return (
                                             <tr key={r.a.id} className="transition-colors hover:bg-pth-hover/40">
-                                              <td className="px-3 py-1.5 pl-10"><span className={`mr-2 inline-block h-2 w-2 rounded-full ${dotClass(r.status)}`} />{r.a.name}{r.a.criticalPath && <span className="ml-1.5 rounded bg-pth-red/10 px-1 py-0.5 text-[9px] font-semibold text-pth-red">CP</span>}</td>
+                                              <td className="px-3 py-1.5 pl-10"><span className={`mr-2 inline-block h-2 w-2 rounded-full ${dotClass(r.status)}`} /><button type="button" onClick={() => setTaskDrawerId(r.a.id)} className="text-left hover:text-pth-blue hover:underline">{r.a.name}</button>{r.a.criticalPath && <span className="ml-1.5 rounded bg-pth-red/10 px-1 py-0.5 text-[9px] font-semibold text-pth-red">CP</span>}</td>
                                               <td className="whitespace-nowrap px-3 py-1.5"><TaskStatusSelect value={r.a.state} onChange={(s) => setTaskStatus(r.a.id, s)} /></td>
-                                              <td className="max-w-[200px] truncate px-3 py-1.5 text-pth-muted" title={ttView === 'area' ? r.proj?.name : r.a.responsible}>{ttView === 'area' ? (r.proj?.name ?? '—') : (r.a.responsible || '—')}</td>
+                                              <td className="max-w-[200px] truncate px-3 py-1.5 text-pth-muted" title={r.proj?.name}>{r.proj ? <button type="button" onClick={() => openProjectDetail(r.proj!.id)} className="max-w-full truncate text-left hover:text-pth-blue hover:underline">{r.proj.name}</button> : '—'}</td>
+                                              {ttView !== 'area' && <td className="max-w-[160px] truncate px-3 py-1.5 text-pth-muted" title={r.a.responsible}>{r.a.responsible || '—'}</td>}
                                               <td className="px-3 py-1.5 text-pth-muted">{r.ownerName}</td>
                                               <td className="whitespace-nowrap px-3 py-1.5 text-pth-muted">{r.a.doneDate ? 'Done' : formatShortDate(r.a.endDate)}</td>
                                               <td className={`whitespace-nowrap px-3 py-1.5 font-medium ${dleft != null && dleft < 0 ? 'text-pth-red' : dleft != null && dleft <= 14 ? 'text-amber-600' : 'text-pth-muted'}`}>{r.a.doneDate ? '—' : dleft != null ? (dleft < 0 ? `${-dleft}d overdue` : `${dleft}d`) : '—'}</td>
@@ -5877,6 +5984,26 @@ export default function App(): ReactElement {
             </motion.div>
           </>
         )}
+      </AnimatePresence>
+
+      {/* ─── TASK QUICK-EDIT DRAWER (Task Tracking) ─── */}
+      <AnimatePresence>
+        {taskDrawerId && (() => {
+          const act = state.activities.find((a) => a.id === taskDrawerId)
+          if (!act) return null
+          const proj = state.projects.find((p) => p.id === act.projectId)
+          return (
+            <TaskEditDrawer
+              key={act.id}
+              activity={act}
+              projectName={proj?.name ?? '—'}
+              owners={people.filter((p) => p.role === 'RESOURCE')}
+              onClose={() => setTaskDrawerId(null)}
+              onSave={(patch) => saveTaskEdit(act.id, patch)}
+              onOpenProject={() => { setTaskDrawerId(null); openProjectDetail(act.projectId) }}
+            />
+          )
+        })()}
       </AnimatePresence>
 
       {/* ─── MASTER DATA PERSON DIALOG ─── */}
