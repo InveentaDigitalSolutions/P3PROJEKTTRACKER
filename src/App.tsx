@@ -1006,6 +1006,18 @@ function isoWeekStart(year: number, week: number): string {
   return monday.toISOString().slice(0, 10)
 }
 
+/** Current ISO week as a native <input type="week"> value, e.g. "2026-W23". */
+function currentIsoWeek(): string {
+  const d = new Date(todayISO())
+  // Shift to the Thursday of this week → its calendar year is the ISO year.
+  const day = (d.getUTCDay() + 6) % 7
+  d.setUTCDate(d.getUTCDate() - day + 3)
+  const isoYear = d.getUTCFullYear()
+  const firstThursday = new Date(Date.UTC(isoYear, 0, 4))
+  const week = 1 + Math.round(((d.getTime() - firstThursday.getTime()) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7)
+  return `${isoYear}-W${String(week).padStart(2, '0')}`
+}
+
 const TASK_STATUS_OPTIONS: Array<{ key: ActivityState; label: string; tone: string }> = [
   { key: 'NOT_STARTED', label: 'Not started', tone: 'bg-pth-border/30 text-pth-text' },
   { key: 'IN_PROGRESS', label: 'In progress', tone: 'bg-pth-blue/15 text-pth-blue' },
@@ -4897,7 +4909,7 @@ export default function App(): ReactElement {
                             <span className="text-[10px] font-semibold uppercase tracking-wide text-pth-muted">Due</span>
                             <div className="flex items-center rounded-lg border border-pth-border/40 bg-pth-subtle p-0.5 text-xs">
                               {([['all', 'Any time'], ['range', 'Date range'], ['week', 'Week']] as const).map(([k, lbl]) => (
-                                <button key={k} type="button" onClick={() => setTtDateMode(k)} className={`rounded-md px-2.5 py-1 font-medium transition-colors ${ttDateMode === k ? 'bg-pth-card text-pth-blue shadow-sm' : 'text-pth-muted hover:text-pth-text'}`}>{lbl}</button>
+                                <button key={k} type="button" onClick={() => { setTtDateMode(k); if (k === 'week' && !ttWeek) setTtWeek(currentIsoWeek()) }} className={`rounded-md px-2.5 py-1 font-medium transition-colors ${ttDateMode === k ? 'bg-pth-card text-pth-blue shadow-sm' : 'text-pth-muted hover:text-pth-text'}`}>{lbl}</button>
                               ))}
                             </div>
                             {ttDateMode === 'range' && (<>
