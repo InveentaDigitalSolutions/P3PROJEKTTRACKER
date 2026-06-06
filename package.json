@@ -4,9 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "DATAVERSE_URL=https://org91869c7b.crm4.dynamics.com node scripts/dev-token.mjs && vite",
+    "dev": "vite",
     "dev:novars": "vite",
-    "dev:dv": "DATAVERSE_URL=https://org91869c7b.crm4.dynamics.com node scripts/dev-token.mjs && vite",
+    "dev:writetoken": "DATAVERSE_URL=https://org91869c7b.crm4.dynamics.com node scripts/dev-token.mjs && vite",
+    "dev:dv": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",

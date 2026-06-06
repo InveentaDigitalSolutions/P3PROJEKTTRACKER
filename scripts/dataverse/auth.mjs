@@ -7,11 +7,14 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { execSync } from 'node:child_process'
 import { createRequire } from 'node:module'
-import { tmpdir } from 'node:os'
+import { tmpdir, homedir } from 'node:os'
 import { join } from 'node:path'
 
 const require = createRequire(import.meta.url)
-const TOKEN_CACHE_FILE = join(tmpdir(), 'pth-msal-cache.json')
+// Persist the MSAL cache (refresh token, ~90-day life) in the home dir so it
+// survives reboots — the OS temp dir can be wiped, which would force a new
+// device-code login. Falls back to tmpdir if home isn't available.
+const TOKEN_CACHE_FILE = join(homedir() || tmpdir(), '.pth-msal-cache.json')
 
 export async function resolveToken(dataverseUrl) {
   if (process.env.DATAVERSE_TOKEN) return process.env.DATAVERSE_TOKEN
