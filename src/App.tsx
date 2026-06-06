@@ -4,6 +4,7 @@ import { getContext, type IContext } from '@microsoft/power-apps/app'
 import { logoDataUri as logoImg } from './assets/logo'
 import { fetchAllFromDataverse, fetchDataverseUsers, isDataverseConfigured, createProjectInDataverse, deleteProjectInDataverse, updateProjectInDataverse, createMilestoneInDataverse, updateMilestoneInDataverse, deleteMilestoneInDataverse, createActivityInDataverse, updateActivityInDataverse, deleteActivityInDataverse, createResourceInDataverse, updateResourceInDataverse, deleteResourceInDataverse, updateSettingsInDataverse, updateProjectStatusOverview, searchAadUsers, fetchCurrentUserProfile, sendProjectCreationEmail, sendProjectCreationViaFunction, fetchTaskTemplates, createTaskTemplate, updateTaskTemplate, deleteTaskTemplate, logChange, fetchProjectChangeLog, type TaskTemplateRow, type ChangeLogEntry, type AadUser, type DataverseUser } from './dataverse'
 import {
+  AlertTriangle,
   Bell,
   BellRing,
   Briefcase,
@@ -1034,11 +1035,14 @@ function TaskEditDrawer({ activity, projectName, owners, onClose, onSave, onOpen
   projectName: string
   owners: Person[]
   onClose: () => void
-  onSave: (patch: { state: ActivityState; ownerId: string; startDate: string; endDate: string; criticalPath: boolean }) => void
+  onSave: (patch: { name: string; state: ActivityState; ownerId: string; responsible: string; workloadPct: number | null; startDate: string; endDate: string; criticalPath: boolean }) => void
   onOpenProject: () => void
 }): ReactElement {
+  const [name, setName] = useState(activity.name)
   const [taskState, setTaskState] = useState<ActivityState>(activity.state)
   const [ownerId, setOwnerId] = useState(activity.ownerId)
+  const [responsible, setResponsible] = useState(activity.responsible || '')
+  const [workloadPct, setWorkloadPct] = useState<string>(activity.workloadPct != null ? String(activity.workloadPct) : '')
   const [startDate, setStartDate] = useState(activity.startDate || '')
   const [endDate, setEndDate] = useState(activity.endDate || '')
   const [criticalPath, setCriticalPath] = useState(activity.criticalPath)
@@ -1059,18 +1063,34 @@ function TaskEditDrawer({ activity, projectName, owners, onClose, onSave, onOpen
         </div>
         <div className="flex-1 space-y-4 overflow-y-auto p-5">
           <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-pth-muted">Status</span>
-            <select className={fieldCls} value={taskState} onChange={(e) => setTaskState(e.target.value as ActivityState)}>
-              {TASK_STATUS_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
-            </select>
+            <span className="text-xs font-medium text-pth-muted">Task Name</span>
+            <input className={fieldCls} value={name} onChange={(e) => setName(e.target.value)} />
           </label>
-          <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-pth-muted">Owner</span>
-            <select className={fieldCls} value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
-              <option value="">Unassigned</option>
-              {owners.map((p) => <option key={p.id} value={p.id}>{p.name}{p.area ? ` (${p.area})` : ''}</option>)}
-            </select>
-          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium text-pth-muted">Owner</span>
+              <select className={fieldCls} value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
+                <option value="">Unassigned</option>
+                {owners.map((p) => <option key={p.id} value={p.id}>{p.name}{p.area ? ` (${p.area})` : ''}</option>)}
+              </select>
+            </label>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium text-pth-muted">Status</span>
+              <select className={fieldCls} value={taskState} onChange={(e) => setTaskState(e.target.value as ActivityState)}>
+                {TASK_STATUS_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+              </select>
+            </label>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium text-pth-muted">Responsible (Area)</span>
+              <input className={fieldCls} placeholder="e.g. ENG / QMM" value={responsible} onChange={(e) => setResponsible(e.target.value)} />
+            </label>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium text-pth-muted">Workload %</span>
+              <input type="number" min={0} max={100000} className={fieldCls} placeholder="0" value={workloadPct} onChange={(e) => setWorkloadPct(e.target.value)} />
+            </label>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <label className="block space-y-1.5">
               <span className="text-xs font-medium text-pth-muted">Start Date</span>
@@ -1087,7 +1107,7 @@ function TaskEditDrawer({ activity, projectName, owners, onClose, onSave, onOpen
           </label>
         </div>
         <div className="border-t border-pth-border/15 px-5 py-4">
-          <button type="button" onClick={() => onSave({ state: taskState, ownerId, startDate, endDate, criticalPath })} className="w-full rounded-lg bg-pth-btn py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-pth-btn-hover active:scale-[0.98]">Save Changes</button>
+          <button type="button" onClick={() => onSave({ name: name.trim() || activity.name, state: taskState, ownerId, responsible: responsible.trim(), workloadPct: workloadPct === '' ? null : Number(workloadPct), startDate, endDate, criticalPath })} className="w-full rounded-lg bg-pth-btn py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-pth-btn-hover active:scale-[0.98]">Save Changes</button>
         </div>
       </motion.div>
     </>
@@ -1183,6 +1203,8 @@ export default function App(): ReactElement {
   const [workloadWeekOffset, setWorkloadWeekOffset] = useState(0)
   const [workloadSearch, setWorkloadSearch] = useState('')
   const [workloadView, setWorkloadView] = usePersistedState<'cards' | 'list'>('workloadView', 'cards')
+  // Resource detail dashboard (Workload page): id of the resource being inspected (null = grid)
+  const [resourceDetailId, setResourceDetailId] = useState<string | null>(null)
   const [workloadSiteFilter, setWorkloadSiteFilter] = useState<'all' | 'SlpP' | 'TlP'>('all')
   const [workloadAreaFilter, setWorkloadAreaFilter] = useState<string>('all')
   const [milestoneDialogOpen, setMilestoneDialogOpen] = useState(false)
@@ -1833,6 +1855,42 @@ export default function App(): ReactElement {
     return out
   }, [people, state.activities, state.settings.defaultWeeklyCapacity])
 
+  // Resource detail dashboard data: everything a single resource is planned on —
+  // active owned tasks grouped by project, capacity, peak utilization, and a
+  // per-week load timeline over the next ~16 weeks.
+  const resourceDetailData = useMemo(() => {
+    if (!resourceDetailId) return null
+    const person = people.find((p) => p.id === resourceDetailId)
+    if (!person) return null
+    const capacity = person.weeklyCapacity ?? state.settings.defaultWeeklyCapacity
+    const owned = state.activities.filter((a) => a.ownerId === person.id && a.state !== 'NOT_APPLICABLE' && a.state !== 'DONE' && a.startDate && a.endDate)
+
+    // Group active tasks by project
+    const byProject = new Map<string, { project: Project | undefined; tasks: Activity[]; loadPct: number }>()
+    for (const a of owned) {
+      const entry = byProject.get(a.projectId) ?? { project: state.projects.find((p) => p.id === a.projectId), tasks: [], loadPct: 0 }
+      entry.tasks.push(a)
+      entry.loadPct += a.workloadPct ?? 0
+      byProject.set(a.projectId, entry)
+    }
+    const projects = Array.from(byProject.values())
+      .map((e) => ({ ...e, tasks: e.tasks.sort((x, y) => (x.startDate || '').localeCompare(y.startDate || '')) }))
+      .sort((a, b) => b.loadPct - a.loadPct)
+
+    // Per-week load over the next 16 weeks (hours = workloadPct% × capacity)
+    const startWk = weekStartISO(todayISO())
+    const weeks: Array<{ week: string; hours: number; util: number }> = []
+    for (let i = 0; i < 16; i++) {
+      const wk = addDays(startWk, i * 7)
+      const wkEnd = addDays(wk, 6)
+      const hours = owned.reduce((sum, a) => (a.startDate <= wkEnd && a.endDate >= wk ? sum + ((a.workloadPct ?? 0) / 100) * capacity : sum), 0)
+      weeks.push({ week: wk, hours, util: Math.round((hours / Math.max(capacity, 1)) * 100) })
+    }
+    const peak = peakUtilByPerson.get(person.id) ?? { peakUtil: 0, peakHours: 0, capacity, taskCount: owned.length }
+    const overdue = owned.filter((a) => a.endDate < todayISO()).length
+    return { person, capacity, owned, projects, weeks, peak, overdue }
+  }, [resourceDetailId, people, state.activities, state.projects, state.settings.defaultWeeklyCapacity, peakUtilByPerson])
+
   const overviewForm = useForm<ProjectOverviewForm>({
     values: {
       name: selectedProject?.name ?? '',
@@ -2447,33 +2505,36 @@ export default function App(): ReactElement {
     setTtSelected(new Set())
   }
 
-  // Save quick-edit drawer changes for one task: state, owner, dates, critical-path.
-  // Persists to Dataverse and logs each changed field to history.
-  function saveTaskEdit(activityId: string, patch: { state: ActivityState; ownerId: string; startDate: string; endDate: string; criticalPath: boolean }): void {
+  // Save quick-edit drawer changes for one task: name, owner, status, responsible,
+  // workload, dates, critical-path. Persists to Dataverse and logs each changed field.
+  function saveTaskEdit(activityId: string, patch: { name: string; state: ActivityState; ownerId: string; responsible: string; workloadPct: number | null; startDate: string; endDate: string; criticalPath: boolean }): void {
     const act = state.activities.find((a) => a.id === activityId)
     if (!act) return
     const doneDate = patch.state === 'DONE' ? (act.doneDate ?? patch.endDate ?? act.endDate ?? todayISO()) : undefined
     setState((prev) => ({
       ...prev,
       activities: prev.activities.map((a) => (a.id === activityId
-        ? { ...a, state: patch.state, ownerId: patch.ownerId, startDate: patch.startDate, endDate: patch.endDate, criticalPath: patch.criticalPath, doneDate }
+        ? { ...a, name: patch.name, state: patch.state, ownerId: patch.ownerId, responsible: patch.responsible, workloadPct: patch.workloadPct, startDate: patch.startDate, endDate: patch.endDate, criticalPath: patch.criticalPath, doneDate }
         : a)),
     }))
     const ownerName = people.find((p) => p.id === patch.ownerId)?.name ?? 'Unassigned'
     if (isDataverseConfigured()) {
       updateActivityInDataverse(activityId, {
-        name: act.name, ownerName, startDate: patch.startDate, endDate: patch.endDate,
+        name: patch.name, ownerName, startDate: patch.startDate, endDate: patch.endDate,
         doneDate, state: patch.state, criticalPath: patch.criticalPath,
         projectId: act.projectId, milestoneId: act.milestoneId,
-        workloadPct: act.workloadPct, responsible: act.responsible,
+        workloadPct: patch.workloadPct, responsible: patch.responsible,
       })
     }
     // Log each changed field
-    if (patch.state !== act.state) recordChange({ summary: `Task "${act.name}" — Status changed`, changeType: 'StatusChanged', field: 'Status', oldValue: TASK_STATUS_LABEL[act.state], newValue: TASK_STATUS_LABEL[patch.state], entityKind: 'Task', projectId: act.projectId, activityId })
-    if (patch.ownerId !== act.ownerId) recordChange({ summary: `Task "${act.name}" assigned to ${ownerName}`, changeType: 'Assigned', field: 'Owner', oldValue: people.find((p) => p.id === act.ownerId)?.name || 'Unassigned', newValue: ownerName, entityKind: 'Task', projectId: act.projectId, activityId })
-    if (patch.startDate !== act.startDate) recordChange({ summary: `Task "${act.name}" — Start date changed`, changeType: 'Updated', field: 'Start Date', oldValue: act.startDate || '—', newValue: patch.startDate || '—', entityKind: 'Task', projectId: act.projectId, activityId })
-    if (patch.endDate !== act.endDate) recordChange({ summary: `Task "${act.name}" — End date changed`, changeType: 'Updated', field: 'End Date', oldValue: act.endDate || '—', newValue: patch.endDate || '—', entityKind: 'Task', projectId: act.projectId, activityId })
-    if (patch.criticalPath !== act.criticalPath) recordChange({ summary: `Task "${act.name}" — Critical path ${patch.criticalPath ? 'set' : 'cleared'}`, changeType: 'Updated', field: 'Critical Path', oldValue: String(act.criticalPath), newValue: String(patch.criticalPath), entityKind: 'Task', projectId: act.projectId, activityId })
+    if (patch.name !== act.name) recordChange({ summary: `Task renamed to "${patch.name}"`, changeType: 'Updated', field: 'Task Name', oldValue: act.name, newValue: patch.name, entityKind: 'Task', projectId: act.projectId, activityId })
+    if (patch.state !== act.state) recordChange({ summary: `Task "${patch.name}" — Status changed`, changeType: 'StatusChanged', field: 'Status', oldValue: TASK_STATUS_LABEL[act.state], newValue: TASK_STATUS_LABEL[patch.state], entityKind: 'Task', projectId: act.projectId, activityId })
+    if (patch.ownerId !== act.ownerId) recordChange({ summary: `Task "${patch.name}" assigned to ${ownerName}`, changeType: 'Assigned', field: 'Owner', oldValue: people.find((p) => p.id === act.ownerId)?.name || 'Unassigned', newValue: ownerName, entityKind: 'Task', projectId: act.projectId, activityId })
+    if ((patch.responsible || '') !== (act.responsible || '')) recordChange({ summary: `Task "${patch.name}" — Responsible changed`, changeType: 'Updated', field: 'Responsible', oldValue: act.responsible || '—', newValue: patch.responsible || '—', entityKind: 'Task', projectId: act.projectId, activityId })
+    if ((patch.workloadPct ?? null) !== (act.workloadPct ?? null)) recordChange({ summary: `Task "${patch.name}" — Workload changed`, changeType: 'Updated', field: 'Workload %', oldValue: act.workloadPct != null ? String(act.workloadPct) : '—', newValue: patch.workloadPct != null ? String(patch.workloadPct) : '—', entityKind: 'Task', projectId: act.projectId, activityId })
+    if (patch.startDate !== act.startDate) recordChange({ summary: `Task "${patch.name}" — Start date changed`, changeType: 'Updated', field: 'Start Date', oldValue: act.startDate || '—', newValue: patch.startDate || '—', entityKind: 'Task', projectId: act.projectId, activityId })
+    if (patch.endDate !== act.endDate) recordChange({ summary: `Task "${patch.name}" — End date changed`, changeType: 'Updated', field: 'End Date', oldValue: act.endDate || '—', newValue: patch.endDate || '—', entityKind: 'Task', projectId: act.projectId, activityId })
+    if (patch.criticalPath !== act.criticalPath) recordChange({ summary: `Task "${patch.name}" — Critical path ${patch.criticalPath ? 'set' : 'cleared'}`, changeType: 'Updated', field: 'Critical Path', oldValue: String(act.criticalPath), newValue: String(patch.criticalPath), entityKind: 'Task', projectId: act.projectId, activityId })
     setTaskDrawerId(null)
   }
 
@@ -3829,6 +3890,114 @@ export default function App(): ReactElement {
                 // sort: overloaded first, then at-risk, then by descending util
                 const sorted = [...filtered].sort((a, b) => b.utilization - a.utilization)
 
+                // ── Resource detail dashboard (when a resource is selected) ──
+                if (resourceDetailData) {
+                  const d = resourceDetailData
+                  const utilTone = (u: number) => u > 100 ? 'bg-pth-red' : u >= 90 ? 'bg-amber-400' : u >= 50 ? 'bg-blue-500' : 'bg-emerald-500'
+                  const utilText = (u: number) => u > 100 ? 'text-pth-red' : u >= 90 ? 'text-amber-600 dark:text-amber-400' : u >= 50 ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400'
+                  const maxWeekHours = Math.max(d.capacity, ...d.weeks.map((w) => w.hours), 1)
+                  return (
+                    <div className="space-y-4">
+                      <button type="button" onClick={() => setResourceDetailId(null)} className="inline-flex items-center gap-1.5 text-sm text-pth-muted transition-colors hover:text-pth-text"><ChevronLeft size={16} /> Back to Workload</button>
+
+                      {/* Header */}
+                      <div className="glass-card rounded-xl p-5 shadow-card">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-center gap-4">
+                            <div className={`flex h-14 w-14 items-center justify-center rounded-full text-lg font-bold text-white ${utilTone(d.peak.peakUtil)}`}>{d.person.initials}</div>
+                            <div>
+                              <h1 className="text-xl font-bold tracking-tight">{d.person.name}</h1>
+                              <div className="text-sm text-pth-muted">{d.person.resourceKind ?? (ROLE_LABEL[d.person.role as Role] ?? 'Resource')}{d.person.area ? ` · ${d.person.area}` : ''}</div>
+                              {(d.person.location?.length ?? 0) > 0 && (
+                                <div className="mt-1.5 flex gap-1">
+                                  {d.person.location!.map((loc) => <span key={loc} className="rounded-full bg-pth-blue/10 px-2 py-0.5 text-[10px] font-medium text-pth-blue">{loc}</span>)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className={`text-3xl font-bold ${utilText(d.peak.peakUtil)}`}>{d.peak.peakUtil}%</div>
+                            <div className="text-[11px] text-pth-muted">peak weekly load</div>
+                          </div>
+                        </div>
+                        {/* KPI strip */}
+                        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                          {[
+                            { label: 'Capacity', value: `${d.capacity}h/wk` },
+                            { label: 'Peak load', value: `${Math.round(d.peak.peakHours)}h` },
+                            { label: 'Active tasks', value: String(d.owned.length) },
+                            { label: 'Projects', value: String(d.projects.length) },
+                          ].map((kpi) => (
+                            <div key={kpi.label} className="rounded-lg border border-pth-border/15 bg-pth-subtle/40 px-3 py-2.5">
+                              <div className="text-lg font-semibold">{kpi.value}</div>
+                              <div className="text-[11px] text-pth-muted">{kpi.label}</div>
+                            </div>
+                          ))}
+                        </div>
+                        {d.overdue > 0 && <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-pth-red/10 px-3 py-1.5 text-xs font-medium text-pth-red"><AlertTriangle size={13} /> {d.overdue} overdue task{d.overdue === 1 ? '' : 's'}</div>}
+                      </div>
+
+                      {/* 16-week load timeline */}
+                      <div className="glass-card rounded-xl p-5 shadow-card">
+                        <h2 className="text-sm font-semibold">Weekly load — next 16 weeks</h2>
+                        <p className="mt-0.5 text-[11px] text-pth-muted">Hours per week from owned active tasks vs. capacity ({d.capacity}h). Bars above the line are overbooked weeks.</p>
+                        <div className="mt-4 flex items-end gap-1" style={{ height: 120 }}>
+                          {d.weeks.map((w) => (
+                            <div key={w.week} className="group relative flex flex-1 flex-col items-center justify-end" title={`Week of ${formatShortDate(w.week)} — ${Math.round(w.hours)}h (${w.util}%)`}>
+                              <div ref={dynRef({ height: `${Math.round((w.hours / maxWeekHours) * 100)}%` })} className={`w-full rounded-t ${utilTone(w.util)} ${w.util === 0 ? 'opacity-25' : ''}`} style={{ minHeight: w.hours > 0 ? 2 : 0 }} />
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-1.5 flex gap-1">
+                          {d.weeks.map((w, i) => <div key={w.week} className="flex-1 text-center text-[8px] text-pth-muted">{i % 2 === 0 ? formatShortDate(w.week).slice(0, 5) : ''}</div>)}
+                        </div>
+                      </div>
+
+                      {/* Tasks grouped by project */}
+                      <div className="space-y-3">
+                        {d.projects.length === 0 && <div className="glass-card rounded-xl px-5 py-10 text-center text-sm text-pth-muted shadow-card">No active tasks assigned to this resource.</div>}
+                        {d.projects.map(({ project, tasks, loadPct }) => (
+                          <div key={project?.id ?? 'none'} className="glass-card overflow-hidden rounded-xl shadow-card">
+                            <div className="flex items-center justify-between gap-3 border-b border-pth-border/15 px-4 py-3">
+                              <button type="button" onClick={() => project && openProjectDetail(project.id)} className="min-w-0 text-left">
+                                <div className="truncate text-sm font-semibold hover:text-pth-blue hover:underline">{project?.name ?? 'Unknown project'}</div>
+                                <div className="text-[11px] text-pth-muted">{tasks.length} task{tasks.length === 1 ? '' : 's'} · {Math.round((loadPct / 100) * d.capacity)}h/wk ({loadPct}%)</div>
+                              </button>
+                              {project && <ChevronRight size={16} className="shrink-0 text-pth-muted" />}
+                            </div>
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b border-pth-border/15 text-left text-[10px] uppercase tracking-wide text-pth-muted">
+                                  <th className="px-4 py-1.5 font-semibold">Task</th>
+                                  <th className="px-3 py-1.5 font-semibold">Status</th>
+                                  <th className="whitespace-nowrap px-3 py-1.5 font-semibold">Dates</th>
+                                  <th className="whitespace-nowrap px-3 py-1.5 font-semibold">Load</th>
+                                  <th className="whitespace-nowrap px-3 py-1.5 font-semibold">Days left</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-pth-border/10">
+                                {tasks.map((a) => {
+                                  const dleft = a.endDate ? dayDiff(todayISO(), a.endDate) : null
+                                  const st = rygFromDueDate(a.endDate, state.settings.warningDaysThreshold)
+                                  return (
+                                    <tr key={a.id} className="transition-colors hover:bg-pth-hover/40">
+                                      <td className="px-4 py-1.5"><button type="button" onClick={() => setTaskDrawerId(a.id)} className="text-left hover:text-pth-blue hover:underline">{a.name}</button>{a.criticalPath && <span className="ml-1.5 rounded bg-pth-red/10 px-1 py-0.5 text-[9px] font-semibold text-pth-red">CP</span>}</td>
+                                      <td className="whitespace-nowrap px-3 py-1.5"><TaskStatusSelect value={a.state} onChange={(s) => setTaskStatus(a.id, s)} /></td>
+                                      <td className="whitespace-nowrap px-3 py-1.5 text-pth-muted">{formatShortDate(a.startDate)} – {formatShortDate(a.endDate)}</td>
+                                      <td className="whitespace-nowrap px-3 py-1.5 text-pth-muted">{a.workloadPct != null ? `${a.workloadPct}% · ${Math.round(((a.workloadPct ?? 0) / 100) * d.capacity)}h` : '—'}</td>
+                                      <td className={`whitespace-nowrap px-3 py-1.5 font-medium ${dleft != null && dleft < 0 ? 'text-pth-red' : dleft != null && dleft <= 14 ? 'text-amber-600' : 'text-pth-muted'}`}>{dleft != null ? (dleft < 0 ? `${-dleft}d overdue` : `${dleft}d`) : '—'}<span className={`ml-1.5 inline-block h-1.5 w-1.5 rounded-full ${st === 'RED' ? 'bg-pth-red' : st === 'YELLOW' ? 'bg-amber-500' : 'bg-emerald-500'}`} /></td>
+                                    </tr>
+                                  )
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                }
+
                 return (
                 <div className="space-y-4">
                   {/* ── Page header ── */}
@@ -3924,7 +4093,7 @@ export default function App(): ReactElement {
                               const ltext = lcritical ? 'text-pth-red' : lwarning ? 'text-amber-600 dark:text-amber-400' : row.utilization >= 50 ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400'
                               const mgrName = row.person.managerId ? (people.find((m) => m.id === row.person.managerId)?.name ?? '—') : '—'
                               return (
-                                <tr key={row.person.id} className="transition-colors hover:bg-pth-hover/50">
+                                <tr key={row.person.id} onClick={() => setResourceDetailId(row.person.id)} className="cursor-pointer transition-colors hover:bg-pth-hover/50">
                                   <td className="px-4 py-2.5">
                                     <div className="flex items-center gap-2.5">
                                       <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-pth-subtle text-[10px] font-bold">{row.person.initials}</div>
@@ -3990,7 +4159,7 @@ export default function App(): ReactElement {
                       const remaining = projectBreakdown.length - 3
 
                       return (
-                        <div key={row.person.id} className={`glass-card rounded-xl p-5 shadow-card ${ringClass}`}>
+                        <div key={row.person.id} role="button" tabIndex={0} onClick={() => setResourceDetailId(row.person.id)} onKeyDown={(e) => { if (e.key === 'Enter') setResourceDetailId(row.person.id) }} className={`glass-card cursor-pointer rounded-xl p-5 shadow-card transition-shadow hover:shadow-elevated ${ringClass}`}>
                           {/* Header: avatar + name + utilization */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
