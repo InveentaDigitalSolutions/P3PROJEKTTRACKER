@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { getContext, type IContext } from '@microsoft/power-apps/app'
 import { logoDataUri as logoImg } from './assets/logo'
@@ -1260,6 +1260,27 @@ export default function App(): ReactElement {
   const [ttOwner, setTtOwner] = useState<string>('all')
   // Task Tracking quick-edit drawer: id of the task being edited (null = closed)
   const [taskDrawerId, setTaskDrawerId] = useState<string | null>(null)
+  const [ttShiftDays, setTtShiftDays] = useState<string>('7') // bulk date-shift amount
+  const [ttSort, setTtSort] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(null) // flat-table column sort
+  // Toast notifications (save feedback)
+  const [toasts, setToasts] = useState<Array<{ id: number; kind: 'success' | 'error'; msg: string }>>([])
+  const toastSeq = useRef(0)
+  const pushToast = useCallback((kind: 'success' | 'error', msg: string) => {
+    const id = ++toastSeq.current
+    setToasts((prev) => [...prev, { id, kind, msg }])
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), kind === 'error' ? 5000 : 2800)
+  }, [])
+  // Toast one or many Dataverse writes: resolves the boolean promises and reports success/failure.
+  const reportSave = useCallback(async (results: Array<Promise<boolean>> | Promise<boolean>, label: string) => {
+    const arr = Array.isArray(results) ? results : [results]
+    if (arr.length === 0) return
+    const oks = await Promise.all(arr.map((p) => p.catch(() => false)))
+    const ok = oks.filter(Boolean).length
+    const fail = oks.length - ok
+    if (fail === 0) pushToast('success', arr.length === 1 ? `${label} saved` : `${ok} ${label} saved`)
+    else if (ok === 0) pushToast('error', `Couldn't save ${label}${arr.length > 1 ? ` (${fail} failed)` : ''}`)
+    else pushToast('error', `${ok} saved, ${fail} failed`)
+  }, [pushToast])
   // Task Tracking date filter: only "range" (custom from/to) or "week" (ISO week picker)
   const [ttDateMode, setTtDateMode] = useState<'all' | 'range' | 'week'>('all')
   const [ttDateFrom, setTtDateFrom] = useState<string>('')
@@ -2483,12 +2504,12 @@ export default function App(): ReactElement {
     }))
     if (isDataverseConfigured()) {
       const ownerName = people.find((p) => p.id === act.ownerId)?.name ?? 'Unassigned'
-      updateActivityInDataverse(activityId, {
+      reportSave(updateActivityInDataverse(activityId, {
         name: act.name, ownerName, startDate: act.startDate, endDate: act.endDate,
         doneDate, state: newState, criticalPath: act.criticalPath,
         projectId: act.projectId, milestoneId: act.milestoneId,
         workloadPct: act.workloadPct, responsible: act.responsible,
-      })
+      }), 'task')
     }
     recordChange({ summary: `Task "${act.name}" — Status changed`, changeType: 'StatusChanged', field: 'Status', oldValue: TASK_STATUS_LABEL[act.state], newValue: TASK_STATUS_LABEL[newState], entityKind: 'Task', projectId: act.projectId, activityId })
   }
@@ -2501,17 +2522,73 @@ export default function App(): ReactElement {
       activities: prev.activities.map((a) => (activityIds.includes(a.id) ? { ...a, ownerId } : a)),
     }))
     if (isDataverseConfigured()) {
+      const writes: Array<Promise<boolean>> = []
       for (const id of activityIds) {
         const act = state.activities.find((a) => a.id === id)
         if (!act) continue
-        updateActivityInDataverse(id, {
+        writes.push(updateActivityInDataverse(id, {
           name: act.name, ownerName, startDate: act.startDate, endDate: act.endDate,
           doneDate: act.doneDate, state: act.state, criticalPath: act.criticalPath,
           projectId: act.projectId, milestoneId: act.milestoneId,
           workloadPct: act.workloadPct, responsible: act.responsible,
-        })
+        }))
         recordChange({ summary: `Task "${act.name}" assigned to ${ownerName}`, changeType: 'Assigned', field: 'Owner', oldValue: people.find((p) => p.id === act.ownerId)?.name || 'Unassigned', newValue: ownerName, entityKind: 'Task', projectId: act.projectId, activityId: id })
       }
+      reportSave(writes, 'task')
+    }
+    setTtSelected(new Set())
+  }
+
+  // Bulk-set status for many tasks at once. Persists + logs each.
+  function bulkSetStatus(activityIds: string[], newState: ActivityState): void {
+    setState((prev) => ({
+      ...prev,
+      activities: prev.activities.map((a) => (activityIds.includes(a.id)
+        ? { ...a, state: newState, doneDate: newState === 'DONE' ? (a.doneDate ?? a.endDate ?? todayISO()) : undefined }
+        : a)),
+    }))
+    if (isDataverseConfigured()) {
+      const writes: Array<Promise<boolean>> = []
+      for (const id of activityIds) {
+        const act = state.activities.find((a) => a.id === id)
+        if (!act) continue
+        const doneDate = newState === 'DONE' ? (act.doneDate ?? act.endDate ?? todayISO()) : undefined
+        writes.push(updateActivityInDataverse(id, {
+          name: act.name, ownerName: people.find((p) => p.id === act.ownerId)?.name ?? 'Unassigned',
+          startDate: act.startDate, endDate: act.endDate, doneDate, state: newState, criticalPath: act.criticalPath,
+          projectId: act.projectId, milestoneId: act.milestoneId, workloadPct: act.workloadPct, responsible: act.responsible,
+        }))
+        recordChange({ summary: `Task "${act.name}" — Status changed`, changeType: 'StatusChanged', field: 'Status', oldValue: TASK_STATUS_LABEL[act.state], newValue: TASK_STATUS_LABEL[newState], entityKind: 'Task', projectId: act.projectId, activityId: id })
+      }
+      reportSave(writes, 'task')
+    }
+    setTtSelected(new Set())
+  }
+
+  // Bulk-shift start & end dates of many tasks by N days (negative = earlier). Persists + logs each.
+  function bulkShiftDates(activityIds: string[], days: number): void {
+    if (!days) return
+    setState((prev) => ({
+      ...prev,
+      activities: prev.activities.map((a) => (activityIds.includes(a.id)
+        ? { ...a, startDate: a.startDate ? addDays(a.startDate, days) : a.startDate, endDate: a.endDate ? addDays(a.endDate, days) : a.endDate }
+        : a)),
+    }))
+    if (isDataverseConfigured()) {
+      const writes: Array<Promise<boolean>> = []
+      for (const id of activityIds) {
+        const act = state.activities.find((a) => a.id === id)
+        if (!act) continue
+        const ns = act.startDate ? addDays(act.startDate, days) : act.startDate
+        const ne = act.endDate ? addDays(act.endDate, days) : act.endDate
+        writes.push(updateActivityInDataverse(id, {
+          name: act.name, ownerName: people.find((p) => p.id === act.ownerId)?.name ?? 'Unassigned',
+          startDate: ns, endDate: ne, doneDate: act.doneDate, state: act.state, criticalPath: act.criticalPath,
+          projectId: act.projectId, milestoneId: act.milestoneId, workloadPct: act.workloadPct, responsible: act.responsible,
+        }))
+        recordChange({ summary: `Task "${act.name}" — Dates shifted ${days > 0 ? '+' : ''}${days}d`, changeType: 'Updated', field: 'Dates', oldValue: `${act.startDate || '—'} → ${act.endDate || '—'}`, newValue: `${ns || '—'} → ${ne || '—'}`, entityKind: 'Task', projectId: act.projectId, activityId: id })
+      }
+      reportSave(writes, 'task')
     }
     setTtSelected(new Set())
   }
@@ -2530,12 +2607,12 @@ export default function App(): ReactElement {
     }))
     const ownerName = people.find((p) => p.id === patch.ownerId)?.name ?? 'Unassigned'
     if (isDataverseConfigured()) {
-      updateActivityInDataverse(activityId, {
+      reportSave(updateActivityInDataverse(activityId, {
         name: patch.name, ownerName, startDate: patch.startDate, endDate: patch.endDate,
         doneDate, state: patch.state, criticalPath: patch.criticalPath,
         projectId: act.projectId, milestoneId: act.milestoneId,
         workloadPct: patch.workloadPct, responsible: patch.responsible,
-      })
+      }), 'task')
     }
     // Log each changed field
     if (patch.name !== act.name) recordChange({ summary: `Task renamed to "${patch.name}"`, changeType: 'Updated', field: 'Task Name', oldValue: act.name, newValue: patch.name, entityKind: 'Task', projectId: act.projectId, activityId })
@@ -2562,7 +2639,7 @@ export default function App(): ReactElement {
       ...prev,
       projects: prev.projects.map((p) => (p.id === projectId ? { ...p, statusOverview: status } : p)),
     }))
-    if (isDataverseConfigured()) updateProjectStatusOverview(projectId, status)
+    if (isDataverseConfigured()) reportSave(updateProjectStatusOverview(projectId, status), 'status')
     recordChange({ summary: `Project status overview → ${status}`, changeType: 'StatusChanged', field: 'Status Overview', oldValue: prevStatus ?? '—', newValue: status, entityKind: 'Project', projectId })
   }
 
@@ -4780,6 +4857,26 @@ export default function App(): ReactElement {
                         if (rank(x.status) !== rank(y.status)) return rank(x.status) - rank(y.status)
                         return (x.daysToDue ?? 99999) - (y.daysToDue ?? 99999)
                       })
+                      // Flat-table column sort (overrides the default urgency sort when a header is clicked)
+                      const sortVal = (r: TtRow, key: string): string | number => {
+                        switch (key) {
+                          case 'task': return r.a.name.toLowerCase()
+                          case 'status': return TASK_STATUS_OPTIONS.findIndex((o) => o.key === r.a.state)
+                          case 'project': return (r.proj?.name ?? '').toLowerCase()
+                          case 'type': return (r.proj?.projectType ?? '').toLowerCase()
+                          case 'location': return r.locNames.join(', ').toLowerCase()
+                          case 'area': return (r.a.responsible ?? '').toLowerCase()
+                          case 'owner': return r.ownerName.toLowerCase()
+                          case 'due': return r.a.endDate || '9999'
+                          case 'daysleft': return r.daysToDue ?? 999999
+                          default: return 0
+                        }
+                      }
+                      const flatRows = ttSort
+                        ? [...filtered].sort((x, y) => { const a = sortVal(x, ttSort.key); const b = sortVal(y, ttSort.key); const c = a < b ? -1 : a > b ? 1 : 0; return ttSort.dir === 'asc' ? c : -c })
+                        : filtered
+                      const toggleSort = (key: string) => setTtSort((prev) => prev?.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' })
+                      const sortArrow = (key: string) => ttSort?.key === key ? (ttSort.dir === 'asc' ? ' ↑' : ' ↓') : ''
                       const redCount = rows.filter((r) => !r.a.doneDate && r.status === 'RED').length
                       const yellowCount = rows.filter((r) => !r.a.doneDate && r.status === 'YELLOW').length
                       const dueSoon = rows.filter((r) => !r.a.doneDate && r.daysToDue !== null && r.daysToDue >= 0 && r.daysToDue <= 14).length
@@ -4925,6 +5022,30 @@ export default function App(): ReactElement {
                               <button type="button" className="ml-auto text-xs font-medium text-pth-blue hover:text-pth-blue/80" onClick={() => { setTtSearch(''); setTtArea('all'); setTtTaskFilter('all'); setTtLoc('all'); setTtProjType('all'); setTtOwner('all'); setTtStatusFilter(new Set()); setTtRygFilter(new Set()); setTtDateMode('all'); setTtDateFrom(''); setTtDateTo(''); setTtWeek('') }}>✕ Clear all filters</button>
                             )}
                           </div>
+                          {/* Active-filter chips (individually removable) */}
+                          {(() => {
+                            const chips: Array<{ key: string; label: string; onRemove: () => void }> = []
+                            if (ttSearch) chips.push({ key: 'search', label: `“${ttSearch}”`, onRemove: () => setTtSearch('') })
+                            ttStatusFilter.forEach((s) => chips.push({ key: `st-${s}`, label: TASK_STATUS_LABEL[s], onRemove: () => setTtStatusFilter((p) => { const n = new Set(p); n.delete(s); return n }) }))
+                            ttRygFilter.forEach((s) => chips.push({ key: `ryg-${s}`, label: s === 'RED' ? 'Overdue/Critical' : s === 'YELLOW' ? 'At risk' : 'On track', onRemove: () => setTtRygFilter((p) => { const n = new Set(p); n.delete(s); return n }) }))
+                            if (ttTaskFilter !== 'all') chips.push({ key: 'task', label: `Task: ${ttTaskFilter}`, onRemove: () => setTtTaskFilter('all') })
+                            if (ttArea !== 'all') chips.push({ key: 'area', label: `Area: ${ttArea}`, onRemove: () => setTtArea('all') })
+                            if (ttOwner !== 'all') chips.push({ key: 'owner', label: `Owner: ${ttOwner}`, onRemove: () => setTtOwner('all') })
+                            if (ttProjType !== 'all') chips.push({ key: 'ptype', label: `Type: ${ttProjType}`, onRemove: () => setTtProjType('all') })
+                            if (ttLoc !== 'all') chips.push({ key: 'loc', label: `Location: ${ttLoc}`, onRemove: () => setTtLoc('all') })
+                            if (ttDateMode === 'range' && (ttDateFrom || ttDateTo)) chips.push({ key: 'range', label: `${ttDateFrom || '…'} → ${ttDateTo || '…'}`, onRemove: () => { setTtDateMode('all'); setTtDateFrom(''); setTtDateTo('') } })
+                            if (ttDateMode === 'week' && ttWeek) chips.push({ key: 'week', label: `Week ${ttWeek}`, onRemove: () => { setTtDateMode('all'); setTtWeek('') } })
+                            if (chips.length === 0) return null
+                            return (
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                {chips.map((c) => (
+                                  <button key={c.key} type="button" onClick={c.onRemove} className="inline-flex items-center gap-1 rounded-full bg-pth-blue/10 px-2.5 py-1 text-[11px] font-medium text-pth-blue transition-colors hover:bg-pth-blue/20" title="Remove filter">
+                                    {c.label}<X size={11} />
+                                  </button>
+                                ))}
+                              </div>
+                            )
+                          })()}
                           <div className="grid grid-cols-3 gap-3">
                             <div className="rounded-xl border border-pth-border/15 bg-pth-card p-4 text-center">
                               <div className="text-[11px] font-semibold uppercase tracking-wider text-pth-muted">Will miss due date</div>
@@ -4966,13 +5087,29 @@ export default function App(): ReactElement {
                           )}
                           {/* Bulk-action bar (appears when tasks are selected) */}
                           {ttView === 'all' && ttSelected.size > 0 && (
-                            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-pth-blue/30 bg-pth-blue/5 px-4 py-2.5">
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-pth-blue/30 bg-pth-blue/5 px-4 py-2.5">
                               <span className="text-sm font-medium text-pth-blue">{ttSelected.size} selected</span>
-                              <span className="text-xs text-pth-muted">Assign owner:</span>
-                              <select className={`${sel} max-w-[220px]`} value="" onChange={(e) => { if (e.target.value) bulkAssignOwner([...ttSelected], e.target.value) }}>
-                                <option value="">Choose resource…</option>
-                                {people.filter((p) => p.role === 'RESOURCE').map((p) => <option key={p.id} value={p.id}>{p.name}{p.area ? ` (${p.area})` : ''}</option>)}
-                              </select>
+                              <span className="h-5 w-px bg-pth-border/30" />
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs text-pth-muted">Owner</span>
+                                <select className={`${sel} max-w-[200px]`} value="" onChange={(e) => { if (e.target.value) bulkAssignOwner([...ttSelected], e.target.value) }}>
+                                  <option value="">Assign…</option>
+                                  {people.filter((p) => p.role === 'RESOURCE').map((p) => <option key={p.id} value={p.id}>{p.name}{p.area ? ` (${p.area})` : ''}</option>)}
+                                </select>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs text-pth-muted">Status</span>
+                                <select className={sel} value="" onChange={(e) => { if (e.target.value) bulkSetStatus([...ttSelected], e.target.value as ActivityState) }}>
+                                  <option value="">Set…</option>
+                                  {TASK_STATUS_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+                                </select>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs text-pth-muted">Shift dates</span>
+                                <input type="number" title="Days (negative = earlier)" value={ttShiftDays} onChange={(e) => setTtShiftDays(e.target.value)} className="h-9 w-16 rounded-lg border border-pth-border/40 bg-pth-subtle px-2 text-sm outline-none focus:border-pth-blue" />
+                                <span className="text-xs text-pth-muted">days</span>
+                                <button type="button" disabled={!Number(ttShiftDays)} onClick={() => bulkShiftDates([...ttSelected], Number(ttShiftDays))} className="h-9 rounded-lg border border-pth-border/40 bg-pth-subtle px-3 text-xs font-medium text-pth-text transition-colors hover:bg-pth-card disabled:opacity-40">Apply</button>
+                              </div>
                               <button type="button" className="ml-auto text-xs text-pth-muted hover:text-pth-text" onClick={() => setTtSelected(new Set())}>Clear selection</button>
                             </div>
                           )}
@@ -4984,19 +5121,13 @@ export default function App(): ReactElement {
                                 <tr className="border-b border-pth-border/15 text-left text-[11px] uppercase tracking-wide text-pth-muted">
                                   <th className="px-3 py-2"><input type="checkbox" title="Select all" checked={filtered.length > 0 && filtered.every((r) => ttSelected.has(r.a.id))} onChange={(e) => setTtSelected(e.target.checked ? new Set(filtered.map((r) => r.a.id)) : new Set())} className="h-3.5 w-3.5 rounded border-pth-border/50" /></th>
                                   <th className="px-3 py-2 font-semibold">Urgency</th>
-                                  <th className="px-3 py-2 font-semibold">Task</th>
-                                  <th className="whitespace-nowrap px-3 py-2 font-semibold">Status</th>
-                                  <th className="px-3 py-2 font-semibold">Project</th>
-                                  <th className="px-3 py-2 font-semibold">Type</th>
-                                  <th className="px-3 py-2 font-semibold">Location</th>
-                                  <th className="px-3 py-2 font-semibold">Area</th>
-                                  <th className="px-3 py-2 font-semibold">Owner</th>
-                                  <th className="whitespace-nowrap px-3 py-2 font-semibold">Due</th>
-                                  <th className="whitespace-nowrap px-3 py-2 font-semibold">Days left</th>
+                                  {([['task', 'Task', ''], ['status', 'Status', 'whitespace-nowrap'], ['project', 'Project', ''], ['type', 'Type', ''], ['location', 'Location', ''], ['area', 'Area', ''], ['owner', 'Owner', ''], ['due', 'Due', 'whitespace-nowrap'], ['daysleft', 'Days left', 'whitespace-nowrap']] as const).map(([key, lbl, cls]) => (
+                                    <th key={key} className={`px-3 py-2 font-semibold ${cls}`}><button type="button" onClick={() => toggleSort(key)} className={`uppercase tracking-wide transition-colors hover:text-pth-text ${ttSort?.key === key ? 'text-pth-blue' : ''}`}>{lbl}{sortArrow(key)}</button></th>
+                                  ))}
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-pth-border/10">
-                                {filtered.map((r) => {
+                                {flatRows.map((r) => {
                                   const dot = dotClass(r.status)
                                   const dleft = r.daysToDue
                                   return (
@@ -6161,6 +6292,24 @@ export default function App(): ReactElement {
           </>
         )}
       </AnimatePresence>
+
+      {/* ─── TOASTS (save feedback) ─── */}
+      <div className="pointer-events-none fixed bottom-5 right-5 z-[80] flex flex-col gap-2">
+        <AnimatePresence>
+          {toasts.map((t) => (
+            <motion.div
+              key={t.id}
+              initial={{ opacity: 0, x: 24, scale: 0.96 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 24, scale: 0.96 }}
+              className={`pointer-events-auto flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium shadow-elevated ${t.kind === 'success' ? 'bg-emerald-600 text-white' : 'bg-pth-red text-white'}`}
+            >
+              {t.kind === 'success' ? <CheckCircle size={15} /> : <AlertTriangle size={15} />}
+              {t.msg}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
 
       {/* ─── TASK QUICK-EDIT DRAWER (Task Tracking) ─── */}
       <AnimatePresence>
