@@ -555,7 +555,17 @@ function buildProjectBody(p: CreateProjectPayload): Record<string, unknown> {
 
 /** Update just the manual Status Overview for a project. */
 export async function updateProjectStatusOverview(id: string, status: RygStatus): Promise<boolean> {
-  return dvPatch('pth_projects', id, { pth_statusoverview: STATUS_OVERVIEW_TO_DV[status] })
+  const body = { pth_statusoverview: STATUS_OVERVIEW_TO_DV[status] }
+  if (preferDirectWrite()) return dvPatch('pth_projects', id, body)
+  // Hosted: must go through the SDK (no token for the direct API). Previously this
+  // only called dvPatch, so the status overview never persisted in the hosted app.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const res = await Pth_projectsService.update(id, body as any)
+    if (res?.success) return true
+    console.error('[DV] SDK status-overview update failed:', res?.error ?? res)
+  } catch (err) { console.error('[DV] SDK status-overview update threw:', err) }
+  return false
 }
 
 /**
@@ -608,11 +618,11 @@ export async function updateProjectInDataverse(id: string, p: CreateProjectPaylo
   if (preferDirectWrite()) return dvPatch('pth_projects', id, body)
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await Pth_projectsService.update(id, body as any)
-    console.log('[DV] Project updated via SDK, id =', id)
-    return true
-  } catch (err) { console.error('[DV] SDK update project failed:', err) }
-  return dvPatch('pth_projects', id, body)
+    const res = await Pth_projectsService.update(id, body as any)
+    if (res?.success) { console.log('[DV] Project updated via SDK, id =', id); return true }
+    console.error('[DV] SDK update project failed:', res?.error ?? res)
+  } catch (err) { console.error('[DV] SDK update project threw:', err) }
+  return false
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -665,15 +675,15 @@ export async function updateMilestoneInDataverse(id: string, m: MilestonePayload
     pth_name: m.name,
     pth_planneddate: m.targetDate,
     pth_status: m.doneDate ? MILESTONE_STATUS_TO_DV.CLOSED : MILESTONE_STATUS_TO_DV.OPEN,
-    'pth_project@odata.bind': `/pth_projects(${m.projectId})`,
   }
-  if (preferDirectWrite()) return dvPatch('pth_milestones', id, body)
+  if (preferDirectWrite()) return dvPatch('pth_milestones', id, { ...body, 'pth_project@odata.bind': `/pth_projects(${m.projectId})` })
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await Pth_milestonesService.update(id, body as any)
-    console.log('[DV] Milestone updated via SDK, id =', id); return true
-  } catch (err) { console.error('[DV] SDK update milestone failed:', err) }
-  return dvPatch('pth_milestones', id, body)
+    const res = await Pth_milestonesService.update(id, body as any)
+    if (res?.success) { console.log('[DV] Milestone updated via SDK, id =', id); return true }
+    console.error('[DV] SDK update milestone failed:', res?.error ?? res)
+  } catch (err) { console.error('[DV] SDK update milestone threw:', err) }
+  return false
 }
 
 export async function deleteMilestoneInDataverse(id: string): Promise<boolean> {
@@ -739,16 +749,15 @@ export async function createActivityInDataverse(a: ActivityPayload): Promise<str
 }
 
 export async function updateActivityInDataverse(id: string, a: ActivityPayload): Promise<boolean> {
+  // Scalar fields, common to both write paths. Only send date fields when present
+  // — empty strings make Dataverse reject the whole PATCH (0x80040239), which
+  // silently dropped owner/other changes on N/A and dateless tasks.
   const body: Record<string, unknown> = {
     pth_name: a.name,
     pth_owner: a.ownerName,
     pth_status: ACTIVITY_STATE_TO_DV[a.state],
     pth_iscriticalpath: a.criticalPath,
-    'pth_project@odata.bind': `/pth_projects(${a.projectId})`,
   }
-  // Only send date fields when present — empty strings make Dataverse reject the
-  // whole PATCH (0x80040239), which silently dropped owner/other changes on
-  // N/A and dateless tasks.
   if (a.startDate) body.pth_startdate = a.startDate
   if (a.endDate) { body.pth_enddate = a.endDate; body.pth_plannedenddate = a.endDate }
   if (a.responsible !== undefined) body.pth_responsible = a.responsible || null
@@ -756,14 +765,24 @@ export async function updateActivityInDataverse(id: string, a: ActivityPayload):
   if (a.workloadPct != null) body.pth_workloadpct = a.workloadPct
   if (a.inputs) body.pth_inputs = a.inputs.slice(0, 2000)
   if (a.doneDate) body.pth_closeddate = a.doneDate
-  if (a.milestoneId) body['pth_milestone@odata.bind'] = `/pth_milestones(${a.milestoneId})`
-  if (preferDirectWrite()) return dvPatch('pth_activities', id, body)
+
+  // Direct Web API (local dev): lookups need @odata.bind navigation syntax.
+  if (preferDirectWrite()) {
+    const webBody: Record<string, unknown> = { ...body, 'pth_project@odata.bind': `/pth_projects(${a.projectId})` }
+    if (a.milestoneId) webBody['pth_milestone@odata.bind'] = `/pth_milestones(${a.milestoneId})`
+    return dvPatch('pth_activities', id, webBody)
+  }
+
+  // Power Apps SDK (hosted): the client REJECTS @odata.bind keys, so we send
+  // scalar fields only (an edit never re-parents the task). It also does NOT
+  // throw on failure — it returns { success, error } — so check that flag.
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await Pth_activitiesService.update(id, body as any)
-    console.log('[DV] Activity updated via SDK, id =', id); return true
-  } catch (err) { console.error('[DV] SDK update activity failed:', err) }
-  return dvPatch('pth_activities', id, body)
+    const res = await Pth_activitiesService.update(id, body as any)
+    if (res?.success) { console.log('[DV] Activity updated via SDK, id =', id); return true }
+    console.error('[DV] SDK update activity failed:', res?.error ?? res)
+  } catch (err) { console.error('[DV] SDK update activity threw:', err) }
+  return false
 }
 
 export async function deleteActivityInDataverse(id: string): Promise<boolean> {
@@ -840,10 +859,11 @@ export async function updateResourceInDataverse(id: string, r: ResourcePayload):
   if (preferDirectWrite()) return dvPatch('pth_resources', id, body)
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await Pth_resourcesService.update(id, body as any)
-    console.log('[DV] Resource updated via SDK, id =', id); return true
-  } catch (err) { console.error('[DV] SDK update resource failed:', err) }
-  return dvPatch('pth_resources', id, body)
+    const res = await Pth_resourcesService.update(id, body as any)
+    if (res?.success) { console.log('[DV] Resource updated via SDK, id =', id); return true }
+    console.error('[DV] SDK update resource failed:', res?.error ?? res)
+  } catch (err) { console.error('[DV] SDK update resource threw:', err) }
+  return false
 }
 
 export async function deleteResourceInDataverse(id: string): Promise<boolean> {
@@ -896,10 +916,11 @@ export async function updateAssignmentInDataverse(id: string, a: Partial<Assignm
   if (preferDirectWrite()) return dvPatch('pth_assignments', id, body)
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await Pth_assignmentsService.update(id, body as any)
-    console.log('[DV] Assignment updated via SDK, id =', id); return true
-  } catch (err) { console.error('[DV] SDK update assignment failed:', err) }
-  return dvPatch('pth_assignments', id, body)
+    const res = await Pth_assignmentsService.update(id, body as any)
+    if (res?.success) { console.log('[DV] Assignment updated via SDK, id =', id); return true }
+    console.error('[DV] SDK update assignment failed:', res?.error ?? res)
+  } catch (err) { console.error('[DV] SDK update assignment threw:', err) }
+  return false
 }
 
 export async function deleteAssignmentInDataverse(id: string): Promise<boolean> {
@@ -931,10 +952,11 @@ export async function updateSettingsInDataverse(id: string, s: SettingsPayload):
   if (preferDirectWrite()) return dvPatch('pth_ppmsettings', id, body)
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await Pth_ppmsettingsService.update(id, body as any)
-    console.log('[DV] Settings updated via SDK, id =', id); return true
-  } catch (err) { console.error('[DV] SDK update settings failed:', err) }
-  return dvPatch('pth_ppmsettings', id, body)
+    const res = await Pth_ppmsettingsService.update(id, body as any)
+    if (res?.success) { console.log('[DV] Settings updated via SDK, id =', id); return true }
+    console.error('[DV] SDK update settings failed:', res?.error ?? res)
+  } catch (err) { console.error('[DV] SDK update settings threw:', err) }
+  return false
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1020,10 +1042,11 @@ export async function updateTaskTemplate(id: string, p: TaskTemplatePayload): Pr
   if (preferDirectWrite()) return dvPatch('pth_tasktemplates', id, body)
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await Pth_tasktemplatesService.update(id, body as any)
-    return true
-  } catch (err) { console.error('[DV] SDK update task template failed:', err) }
-  return dvPatch('pth_tasktemplates', id, body)
+    const res = await Pth_tasktemplatesService.update(id, body as any)
+    if (res?.success) return true
+    console.error('[DV] SDK update task template failed:', res?.error ?? res)
+  } catch (err) { console.error('[DV] SDK update task template threw:', err) }
+  return false
 }
 
 export async function deleteTaskTemplate(id: string): Promise<boolean> {
